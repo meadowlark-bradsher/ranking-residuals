@@ -78,13 +78,23 @@ def test_8_4_b1_matches_rank_formula(cfg, m):
 
 
 # ---------------------------------------------------------------- §8.5
-def test_8_5_seed_drops_are_reported_not_silent(null_cfg):
-    """Masks with b1=0 carry no harmonic direction and are skipped. That is a real
-    reduction in sample size, so it is counted -- the CI must not be read as if it
-    came from the full seed budget."""
-    r = floor_measurement(null_cfg, 2.0, 0.3, strict=False)
-    assert r["n_seeds_used"] + r["n_seeds_dropped_b1_zero"] == null_cfg.seeds
-    assert r["seed_drop_rate"] < 0.35, r["seed_drop_rate"]
+@pytest.mark.parametrize("n_int", [12, 4])
+def test_8_5_seed_drops_are_reported_not_silent(null_cfg, n_int):
+    """Every seed that leaves the loop early is counted, by whichever route.
+
+    n_int=4 is the load-bearing case: it is small enough that masks are sometimes
+    too sparse to decompose at all, which is the second exit path. At n_int=12 that
+    path is unreachable, so a test pinned there would report the accounting as
+    complete while seeds went missing through it.
+    """
+    cfg = null_cfg.with_(n_int=n_int)
+    r = floor_measurement(cfg, 2.0, 0.3, strict=False)
+    accounted = (r["n_seeds_used"] + r["n_seeds_dropped_b1_zero"]
+                 + r["n_seeds_dropped_small_mask"])
+    assert accounted == cfg.seeds, (
+        f"{cfg.seeds - accounted} seeds unaccounted for at n_int={n_int}")
+    assert r["seed_drop_rate"] == pytest.approx(
+        1 - r["n_seeds_used"] / cfg.seeds), "seed_drop_rate must be the TOTAL loss"
 
 
 def test_8_5_negative_control_floor_covers_zero(null_cfg):
@@ -117,6 +127,10 @@ def test_8_5_floor_ci_covers_oracle(null_cfg, eps):
     open lever (spec §8.5). This test pins the config it actually runs at.
     """
     r = floor_measurement(null_cfg, 2.0, eps, strict=False)
+    # Kept alongside the coverage check, not only in the sibling test: a fit that fell
+    # back to the 2-point window is an exact interpolation, so its interval is least
+    # trustworthy exactly where this assertion would otherwise still pass.
+    assert not r["grid_insufficient"], f"k grid cannot reach the required window {r['fit_k_required']:.0f}"
     assert r["ci_covers_oracle"], (
         f"floor {r['floor_mean']:.5f} CI[{r['floor_ci_lo']:.5f},{r['floor_ci_hi']:.5f}] "
         f"misses oracle {r['floor_oracle']:.5f}")

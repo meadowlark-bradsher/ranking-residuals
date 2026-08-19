@@ -95,6 +95,11 @@ class RigConfig:
                                         # and 5 bridge edges exceed log(2k-1) (§10).
     reps: int = 16                      # draws averaged per (seed,k) before the OLS fit.
                                         # A budget knob, logged like any other (§9).
+    rho: float = 3.0                    # §2.6 resolvability margin in the DERIVED fit
+                                        # window, required_fit_k_min = c_oracle/(rho*floor).
+                                        # It scales every floor in a run, so it is a budget
+                                        # axis and is echoed like one (§9). Currently
+                                        # justified, not optimised -- the open item.
     seeds: int = 64                     # replicates for the §8.5 floor CI
     seed: int = 0                       # base seed
 
@@ -125,6 +130,8 @@ class RigConfig:
             )
         if any(s <= 0 for s in self.block_scale):
             raise ValueError(f"block_scale entries must be > 0, got {self.block_scale}")
+        if self.rho <= 0:
+            raise ValueError(f"rho must be > 0, got {self.rho}")
         if not 0 < self.edge_density <= 1:
             raise ValueError(f"edge_density must be in (0,1], got {self.edge_density}")
         return self
@@ -178,6 +185,7 @@ def budget_echo(cfg: RigConfig, is_quick: bool) -> dict:
     return {
         "seeds": cfg.seeds,
         "reps": cfg.reps,
+        "rho": cfg.rho,
         "k_grid": list(cfg.btl.k),
         "fit_k_min": cfg.btl.fit_k_min,
         "gamma_grid": list(cfg.btl.gamma),
