@@ -78,6 +78,25 @@ def test_8_4_b1_matches_rank_formula(cfg, m):
 
 
 # ---------------------------------------------------------------- §8.5
+@pytest.mark.parametrize("n_int", [12, 4])
+def test_8_5_seed_drops_are_reported_not_silent(null_cfg, n_int):
+    """Every seed that leaves the loop early is counted, by whichever route.
+
+    n_int=4 is the load-bearing case: it is small enough that masks are sometimes
+    too sparse to decompose at all, which is the second exit path. At n_int=12 that
+    path is unreachable, so a test pinned there would report the accounting as
+    complete while seeds went missing through it.
+    """
+    cfg = null_cfg.with_(n_int=n_int)
+    r = floor_measurement(cfg, 2.0, 0.3, strict=False)
+    accounted = (r["n_seeds_used"] + r["n_seeds_dropped_b1_zero"]
+                 + r["n_seeds_dropped_small_mask"])
+    assert accounted == cfg.seeds, (
+        f"{cfg.seeds - accounted} seeds unaccounted for at n_int={n_int}")
+    assert r["seed_drop_rate"] == pytest.approx(
+        1 - r["n_seeds_used"] / cfg.seeds), "seed_drop_rate must be the TOTAL loss"
+
+
 def test_8_5_negative_control_floor_covers_zero(null_cfg):
     """eps = 0 is the negative control: its floor CI must cover 0."""
     for gamma in (1.0, 2.0):
@@ -85,15 +104,36 @@ def test_8_5_negative_control_floor_covers_zero(null_cfg):
         assert r["ci_covers_oracle"], f"gamma={gamma}: CI {r['floor_ci_lo']:.5f}..{r['floor_ci_hi']:.5f} misses 0"
 
 
-@pytest.mark.parametrize("eps", [0.2, 0.3, 0.4])
-def test_8_5_floor_recovers_eps_squared_within_ci(null_cfg, eps):
-    """The fitted floor must equal eps^2 within its CI -- never a point estimate."""
+@pytest.mark.parametrize("eps", [0.1, 0.2, 0.3, 0.4])
+def test_8_5_floor_recovers_eps_squared(null_cfg, eps):
+    """The fitted floor must land within 0.8x-1.25x of the eps^2 oracle. Always strict."""
     r = floor_measurement(null_cfg, 2.0, eps, strict=False)
+    assert not r["grid_insufficient"], f"k grid cannot reach the required window {r['fit_k_required']:.0f}"
+    assert 0.8 <= r["floor_over_oracle"] <= 1.25, r["floor_over_oracle"]
+
+
+@pytest.mark.parametrize("eps", [0.1, 0.2, 0.3, 0.4])
+def test_8_5_floor_ci_covers_oracle(null_cfg, eps):
+    """The CI must cover eps^2. Strict -- and with no exceptions at this config.
+
+    Delta D of the v6 change-set recorded two failing cells (eps=0.1, eps=0.4). Both
+    were carried as a strict xfail, and both went stale once the k grid was extended
+    past 1024: the derived window needs k ~ 516 at eps=0.1, which the old grid could
+    not reach. At this config all four cells now cover.
+
+    The residual is not fully gone. Over 48 seeds x 4 gamma, coverage is 16/20 -- the
+    remaining ~2.0-2.4% negative bias is small but systematic, and a tighter CI at a
+    higher seed budget still excludes the oracle in some cells. Tuning rho is the
+    open lever (spec §8.5). This test pins the config it actually runs at.
+    """
+    r = floor_measurement(null_cfg, 2.0, eps, strict=False)
+    # Kept alongside the coverage check, not only in the sibling test: a fit that fell
+    # back to the 2-point window is an exact interpolation, so its interval is least
+    # trustworthy exactly where this assertion would otherwise still pass.
     assert not r["grid_insufficient"], f"k grid cannot reach the required window {r['fit_k_required']:.0f}"
     assert r["ci_covers_oracle"], (
         f"floor {r['floor_mean']:.5f} CI[{r['floor_ci_lo']:.5f},{r['floor_ci_hi']:.5f}] "
         f"misses oracle {r['floor_oracle']:.5f}")
-    assert 0.8 <= r["floor_over_oracle"] <= 1.25
 
 
 def test_8_5_floor_monotone_in_eps_squared(null_cfg):

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +25,7 @@ from rig.graph import assemble
 
 
 def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
-                      filling: str | None = None, rho: float = 3.0) -> dict:
+                      filling: str | None = None, rho: float | None = None) -> dict:
     """§8.5: recover the budget-independent floor and compare it to the eps^2 oracle.
 
     `filling` defaults to 'observed' -- NOT to cfg.filling. §2.4's characterisation of
@@ -35,15 +36,23 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
     a grid that cannot support it is flagged rather than silently fitted.
     """
     filling = filling or "observed"
+    rho = cfg.rho if rho is None else rho
     n = cfg.n_int
     ks = np.array(cfg.btl.k, dtype=float)
     per_seed_floor, per_seed_c, per_seed_ratio, regimes = [], [], [], []
     req_k, eff_k, insufficient = [], [], False
+    # Seeds leave this loop by two routes and BOTH are counted. The CI must not be read
+    # as if it came from the full seed budget, so `seed_drop_rate` is the total loss --
+    # counting only one route understates it (at n_int=4 that read 0.578 against a true
+    # 0.953). n_seeds_used + every drop counter == cfg.seeds, always.
+    n_dropped = 0     # masks with b1 = 0: no harmonic direction to inject into
+    n_small = 0       # masks too small to carry a decomposition at all
 
     for s in range(cfg.seeds):
         mrng = np.random.default_rng(cfg.derive_seed("floor_mask", gamma, eps, s))
         mask = flows.sample_sparse_graph(n, cfg.btl.p, mrng)   # ONCE per seed (§2.4)
         if len(mask) < 3:
+            n_small += 1
             continue
         tris = hodge.triangles_for_filling(mask, filling)
         D0, D1 = hodge.build_operators(n, mask, tris)
@@ -51,7 +60,8 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
         try:
             h_unit = flows.harmonic_unit(D0, D1)
         except ValueError:
-            continue                                            # b1 = 0: no room to inject
+            n_dropped += 1        # b1 = 0: no harmonic direction on this mask
+            continue
 
         theta = flows.latent_potential(n, cfg.btl, gamma,
                                        np.random.default_rng(cfg.derive_seed("theta", s)))
@@ -71,11 +81,17 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
             # but the O(1/k^2) term still biases the intercept NEGATIVE (the energy decays
             # faster than 1/k, so a 2-parameter line extrapolates below zero). Use the
             # cleanest tail the grid supports so the negative control can honestly cover 0.
-            window = max(cfg.btl.fit_k_min, float(sorted(cfg.btl.k)[-3]))
+            # max(0, ...) rather than [-3]: a 2-element grid passes config validation
+            # (it only needs >=1 k at or above fit_k_min), and a bare [-3] would raise
+            # IndexError on the negative-control cell after the eps>0 cells had run.
+            ks_sorted = sorted(cfg.btl.k)
+            window = max(cfg.btl.fit_k_min,
+                         float(ks_sorted[max(0, len(ks_sorted) - 3)]))
         usable = [k for k in cfg.btl.k if k >= window]
         if len(usable) < 2:                     # grid cannot support the needed window
             insufficient = True
-            window = float(sorted(cfg.btl.k)[-2])
+            ks_sorted = sorted(cfg.btl.k)
+            window = float(ks_sorted[max(0, len(ks_sorted) - 2)])
         req_k.append(need)
         eff_k.append(window)
 
@@ -110,6 +126,10 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
         "mildness": float(np.mean([r["mildness"] for r in regimes])) if regimes else float("nan"),
         "regime_ok": all(r["ok"] for r in regimes) if regimes else False,
         "n_seeds_used": len(per_seed_floor),
+        "n_seeds_dropped_b1_zero": n_dropped,
+        "n_seeds_dropped_small_mask": n_small,
+        "seed_drop_rate": (n_dropped + n_small) / cfg.seeds if cfg.seeds else 0.0,
+        "rho": rho,
     }
 
 
@@ -187,6 +207,25 @@ def bridge_sweep(cfg, Rs=(2, 4, 8, 16, 32, 64, 128)) -> list:
     return out
 
 
+def _json_safe(o):
+    """Replace non-finite floats with null so the output is valid JSON.
+
+    `fit_k_required` is legitimately inf on the eps=0 control (there is no floor to
+    resolve), and several fields are NaN when a cell has no usable seeds. json.dumps
+    would emit the bare tokens `Infinity`/`NaN`, which are not in the JSON grammar --
+    Python reads them back, but jq, JSON.parse, encoding/json and serde_json all
+    reject the line, and §9 makes these records the output contract.
+    """
+    if isinstance(o, dict):
+        return {k: _json_safe(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json_safe(v) for v in o]
+    if isinstance(o, (float, np.floating)):
+        v = float(o)
+        return v if math.isfinite(v) else None
+    return o
+
+
 def run(cfg, out_dir="runs", is_quick=False, figures=True) -> dict:
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     budget = budget_echo(cfg, is_quick)
@@ -203,9 +242,11 @@ def run(cfg, out_dir="runs", is_quick=False, figures=True) -> dict:
         if isinstance(rows, list):
             with open(out / f"{name}.jsonl", "w") as fh:
                 for r in rows:
-                    fh.write(json.dumps({**r, "budget": budget}, default=float) + "\n")
+                    fh.write(json.dumps(_json_safe({**r, "budget": budget}),
+                                         default=float, allow_nan=False) + "\n")
     (out / "manifest.json").write_text(json.dumps(
-        {"budget": budget, "config": cfg.echo()}, indent=2, default=float))
+        _json_safe({"budget": budget, "config": cfg.echo()}),
+        indent=2, default=float, allow_nan=False))
     if figures:
         from rig import report
         # The floor sweep runs on the pure-null pool; the figures must describe it.
@@ -228,9 +269,18 @@ def main(argv=None):
     b = run(cfg, a.out, a.quick, figures=not a.no_figures)
     print(f"wrote {a.out}/  budget={b['budget']}")
     for r in b["floor"]:
+        # grid_insufficient says the fit fell back below its derived window, i.e. do not
+        # trust this number. It has to appear on the default human-facing surface, not
+        # only in the JSONL.
+        flags = []
+        if r["grid_insufficient"]:
+            flags.append(f"GRID SHORT (needed k>={r['fit_k_required']:.0f})")
+        if r["seed_drop_rate"] > 0:
+            flags.append(f"{r['seed_drop_rate']:.0%} seeds dropped")
         print(f"  eps={r['eps']:<4} gamma={r['gamma']:<4} floor={r['floor_mean']:.5f} "
               f"CI[{r['floor_ci_lo']:.5f},{r['floor_ci_hi']:.5f}] oracle={r['floor_oracle']:.5f} "
-              f"covers={r['ci_covers_oracle']} c_ratio={r['c_ratio_median']:.2f}")
+              f"covers={r['ci_covers_oracle']} c_ratio={r['c_ratio_median']:.2f}"
+              + (f"  <- {'; '.join(flags)}" if flags else ""))
     return b
 
 

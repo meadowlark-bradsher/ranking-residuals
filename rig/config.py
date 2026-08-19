@@ -24,9 +24,20 @@ MIN_FIT_K = 64
 class BTLConfig:
     """The statistical-null generator (§2.4) and its fit window (§2.6)."""
 
-    beta: float = 0.3                 # §2.6: anywhere in [0.15,0.30] works on k>=64
+    beta: float = 0.25                # §2.6. NOT 0.3: at 0.3 the saturation gate rejects
+                                      # 43.5% of masks (n=12, p=0.45, k_min=8, 2000 masks)
+                                      # and strict=True raises. 0.25 -> 0.5% rejection,
+                                      # p95 saturation 0.178. Use 0.22 for literally 0%.
     p: float = 0.45                   # edge-retention (sparsity -> holes -> b1>0)
-    k: tuple[int, ...] = (8, 16, 32, 64, 128, 256, 512, 1024)   # SAMPLING grid
+    k: tuple[int, ...] = (8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)
+    # SAMPLING grid. Extended past 1024 because the DERIVED window (§2.6) needs
+    # c_oracle/(rho*floor), which at eps=0.1 is ~516 -- only one grid point reached it,
+    # so the fit fell back and flagged grid_insufficient. Measured over 48 seeds x 4 gamma:
+    #   grid_insufficient  4/20 -> 0/20
+    #   worst gamma-drift  38.0% -> 11.8%   (eps=0.4: 5.8% -> 0.7%)
+    #   residual bias      3-6% low -> ~2.0-2.4% low
+    # It does NOT fix CI coverage (16/20 either way) -- that is the residual, still open.
+    # Cost is negligible: 1.7s vs 1.6s for a 20-cell sweep.
     fit_k_min: int = MIN_FIT_K        # FITTING window: floor fitted on k >= this only
     theta_shape: str = "gamma"        # gamma | random  (gamma is the primary probe)
     gamma: tuple[float, ...] = (1.0, 1.5, 2.0, 3.0)             # 1.0 == symmetric
@@ -61,7 +72,11 @@ class BTLConfig:
 class RigConfig:
     """One rig configuration (spec §3). Frozen + hashable so it can seed itself."""
 
-    n_int: int = 8
+    n_int: int = 12                   # NOT 8: at n_int=8 under the default filling='empty',
+                                      # 1.75% of seeds have b1=0 on the I-I subgraph and
+                                      # assemble() raises. n_int=12 -> 0.0%. (This does NOT
+                                      # fix the 'observed' b1=0 rate, which plateaus ~11%
+                                      # regardless of n -- see harmonic_unit's caller.)
     n_cplx: int = 5
     mode_II: str = "null_btl"          # clean_gradient | null_btl
     btl: BTLConfig = field(default_factory=BTLConfig)
@@ -80,6 +95,11 @@ class RigConfig:
                                         # and 5 bridge edges exceed log(2k-1) (§10).
     reps: int = 16                      # draws averaged per (seed,k) before the OLS fit.
                                         # A budget knob, logged like any other (§9).
+    rho: float = 3.0                    # §2.6 resolvability margin in the DERIVED fit
+                                        # window, required_fit_k_min = c_oracle/(rho*floor).
+                                        # It scales every floor in a run, so it is a budget
+                                        # axis and is echoed like one (§9). Currently
+                                        # justified, not optimised -- the open item.
     seeds: int = 64                     # replicates for the §8.5 floor CI
     seed: int = 0                       # base seed
 
@@ -110,6 +130,8 @@ class RigConfig:
             )
         if any(s <= 0 for s in self.block_scale):
             raise ValueError(f"block_scale entries must be > 0, got {self.block_scale}")
+        if self.rho <= 0:
+            raise ValueError(f"rho must be > 0, got {self.rho}")
         if not 0 < self.edge_density <= 1:
             raise ValueError(f"edge_density must be in (0,1], got {self.edge_density}")
         return self
@@ -163,6 +185,7 @@ def budget_echo(cfg: RigConfig, is_quick: bool) -> dict:
     return {
         "seeds": cfg.seeds,
         "reps": cfg.reps,
+        "rho": cfg.rho,
         "k_grid": list(cfg.btl.k),
         "fit_k_min": cfg.btl.fit_k_min,
         "gamma_grid": list(cfg.btl.gamma),
