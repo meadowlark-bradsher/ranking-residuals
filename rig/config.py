@@ -29,7 +29,7 @@ class BTLConfig:
                                       # and strict=True raises. 0.25 -> 0.5% rejection,
                                       # p95 saturation 0.178. Use 0.22 for literally 0%.
     p: float = 0.45                   # edge-retention (sparsity -> holes -> b1>0)
-    k: tuple[int, ...] = (8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096)
+    k: tuple[int, ...] = (8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)
     # SAMPLING grid. Extended past 1024 because the DERIVED window (§2.6) needs
     # c_oracle/(rho*floor), which at eps=0.1 is ~516 -- only one grid point reached it,
     # so the fit fell back and flagged grid_insufficient. Measured over 48 seeds x 4 gamma:
@@ -95,11 +95,14 @@ class RigConfig:
                                         # and 5 bridge edges exceed log(2k-1) (§10).
     reps: int = 16                      # draws averaged per (seed,k) before the OLS fit.
                                         # A budget knob, logged like any other (§9).
-    rho: float = 3.0                    # §2.6 resolvability margin in the DERIVED fit
+    rho: float = 1.5                    # §2.6 resolvability margin in the DERIVED fit
                                         # window, required_fit_k_min = c_oracle/(rho*floor).
-                                        # It scales every floor in a run, so it is a budget
-                                        # axis and is echoed like one (§9). Currently
-                                        # justified, not optimised -- the open item.
+                                        # OPTIMISED, no longer merely justified. Scanned over
+                                        # {1.5,2,3,4.5,6,9} x 8 base seeds: the residual falls
+                                        # monotonically as rho falls, because a smaller rho
+                                        # demands a longer, cleaner tail. 3.0 -> +1.55%,
+                                        # 1.5 -> +0.48% (with the k grid below). Lower rho
+                                        # costs grid reach, which is why the two move together.
     seeds: int = 64                     # replicates for the §8.5 floor CI
     seed: int = 0                       # base seed
 

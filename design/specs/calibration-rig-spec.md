@@ -1,4 +1,17 @@
-# Synthetic Calibration Rig — Design Specification (v6)
+# Synthetic Calibration Rig — Design Specification (v7)
+
+**Revision note (v7):** ρ is **optimised, no longer merely justified** — v6's last open item is closed as far as these levers reach. Scanned over ρ ∈ {1.5, 2, 3, 4.5, 6, 9} × 8 base seeds: the residual falls monotonically as ρ falls, because a smaller ρ demands a longer, cleaner tail. Lower ρ costs grid reach, so ρ and the `k` grid had to move together.
+
+| defaults | residual (20 base seeds) | coverage | grid short |
+|---|---|---|---|
+| v6: ρ=3.0, k→4096 | +1.6% ± 0.2% | median 13/16, range 10–15 | 0.17 cells |
+| **v7: ρ=1.5, k→16384** | **+0.43% ± 0.09%** | **median 15/16, range 13–16** | **0.00 cells** |
+
+Per-draw spread also tightened, from (−0.7%, +3.4%) to (−0.52%, +1.16%). Cost is 1.6 s against 1.3 s per floor sweep.
+
+**What did not close.** A **+0.43% ± 0.09%** bias survives both levers (`t = 5.0`, so still real). It is now about a third of the per-cell sampling spread — below the resolution at which any single sweep can see it. Neither ρ nor grid length removes it, so closing it further needs a different mechanism, not more of these two.
+
+**v7 also fixes a stale §3 schema:** the YAML block still read `beta: 0.3` and `k: [8…1024]`. v6 changed both in code and in §2.6's prose but not in the schema, so the two disagreed. **§13 records what this work hands to Epic C.**
 
 **Revision note (v6):** reconciles the spec to the as-built rig. The build overtook v5 — the fit window and the emitter both became more correct in code than in spec — so this revision brings the document up to the instrument, and records what genuinely remains open. Deltas A–D applied as drafted; E resolved by measurement; F held strict.
 
@@ -11,7 +24,7 @@
 
 **Also in v6, from the reconciliation itself:** the default `k` grid was extended past 1024. The derived window of Delta A needs `k ≈ 516` at `eps = 0.1`, which the old grid could not reach — so the fit fell back and flagged `grid_insufficient`. Measured over 48 seeds × 4 γ, extending to 4096 takes `grid_insufficient` from **4/20 to 0/20** and worst γ-drift from **38.0% to 11.8%**, at a cost of 1.7 s vs 1.6 s.
 
-**Residual (post-build, characterised across seed draws):** a **1.6% ± 0.2%** (1 s.e.) negative bias remains, measured over **20 independent base seeds × 16 cells × 64 seeds each**. It is **real** — `t = 7.3` against zero, 19 of 20 draws below the oracle — and **smaller and noisier than any single run shows**: individual draws range −0.7% to +3.4%. `ci_covers_oracle` is **typically 13/16, range 10–15**. It has narrowed twice (10–13% before the window was derived, 3–6% after), both times from the same mechanism, which is evidence it is not exhausted. Tuning **ρ** is the remaining lever; it is *justified, not optimised*, and is now a recorded config field so it can be swept rather than edited. Post-build tuning, not a blocker.
+**Residual (v6 figure, superseded by the v7 note above — kept because v7's comparison is against it):** a **1.6% ± 0.2%** (1 s.e.) negative bias, measured over **20 independent base seeds × 16 cells × 64 seeds each**. It is **real** — `t = 7.3` against zero, 19 of 20 draws below the oracle — and **smaller and noisier than any single run shows**: individual draws range −0.7% to +3.4%. `ci_covers_oracle` is **typically 13/16, range 10–15**. It has narrowed twice (10–13% before the window was derived, 3–6% after), both times from the same mechanism, which is evidence it is not exhausted. Tuning **ρ** is the remaining lever; it is *justified, not optimised*, and is now a recorded config field so it can be swept rather than edited. Post-build tuning, not a blocker.
 
 > **Quote seed-varying quantities with their spread.** Earlier revisions of this note gave the residual as "~10%", then "3–6%", then "~2.0–2.4%", and coverage as "16/20" — each from one draw, each superseded by the next. They were over-precise rather than wrong: the per-draw spread is about a percentage point wide, so a single run cannot pin the mean. Any §8.5 figure that moves with the seed belongs in the record **and** in the spec as a distribution.
 
@@ -165,7 +178,11 @@ Sample the full `k` grid, but fit the floor only on a window computed per config
 
     required_fit_k_min = c_oracle / (rho * floor)          # rho = resolvability margin
       c_oracle = tr(P_h . diag(1/(p_e(1-p_e))))            # §7, closed form
-      rho      = 3.0 by default -- JUSTIFIED, NOT OPTIMISED (see the v6 residual note)
+      rho      = 1.5 by default -- OPTIMISED (v7). The residual falls monotonically as
+                 rho falls (3.0 -> +1.55%, 1.5 -> +0.48%) because a smaller rho demands a
+                 longer, cleaner tail. Lower rho costs grid reach: at rho=1.5 on a grid
+                 topping out at 4096, 4 of 16 cells cannot reach their window. rho and the
+                 k grid must be tuned TOGETHER, never one alone.
 
     A k grid that cannot reach required_fit_k_min is flagged `grid_insufficient` and
     NOT fitted. Never fit anyway on a short grid.
@@ -262,9 +279,12 @@ n_int: 8
 n_cplx: 5
 mode_II: null_btl              # clean_gradient | null_btl
 btl:
-  beta: 0.3                    # §2.6; anywhere in [0.15,0.30] works on the k>=64 window
+  beta: 0.25                   # §2.6. NOT 0.3: at 0.3 the saturation gate rejects 43.5%
+                               # of masks and strict=True raises (v6, Delta E)
+  rho: 1.5                     # §2.6 resolvability margin. OPTIMISED in v7; moves with k
   p: 0.45
-  k: [8,16,32,64,128,256,512,1024]   # SAMPLING grid (k_min >= 8, §2.6)
+  k: [8,16,...,8192,16384]     # SAMPLING grid (k_min >= 8, §2.6). Top end is set by rho:
+                               # a smaller rho needs a longer tail to reach its window
   fit_k_min: 64                # FITTING window -- floor fitted on k >= 64 ONLY (§2.6).
                                # Not a tuning knob: below this the O(1/k^2) bias of §7
                                # is absorbed into the intercept (0.83x-2.48x floor bias).
@@ -482,6 +502,60 @@ tests/         # SS8.1-8.10 acceptance + SS5.1-5.7 invariants; must stay fast (~
 - **LLM comparator axis:** swap the synthetic comparator for a real LLM; read its harmonic deviation against the two synthetic bridge reference lines (thrash vs surrogate) to classify failure mode. Held until §8 passes.
 - **Multi-block partitions:** integer-partition (not Bell) enumeration of block sizes; `total harmonic dim = Σ (kᵢ−1)(kᵢ−2)/2`; direct-sum (no cross-block cycles) unless bridged.
 - **Representation-theory slab:** decompose harmonic mass by Sₙ irreducible type for a *shaped* adversarial alternative (RAN-18, route 3).
+
+---
+
+## 13. Carried forward to Epic C
+
+Two results from building the rig generalise past it. They are recorded here rather than
+in a revision note because Epic C — calibrating a threshold against a real judge — is
+where they bite.
+
+### 13.1 Seed-varying quantities ship with their spread, never as a point
+
+Any figure that moves with the seed is reported as a distribution: mean, s.e., and
+per-draw range over independent base seeds. A single run's value is a draw, not the
+quantity.
+
+This is not a style preference. It was learned by getting the same number wrong three
+times running: the residual was reported as "~10%", then "3–6%", then "~2.0–2.4%";
+coverage as "16/20", then "15/16". Each was one draw, each superseded by the next, and
+each *looked* settled because nothing in the output said otherwise. Re-measured over 20
+base seeds the residual was 1.6% ± 0.2% and coverage *typically* 13/16 — so "15/16",
+reported twice as the result, was the best of twenty draws.
+
+How it surfaced matters, because Epic C will meet it again: adding one field to the
+config changed the config fingerprint, `derive_seed` hashes that fingerprint, so every
+mask reseeded and settled-looking numbers moved. **A threshold quoted from a single
+calibration run carries exactly this hazard** — and a threshold is precisely the kind of
+number that gets quoted once and then trusted indefinitely.
+
+### 13.2 The null lives on the deployment's own topology — `n` cannot substitute for it
+
+`b₁` is a property of the **graph**, not of the item count. The rig shows this in
+miniature in two independent places:
+
+- **The `b₁ = 0` rate plateaus in `n`.** Under `filling='observed'` at `p=0.45`, the
+  fraction of masks with `b₁ = 0` runs 28.8% at `n=8`, 10.8% at `n=12`, 11.9% at `n=14`.
+  It does not go to zero and adding items does not send it there. Whether a comparison
+  graph retains an independent cycle once its observed triangles are filled is a property
+  of the ensemble's *topology*; `n` is simply the wrong knob.
+- **Every calibrated constant moved with the filling.** One graph read `b₁=2,
+  c_oracle≈17` on `observed` and `b₁=20, c_oracle≈160` on `empty`. A fit window
+  calibrated on the first under-reported the floor by 6× on the second — 0.016 against a
+  true 0.090. That is what forced the window to be *derived* rather than declared (§2.6).
+
+**The consequence for Epic C.** `P_h`, and therefore both the floor and the variance term
+`c`, are functions of the actual comparison graph. A null calibrated on one topology does
+**not** transfer to another, so **there is no universal threshold to ship**. What the rig
+provides is a *procedure*: given a deployment's own comparison graph, generate the matched
+null and derive the window for it. A threshold must be computed **on the topology it will
+be applied to**, and recomputed when that topology changes — for a live matcher that means
+whenever the comparison pattern shifts, not only when the item set does.
+
+§2.6's derived window is the template. The failure it fixes — a constant calibrated on one
+topology, silently wrong on another — is the same failure a transferred threshold would
+make, one level up.
 
 ---
 
