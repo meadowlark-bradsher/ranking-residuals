@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# rig sweep outputs (regenerable: python -m rig.sweep)
+runs/
