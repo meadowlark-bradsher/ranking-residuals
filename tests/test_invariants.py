@@ -173,10 +173,16 @@ def test_2_5_b1_zero_refuses_to_inject():
 
 # ---------------------------------------------------------------- §2.6
 def test_2_6_saturation_gate_rejects_extreme_separation():
+    """beta=0.25 clears the gate, beta=0.6 does not.
+
+    Uses 0.25, not the old 0.3 default: at 0.3 the gate rejects 43.5% of masks
+    (n=12, p=0.45, k_min=8, 2000 masks), so asserting it clears was true only for
+    the one seed the test happened to pick.
+    """
     n = 12
     mask = flows.sample_sparse_graph(n, 0.45, np.random.default_rng(7))
     D0, _ = hodge.build_operators(n, mask, [])
-    pe_ok = 1 / (1 + np.exp(-(D0 @ flows.theta_gamma(n, 0.3, 2.0))))
+    pe_ok = 1 / (1 + np.exp(-(D0 @ flows.theta_gamma(n, 0.25, 2.0))))
     pe_bad = 1 / (1 + np.exp(-(D0 @ flows.theta_gamma(n, 0.6, 2.0))))
     assert oracle.saturation(pe_ok, 8) < oracle.SATURATION_MAX
     assert oracle.saturation(pe_bad, 8) > oracle.SATURATION_MAX

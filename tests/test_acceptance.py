@@ -78,6 +78,15 @@ def test_8_4_b1_matches_rank_formula(cfg, m):
 
 
 # ---------------------------------------------------------------- §8.5
+def test_8_5_seed_drops_are_reported_not_silent(null_cfg):
+    """Masks with b1=0 carry no harmonic direction and are skipped. That is a real
+    reduction in sample size, so it is counted -- the CI must not be read as if it
+    came from the full seed budget."""
+    r = floor_measurement(null_cfg, 2.0, 0.3, strict=False)
+    assert r["n_seeds_used"] + r["n_seeds_dropped_b1_zero"] == null_cfg.seeds
+    assert r["seed_drop_rate"] < 0.35, r["seed_drop_rate"]
+
+
 def test_8_5_negative_control_floor_covers_zero(null_cfg):
     """eps = 0 is the negative control: its floor CI must cover 0."""
     for gamma in (1.0, 2.0):
@@ -85,15 +94,32 @@ def test_8_5_negative_control_floor_covers_zero(null_cfg):
         assert r["ci_covers_oracle"], f"gamma={gamma}: CI {r['floor_ci_lo']:.5f}..{r['floor_ci_hi']:.5f} misses 0"
 
 
-@pytest.mark.parametrize("eps", [0.2, 0.3, 0.4])
-def test_8_5_floor_recovers_eps_squared_within_ci(null_cfg, eps):
-    """The fitted floor must equal eps^2 within its CI -- never a point estimate."""
+@pytest.mark.parametrize("eps", [0.1, 0.2, 0.3, 0.4])
+def test_8_5_floor_recovers_eps_squared(null_cfg, eps):
+    """The fitted floor must land within 0.8x-1.25x of the eps^2 oracle. Always strict."""
     r = floor_measurement(null_cfg, 2.0, eps, strict=False)
     assert not r["grid_insufficient"], f"k grid cannot reach the required window {r['fit_k_required']:.0f}"
+    assert 0.8 <= r["floor_over_oracle"] <= 1.25, r["floor_over_oracle"]
+
+
+@pytest.mark.parametrize("eps", [0.1, 0.2, 0.3, 0.4])
+def test_8_5_floor_ci_covers_oracle(null_cfg, eps):
+    """The CI must cover eps^2. Strict -- and with no exceptions at this config.
+
+    Delta D of the v6 change-set recorded two failing cells (eps=0.1, eps=0.4). Both
+    were carried as a strict xfail, and both went stale once the k grid was extended
+    past 1024: the derived window needs k ~ 516 at eps=0.1, which the old grid could
+    not reach. At this config all four cells now cover.
+
+    The residual is not fully gone. Over 48 seeds x 4 gamma, coverage is 16/20 -- the
+    remaining ~2.0-2.4% negative bias is small but systematic, and a tighter CI at a
+    higher seed budget still excludes the oracle in some cells. Tuning rho is the
+    open lever (spec §8.5). This test pins the config it actually runs at.
+    """
+    r = floor_measurement(null_cfg, 2.0, eps, strict=False)
     assert r["ci_covers_oracle"], (
         f"floor {r['floor_mean']:.5f} CI[{r['floor_ci_lo']:.5f},{r['floor_ci_hi']:.5f}] "
         f"misses oracle {r['floor_oracle']:.5f}")
-    assert 0.8 <= r["floor_over_oracle"] <= 1.25
 
 
 def test_8_5_floor_monotone_in_eps_squared(null_cfg):

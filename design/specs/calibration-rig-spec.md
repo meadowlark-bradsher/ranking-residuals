@@ -1,4 +1,17 @@
-# Synthetic Calibration Rig — Design Specification (v5)
+# Synthetic Calibration Rig — Design Specification (v6)
+
+**Revision note (v6):** reconciles the spec to the as-built rig. The build overtook v5 — the fit window and the emitter both became more correct in code than in spec — so this revision brings the document up to the instrument, and records what genuinely remains open. Deltas A–D applied as drafted; E resolved by measurement; F held strict.
+
+- **A — derived fit window** (§2.6). The hardcoded `k ≥ 64` is retained only as a floor on the default budget; `required_fit_k_min = c_oracle/(ρ·floor)` governs. This **dissolves the observed/empty fork** — no per-experiment filling commitment is needed for the floor.
+- **B — three emission paths** (§10). `R ≥ 2` is necessary but not sufficient. `counts` / `sign` / `magnitude`, chosen per block, plus a collapse guard.
+- **C — ζ test construction** (§8.8). The claim stands; the construction is now specified, because the first test asserted it on a graph where ζ is *not* blind.
+- **D — the parked residual, re-measured.** See below; the open question is now narrower and partly answered.
+- **E — config defaults, CONFIRMed against the shipped code.** `beta 0.3 → 0.25`, `n_int 8 → 12`. One of the two proposed fixes did **not** do what the change-set expected — see §2.6.
+- **F — §8.5 criterion held strict** (the change-set's recommendation). The alternative was explicitly gated on ρ being optimised first, which has not happened.
+
+**Also in v6, from the reconciliation itself:** the default `k` grid was extended past 1024. The derived window of Delta A needs `k ≈ 516` at `eps = 0.1`, which the old grid could not reach — so the fit fell back and flagged `grid_insufficient`. Measured over 48 seeds × 4 γ, extending to 4096 takes `grid_insufficient` from **4/20 to 0/20** and worst γ-drift from **38.0% to 11.8%**, at a cost of 1.7 s vs 1.6 s.
+
+**Residual (post-build, re-measured):** a stable **~2.0–2.4%** negative bias remains — down from the 3–6% of the v5 note, itself down from 10–13% before the window was derived. Each narrowing came from the same mechanism (window length), which is evidence it is not yet exhausted. **It is not closed:** over 48 seeds × 4 γ, `ci_covers_oracle` holds in **16/20** cells — the bias is small but systematic, and a tighter CI at a higher seed budget still excludes the oracle. At the §8 test config (32 seeds, γ=2.0) all four cells cover. Tuning **ρ** is the remaining lever; it is *justified, not optimised*. Post-build tuning, not a blocker.
 
 **Revision note (v5):** §2.6 added — regime-validity preconditions for §8.5 — after an independent reproduction of the v4 saturation finding. Three corrections were forced by measurement during the insert; each is marked *(Correction, v5)* at its site:
 1. **The `c`-oracle gate is necessary but NOT sufficient.** It catches catastrophic misspecification (`beta=0.6`: `c_fit/c_oracle ≈ 0.2`) but is blind to a 2× floor bias: at `beta=0.25` it reads `c_fit/c_oracle = 1.01` — essentially exact — while the recovered floor is **1.86×** the true value.
@@ -7,7 +20,7 @@
 
 Also settled in v5: the clamp is **not** widened (it is the instrument's estimator contract; tuning it to widen the rig's fitting window would be tuning the instrument to pass its own test). The saturation artefact — near-deterministic edges producing `log(2k)`-growing flow — is **parked as its own characterisation**, out of scope for §8.5.
 
-**Known residual:** on the `k ≥ 64` window the floor carries a stable ~10% *under*-estimate (0.87×–0.95×) across all `beta`. Systematic, not noise. To be characterised during the build, not guessed at here.
+**Known residual (v5, superseded by the v6 note above):** on the fixed `k ≥ 64` window the floor carried a stable ~10% *under*-estimate (0.87×–0.95×). It was characterised during the build: most of it was the fixed window being short, and deriving the window (Delta A) plus extending the `k` grid took it to ~2.0–2.4%.
 
 **Revision note (v4):** §2.5 added — the misspecification knob, the *actual* floor source — and §8.5 rewritten around it. Four items carried as provisional in v3 are now **settled, not open**:
 - **(f) potential-consistent `bias_rule`** — confirmed by algebra and by measurement. Settled: the bridge is `Y[i,c] = s[c] − s[i]` against the shared potential, full stop.
@@ -145,19 +158,41 @@ models (intransitive-BTL, blade-chest) are validation targets, out of scope for 
 silently misreports the floor. Check the window in closed form (no sampling) and refuse
 to fit outside it.
 
-**Fit window (the binding control).** *(Correction, v5 — measured.)* Sample the full `k`
-grid, but **fit the floor only on `k >= 64`**. The small-`k` points are where the
-`O(1/k^2)` logit-bias term of §7 lives, and a 2-parameter OLS absorbs it into the
-intercept:
+**Fit window (the binding control).** *(Delta A, v6 — the window is DERIVED, not declared.)*
+Sample the full `k` grid, but fit the floor only on a window computed per config:
+
+    required_fit_k_min = c_oracle / (rho * floor)          # rho = resolvability margin
+      c_oracle = tr(P_h . diag(1/(p_e(1-p_e))))            # §7, closed form
+      rho      = 3.0 by default -- JUSTIFIED, NOT OPTIMISED (see the v6 residual note)
+
+    A k grid that cannot reach required_fit_k_min is flagged `grid_insufficient` and
+    NOT fitted. Never fit anyway on a short grid.
+    fit_k_min = 64 is retained ONLY as a floor on the default budget; the derived
+    value governs.
+
+Why derived: the constant 64 was itself calibrated on `filling='observed'`, so it is
+wrong under any filling with a different `c_oracle`. Measured on one graph, `eps=0.3`,
+true floor 0.090:
+
+    filling     b1    c_oracle   floor @ k>=64   floor @ k>=256
+    observed     2          17          0.0807           0.0850
+    empty       20         160          0.0156           0.0726
+
+**This dissolves the observed/empty fork.** With a derived window both fillings recover,
+given a grid that reaches the requirement — so no per-experiment filling commitment is
+needed for the floor. It also closed most of the parked residual: deriving the window
+took recovery from 0.87x-0.95x to 0.94x-1.01x.
+
+The following comparison is retained as an ILLUSTRATION ON THE OBSERVED GRAPH — it is
+what justifies truncating rather than modelling the contaminating term, and that verdict
+stands regardless of where the window falls:
 
     fit floor+c/k on k=[8..1024]   -> floor bias 0.83x .. 2.48x, gamma-drift 15-21%
     fit floor+c/k+c2/k^2           -> 0.58x .. 0.90x, drift up to 28%  (ill-conditioned;
                                       the extra term eats the intercept -- do NOT use)
-    fit floor+c/k on k>=64 ONLY    -> 0.87x .. 0.95x, gamma-drift <= 7%   <-- USE THIS
+    fit floor+c/k on k>=64 ONLY    -> 0.87x .. 0.95x, gamma-drift <= 7%
 
-    require fit_k_min >= 64
-On this window the recovery is insensitive to `beta` across [0.15, 0.30], which is what
-makes the default a non-issue. Residual: a stable ~10% under-estimate; see the v5 note.
+Drop the low-`k` points; do not model the term.
 
 **Upper bound — clamp saturation.** At extreme separation `p_e -> 0/1`, wins saturate at 0
 or `k`, the clamp forces `Y = ∓log(2k−1)` — a distortion that GROWS as `log(2k)`, breaking
@@ -187,9 +222,27 @@ CI `[0.111, 0.273]` *excludes* the true `0.09` — a confident wrong answer that
 gate. Keep it as a necessary condition; the fit window above is what actually protects the
 floor.
 
-Default satisfying all four: `beta ≈ 0.25–0.30`, `eps <= 0.4`, `n=12`, `k_min >= 8`
-(sampling), `fit_k_min >= 64` (fitting).
-Report `saturation`, `eps²/‖D0θ‖²`, `c_fit / c_oracle`, and `fit_k_min` in every §8.5 record.
+**Defaults (Delta E, v6 — CONFIRMed against the shipped code, with one correction).**
+`beta = 0.25`, `n_int = 12`, `eps <= 0.4`, `k_min >= 8` (sampling), `fit_k_min >= 64`
+(floor on the derived window).
+
+- **`beta`: 0.3 → 0.25. Confirmed.** At 0.3 the saturation gate rejects **43.5%** of masks
+  (n=12, p=0.45, k_min=8, 2000 masks) and `strict=True` raises. At 0.25: **0.5%** rejection,
+  p95 saturation 0.178. *(The change-set estimated 47% and "0% rejection"; measured 43.5%
+  and 0.5%. Use `beta = 0.22` for literally 0%.)*
+- **`n_int`: 8 → 12. Confirmed as a problem — but the fix does NOT do what was expected.**
+  At `n_int=8` under `filling='observed'`, **28.8%** of masks have `b1 = 0`. Moving to 12
+  gives **10.8%**, not 0 — and `n_int=14` gives 11.9%, so **it plateaus; no `n_int` drives
+  it to zero.** What the change actually fixes is a different path: under the rig's own
+  default `filling='empty'`, `n_int=8` makes `assemble()` raise on **1.75%** of seeds, and
+  `n_int=12` takes that to **0.0%**. Adopt 12 for that reason, not the stated one.
+- **Masks with `b1 = 0` are dropped, and the drop is REPORTED.** `floor_measurement` skips
+  them — there is no harmonic direction to inject into — at ~9-11% under `observed`. That is
+  a real reduction in sample size, so `n_seeds_dropped_b1_zero` and `seed_drop_rate` ship in
+  every record: **a CI must not be read as if it came from the full seed budget.**
+
+Report `saturation`, `eps²/‖D0θ‖²`, `c_fit / c_oracle`, `fit_k_required`, `fit_k_effective`,
+`grid_insufficient`, and `seed_drop_rate` in every §8.5 record.
 
 ---
 
@@ -318,6 +371,14 @@ Per config, compute the exact expected decomposition (using `hodge_projectors`) 
       floor is 1.86× wrong.
    4. **Floor must equal `eps^2` within its CI**, and be **monotone in `eps^2`**.
       `eps = 0` is the negative control: its floor CI must cover 0.
+      **(Delta F, v6 — HELD STRICT.)** The criterion is deliberately not loosened. Widening
+      the tolerance would hide exactly the residual that tuning ρ is meant to remove. Known
+      exceptions are *documented*, not tolerated: over 48 seeds × 4 γ coverage is 16/20, and
+      the failing cells are recorded in the v6 residual note. Any exception encoded in the
+      suite must be `xfail(strict=True)`, so it flips to a **failure** the moment the bias
+      closes and forces this clause to be revisited rather than carrying a stale exemption.
+      *(This is not hypothetical: the two exceptions Delta D recorded went stale as soon as
+      the `k` grid was extended, and the strict marker is what surfaced it.)*
    5. **Floor must be invariant across γ** — γ shapes `c` and the `O(1/k^2)` bias, never the
       floor (§2.4). Require drift `< 15%` across the γ grid. *(This is satisfiable only on
       the `k >= 64` window: measured drift 0.8–7.1% there vs 15–21% on the full grid.)*
@@ -325,6 +386,17 @@ Per config, compute the exact expected decomposition (using `hodge_projectors`) 
 6. `variance_fresh` bridge decays as `1/R`; `bias_rule` bridge adds no harmonic; `variance_fixed` persists — three correctly-labelled behaviours.
 7. Adversarial-proportion sweep: the **`k`-independent fitted floor, at fixed default block scale**, is monotone non-decreasing in complex fraction, and is separable from the null's decaying term by its `k`-independence. **State the claim on the fitted floor, not on the raw harmonic fraction** — the fraction also moves with the per-block energy mismatch of §5.7, so a monotone fraction would not be evidence of a monotone systematic floor. Per-block RMS is logged alongside, so the mismatch stays visible even though it is factored out of the claim.
 8. ζ (`coefficient_of_consistency`) reads curl / triad-consistency and **misses** the harmonic the rig plants where triangles are unfilled (the divergence region).
+
+   **Construction guidance (Delta C, v6).** The claim is correct; the *demonstration* is easy to
+   build on the wrong graph. It requires **missing triangles**. Do **not** use the equal-spaced
+   complete complex pool: there every triple is observed, so ζ reads the C–C cycles correctly
+   (**ζ = 0.0**, maximally inconsistent), and the harmonic reading of 1 exists only under the
+   `empty` filling *choice* — the same flow is pure curl on `observed` (§8.3). Construct instead
+   a **4-cycle beside a transitive triangle**: ζ sees only the one triple it can, finds it
+   perfectly transitive, and reports **ζ = 1.0** — "perfectly consistent" — while **h > 0.3** of
+   the flow's energy is harmonic and unrankable. *(The first §8.8 test asserted ζ-perfect-
+   consistency on the complete pool and was simply wrong. A green suite asserting the wrong
+   invariant is worse than a red one.)*
 9. All measured `(g,c,h)` within tolerance of the oracle (§7).
 10. **Round-trip:** the emitted judgment log, fed to `analyze_comparisons(filling='empty')`, reproduces the rig's internal `(g,c,h)`. Validates the *actual* pipeline.
 
@@ -344,12 +416,36 @@ Emit synthetic comparisons in the real judgment-log schema:
 ```
 Repeats aggregate inside `analyze_comparisons`, and `flow='logodds'` recovers magnitude — so to reproduce an intended real-valued flow, emit per-comparison win/loss outcomes whose empirical win-rate matches it.
 
-> **CORRECTION (v3). v2 said "for ±1 rules emit a single deterministic row". That is wrong and silently destroys the round-trip.** `analyze_comparisons` sets `clamp = 1/(2k)`; at `k=1` that clips `p̂` to exactly `0.5`, so `Y = log(0.5/0.5) = 0` on **every** edge. Measured: `total_mass = 0.000000`, all fractions zero. Emission must use **`R ≥ 2` rows per pair** (rig default `emit_k: 8`), which is why `bridge_R` and `emit_k` are both floored at 2 in §3. Enforce it with a loud error, not a default.
+> **CORRECTION (v3). v2 said "for ±1 rules emit a single deterministic row". That is wrong and silently destroys the round-trip.** `analyze_comparisons` sets `clamp = 1/(2k)`; at `k=1` that clips `p̂` to exactly `0.5`, so `Y = log(0.5/0.5) = 0` on **every** edge. Measured: `total_mass = 0.000000`, all fractions zero. Emission must use **`R ≥ 2` rows per pair**, floored at 2 in §3 with a loud error.
 
-Emission rules by generator:
-- **Noisy-BTL null** — native and **exact**: emit the generator's own `wins_j` counts, so the round-trip reproduces `Y` bit-for-bit with zero residual.
-- **±1 rules (C–C rotational, `variance_fixed`)** — emit `R` rows all one way. Every edge then gets `±log(2R−1)`, a *uniformly scaled* ±1 flow; since mass fractions are scale-invariant, `(g,c,h)` is reproduced exactly. Verified: `R∈{2,3,8}` all give `g=0.7778, h=0.2222` on the `n=6` pm1 reference, while `R=1` gives `0.0000`.
-- **Magnitude flows (clean-gradient I–I, `bias_rule` bridge)** — only *quantized* reproduction is possible: the achievable set is `log(w/(k−w))` for integer `w`, so emit `w = round(k·σ(Y))` and **report the residual `‖Y_achieved − Y_target‖`** rather than absorbing it into a loose round-trip tolerance. Exactness is a `k_emit → ∞` limit, and §8.10 should say so.
+> **CORRECTION (v6, Delta B). `R ≥ 2` is necessary but NOT sufficient.** A ±1 rule pushed
+> through the *quantized* path at `k = 2` computes `round(2·σ(1)) = 1` — a 1–1 tie — which the
+> clamp pins straight back to zero. The same trap, one level down. Emission therefore has
+> **three paths, chosen per block, and they are not interchangeable.**
+
+| path | used by | operation | result |
+|---|---|---|---|
+| **`counts`** | noisy-BTL null, variance bridges | replay the generator's own win counts | **bit-exact** (measured diff `0.00e+00`) |
+| **`sign`** | ±1 rules: C–C rotational, `variance_fixed` | emit `R` rows one way → `±log(2R−1)` | exact **only if the config is entirely a sign rule** |
+| **`magnitude`** | clean-gradient I–I, `bias_rule` bridge | `w = round(k·σ(Y))` | residual **reported**; exact only as `k_emit → ∞` |
+
+**The `sign` path is gated.** Mass fractions are scale-invariant, so `±log(2R−1)` against a
+`±1` target is exact for a sign-only config — but in a **mixed** config it rescales the C–C
+block against its neighbours by ~2.7× and *changes the very mix being measured*. Measured: a
+round-trip error of **0.269** presenting as a decomposition result. The rig **refuses the sign
+path in any config that is not sign-only**; gated, the same config reads 0.0024 and falls
+monotonically with `emit_k` (0.0374 → 0.00014 from `emit_k` 8 → 2048).
+
+**Collapse guard.** Distinguish *ordinary quantization loss* from *destruction of the flow*.
+An edge whose target lies inside the representable band `|Y| ≤ log((k+1)/(k−1))` should emit a
+tie, and that loss is reported via the residual. What must never pass silently is the whole
+flow quantizing to zero: the rig **raises** in that case, and **counts** the edges lost to
+rounding otherwise. `analyze_comparisons` derives `k` per pair, so mixed row counts across
+blocks are legal.
+
+**Why this is load-bearing:** both failure modes produce a *well-formed decomposition* rather
+than an exception. That is exactly what makes them dangerous — nothing downstream can tell that
+the number it received is meaningless.
 
 Tag `criterion` with the condition (`null_k16_gamma2`, `adversarial_equal_spaced`, `bridge_bias`, …). Pass `filling='empty'` for round-trip checks. `position_shown` supports later order-effect tests.
 

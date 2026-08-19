@@ -39,6 +39,9 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
     ks = np.array(cfg.btl.k, dtype=float)
     per_seed_floor, per_seed_c, per_seed_ratio, regimes = [], [], [], []
     req_k, eff_k, insufficient = [], [], False
+    n_dropped = 0     # masks with b1 = 0, which carry no harmonic direction to inject into.
+                      # Reported, never silent: it is a real reduction in sample size and the
+                      # CI must not be read as if it came from the full seed budget.
 
     for s in range(cfg.seeds):
         mrng = np.random.default_rng(cfg.derive_seed("floor_mask", gamma, eps, s))
@@ -51,7 +54,8 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
         try:
             h_unit = flows.harmonic_unit(D0, D1)
         except ValueError:
-            continue                                            # b1 = 0: no room to inject
+            n_dropped += 1        # b1 = 0: no harmonic direction on this mask
+            continue
 
         theta = flows.latent_potential(n, cfg.btl, gamma,
                                        np.random.default_rng(cfg.derive_seed("theta", s)))
@@ -110,6 +114,8 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
         "mildness": float(np.mean([r["mildness"] for r in regimes])) if regimes else float("nan"),
         "regime_ok": all(r["ok"] for r in regimes) if regimes else False,
         "n_seeds_used": len(per_seed_floor),
+        "n_seeds_dropped_b1_zero": n_dropped,
+        "seed_drop_rate": n_dropped / cfg.seeds if cfg.seeds else 0.0,
     }
 
 
