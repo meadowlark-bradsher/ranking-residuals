@@ -370,8 +370,9 @@ available in closed form,
 k_{\min} \;=\; \frac{c}{\rho \cdot \text{floor}},
 \label{eq:window}
 \end{equation}
-where $\rho$ is a resolvability margin: at $k_{\min}$ the variance term has
-fallen to $1/\rho$ of the floor being resolved. A grid that cannot reach
+where $\rho$ is a resolvability margin: at $k_{\min}$ the variance term equals
+$\rho$ times the floor being resolved --- its largest value among the retained
+points, so a smaller $\rho$ keeps only cleaner, higher-$k$ data. A grid that cannot reach
 $k_{\min}$ is flagged and \emph{not fitted}. Deriving the window dissolves the
 filling dependence --- both fillings recover given a grid that reaches the
 requirement --- and removed most of a residual bias we had been carrying as an
@@ -546,6 +547,14 @@ instrument's sensitivity toward zero. We had originally recorded this as a
 plateau, on evidence that stopped at $n=14$; extending the sweep showed the
 rise. Figure~\ref{fig:rho} shows both this curve and the $\rho$ trade-off.
 
+The rise beyond the optimum is the expected asymptotics of the object, not an
+artefact of the sweep. Under the observed filling the complex is the
+two-skeleton of the random flag complex on $G(n,p)$, whose first homology has a
+sharp vanishing threshold in the edge density that tends to zero as
+$n \to \infty$~\cite{kahle2014}. Any fixed retention eventually exceeds it,
+forcing $b_1 \to 0$: past some item count, collecting more data provably removes
+the structure the certificate reads, not merely fails to add to it.
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{fig-rho-plateau.pdf}
@@ -565,7 +574,7 @@ an optimum it actively removes the structure being measured. Since $\Ph$ is dete
 comparison graph, so are the floor, the variance coefficient $c$, and any
 threshold derived from them.
 
-\begin{principle}[No universal threshold]
+\begin{principle}[No universal threshold]\label{prin:nouniversal}
 A null calibrated on one topology does not transfer to another. The deliverable
 is not a number but a procedure: given a deployment's own comparison graph,
 generate the matched null and derive the window on it --- recomputed whenever the
@@ -587,11 +596,30 @@ replication, one that fabricates a surrogate order deposits none at all. Whether
 a real comparator resembles either is the next question, and it is now the only
 thing standing between this method and its intended use.
 
+A second gap is narrower but concrete. The rig calibrates its null at the true
+edge probabilities, which it knows by construction; a deployment knows only the
+data it is judging and must estimate the null from it. That estimate carries a
+modelling choice the rig never faces --- which flows the fitted null is permitted
+to contain. A null fitted as a pure gradient (a Bradley--Terry fit) assumes the
+criterion is rankable before testing whether it is, and misstates the harmonic
+band wherever the comparator carries genuine local inconsistency on the edges a
+hole runs through; a null fitted to the gradient-and-curl subspace does not.
+Choosing that subspace is part of generating the matched null
+Principle~\ref{prin:nouniversal} already requires, and it has to be stated rather
+than defaulted.
+
 \begin{thebibliography}{9}
 \bibitem{jiang2011}
 X.~Jiang, L.-H.~Lim, Y.~Yao, and Y.~Ye.
 \newblock Statistical ranking and combinatorial Hodge theory.
 \newblock \emph{Mathematical Programming}, 127(1):203--244, 2011.
+
+\bibitem{kahle2014}
+M.~Kahle.
+\newblock Topology of random simplicial complexes: a survey.
+\newblock In \emph{Algebraic Topology: Applications and New Directions},
+volume 620 of \emph{Contemporary Mathematics}, pages 201--221. American
+Mathematical Society, 2014.
 
 \bibitem{kendall1940}
 M.~G.~Kendall and B.~Babington Smith.
