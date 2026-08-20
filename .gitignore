@@ -219,3 +219,9 @@ __marimo__/
 
 # rig sweep outputs (regenerable: python -m rig.sweep)
 runs/
+
+# LaTeX build products (regenerate: tectonic -X compile)
+design/methodology/*.pdf
+design/methodology/*.log
+design/methodology/*.aux
+design/methodology/*.png
