@@ -535,18 +535,24 @@ number that gets quoted once and then trusted indefinitely.
 `b₁` is a property of the **graph**, not of the item count. The rig shows this in
 miniature in two independent places:
 
-- **The `b₁ = 0` rate plateaus in `n`.** Under `filling='observed'` at `p=0.45`, the
-  fraction of masks with `b₁ = 0` runs 28.8% at `n=8`, 10.8% at `n=12`, 11.9% at `n=14`.
-  It does not go to zero and adding items does not send it there. Whether a comparison
-  graph retains an independent cycle once its observed triangles are filled is a property
-  of the ensemble's *topology*; `n` is simply the wrong knob.
+- **The `b₁ = 0` rate is NON-MONOTONE in `n`, with an interior minimum.** Under
+  `filling='observed'` at `p=0.45` (3000 masks per point): 64.7% at `n=6`, falling to a
+  minimum of **11.4% at `n=12`**, then *rising* again — 12.6% at 14, 21.6% at 18, 44.8% at
+  24, **64.2% at `n=28`**. Mean `b₁` peaks at `n=14` and decays after. **Correction:** v6
+  recorded this as a plateau on evidence that stopped at `n=14`; extending the sweep showed
+  the rise. The mechanism is immediate once seen — at fixed retention, more items means more
+  *observed triples*, and filling them destroys the very holes the certificate reads. Past
+  the optimum, **collecting more items drives the instrument's sensitivity toward zero.**
 - **Every calibrated constant moved with the filling.** One graph read `b₁=2,
   c_oracle≈17` on `observed` and `b₁=20, c_oracle≈160` on `empty`. A fit window
   calibrated on the first under-reported the floor by 6× on the second — 0.016 against a
   true 0.090. That is what forced the window to be *derived* rather than declared (§2.6).
 
 **The consequence for Epic C.** `P_h`, and therefore both the floor and the variance term
-`c`, are functions of the actual comparison graph. A null calibrated on one topology does
+`c`, are functions of the actual comparison graph — and the non-monotonicity sharpens this:
+scaling the item count does not merely fail to fix topology dependence, past an optimum it
+actively removes the structure being measured, so there is an operating region outside which
+the certificate cannot see regardless of how much data is collected. A null calibrated on one topology does
 **not** transfer to another, so **there is no universal threshold to ship**. What the rig
 provides is a *procedure*: given a deployment's own comparison graph, generate the matched
 null and derive the window for it. A threshold must be computed **on the topology it will

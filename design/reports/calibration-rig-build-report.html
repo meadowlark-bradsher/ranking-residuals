@@ -651,14 +651,20 @@ sign path in any config that is not entirely a sign rule.</figcaption>
   <h3>A preview of the Epic-C topology problem, in miniature</h3>
   <p>Two findings here looked like separate nuisances and are the same object.
   <code>n_int&#8201;=&#8201;8&#8201;&#8594;&#8201;12</code> did not fix the
-  <code>b&#8321;&#8201;=&#8201;0</code> rate because that rate <b>plateaus</b> &#8212; 28.8% at
-  <code>n=8</code>, 10.8% at 12, 11.9% at 14. And the <code>k&#8201;&#8805;&#8201;64</code>
-  window, calibrated on <code>observed</code>, under-read the floor by 6&#215; on
-  <code>empty</code> because <code>c<sub>oracle</sub></code> moved 17&#8201;&#8594;&#8201;160.</p>
+  <code>b&#8321;&#8201;=&#8201;0</code> rate &#8212; and extending the sweep showed why it never
+  could. The rate is <b>non-monotone in <code>n</code></b>: 64.7% at <code>n=6</code>, a minimum
+  of 11.4% at <code>n=12</code>, then back up through 21.6% at 18 to <b>64.2% at
+  <code>n=28</code></b>. And the <code>k&#8201;&#8805;&#8201;64</code> window, calibrated on
+  <code>observed</code>, under-read the floor by 6&#215; on <code>empty</code> because
+  <code>c<sub>oracle</sub></code> moved 17&#8201;&#8594;&#8201;160.</p>
+  <p><i>(An earlier revision of this report called the rate a plateau, on evidence that stopped
+  at <code>n=14</code>. It rises.)</i></p>
   <p>Both say the same thing: <b><code>b&#8321;</code> is a property of the graph, not of the item
   count</b>, so every constant derived from <code>P&#8341;</code> &#8212; the floor, the variance
-  term, and therefore any threshold &#8212; is a function of the actual comparison topology.
-  Adding items does not change that; only the topology does.</p>
+  term, and therefore any threshold &#8212; is a function of the actual comparison topology. The
+  mechanism behind the rise: at fixed edge retention, more items means more <i>observed triples</i>,
+  and filling them destroys the very holes the certificate reads. <b>Past the optimum, collecting
+  more data drives sensitivity toward zero.</b></p>
   <div class="callout bad"><p><b>The consequence for Epic C.</b> A null calibrated on one topology
   does not transfer to another, so <b>there is no universal threshold to ship</b>. What the rig
   provides is a procedure: given a deployment's own comparison graph, generate the matched null and

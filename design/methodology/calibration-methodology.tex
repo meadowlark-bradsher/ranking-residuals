@@ -5,10 +5,15 @@
 \usepackage{booktabs}
 \usepackage{microtype}
 \usepackage{enumitem}
+\usepackage{graphicx}
+% xcolor must precede tikz, which loads it optionless; colours must precede
+% hyperref, which consumes them as option values.
 \usepackage[table]{xcolor}
-\usepackage[colorlinks=true,linkcolor=NavyLink,citecolor=NavyLink,urlcolor=NavyLink]{hyperref}
 \definecolor{NavyLink}{HTML}{1F4E79}
 \definecolor{RuleGrey}{HTML}{888888}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,decorations.pathmorphing}
+\usepackage[colorlinks=true,linkcolor=NavyLink,citecolor=NavyLink,urlcolor=NavyLink]{hyperref}
 
 \newtheorem{observation}{Observation}
 \newtheorem{principle}{Principle}
@@ -106,6 +111,39 @@ mass reads as harmonic. With the \emph{observed} filling every triple whose thre
 edges are present is a $2$-cell, and harmonic mass collapses wherever a triangle
 exists. The same flow can read $\harm=1$ under one and $\curl=1$ under the other.
 The choice is declared, logged with every result, and never left to a default.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.0,
+  every node/.style={font=\small},
+  vtx/.style={circle,draw,fill=white,inner sep=1.6pt},
+  flow/.style={-{Stealth[length=2.2mm]},line width=.9pt,color=NavyLink}]
+\begin{scope}
+  \node[vtx] (a) at (90:1.15) {};
+  \node[vtx] (b) at (210:1.15) {};
+  \node[vtx] (c) at (330:1.15) {};
+  \draw[flow] (a) -- (b); \draw[flow] (b) -- (c); \draw[flow] (c) -- (a);
+  \node[font=\footnotesize] at (0,-1.85) {\textbf{empty}: no 2-cells};
+  \node[font=\footnotesize] at (0,-2.28) {$b_1 = 1$, \ $\harm = 1$};
+\end{scope}
+\begin{scope}[xshift=5.2cm]
+  \fill[NavyLink,opacity=.13] (90:1.15) -- (210:1.15) -- (330:1.15) -- cycle;
+  \node[vtx] (a2) at (90:1.15) {};
+  \node[vtx] (b2) at (210:1.15) {};
+  \node[vtx] (c2) at (330:1.15) {};
+  \draw[flow] (a2) -- (b2); \draw[flow] (b2) -- (c2); \draw[flow] (c2) -- (a2);
+  \node[font=\footnotesize] at (0,-1.85) {\textbf{observed}: the triple is a 2-cell};
+  \node[font=\footnotesize] at (0,-2.28) {$b_1 = 0$, \ $\curl = 1$};
+\end{scope}
+\node[font=\footnotesize,align=center] at (2.6,0)
+  {same graph\\same flow\\[2pt]\textbf{different answer}};
+\end{tikzpicture}
+\caption{Filling is a modelling choice, not a property of the data. One
+circulating flow on one triangle reads as pure harmonic when no triple is
+declared a $2$-cell, and as pure curl when it is. Measured: $\harm = 1.000$,
+$b_1 = 1$ against $\curl = 1.000$, $b_1 = 0$. Every result in this document
+therefore names its filling.\label{fig:filling}}
+\end{figure}
 
 \paragraph{Magnitude, not sign.} A $\pm 1$ sign flow of even a perfectly
 transitive order is \emph{not} a pure gradient: the quantisation deposits
@@ -226,6 +264,34 @@ a known answer for the very quantity being calibrated, and the pivot of the whol
 method. Setting $\varepsilon=0$ recovers the exact null as a negative control,
 whose floor must come out indistinguishable from zero.
 
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.25,every node/.style={font=\small}]
+  \draw[->,gray!70] (-0.25,0) -- (3.6,0)
+     node[right,font=\footnotesize,black] {$\mathrm{im}\,D_0$ \ (gradient)};
+  \draw[->,gray!70] (0,-0.25) -- (0,2.1)
+     node[above,font=\footnotesize,black] {$\ker L_1$ \ (harmonic)};
+  \draw[-{Stealth[length=2.2mm]},line width=1pt,gray!85] (0,0) -- (2.9,0)
+     node[pos=.55,above,font=\footnotesize,black,inner sep=2pt] {$D_0\theta$};
+  \draw[-{Stealth[length=2.2mm]},line width=1pt,NavyLink] (0,0) -- (0,1.5)
+     node[midway,left,font=\footnotesize] {$\varepsilon h$};
+  \draw[-{Stealth[length=2.4mm]},line width=1.1pt,black] (0,0) -- (2.9,1.5);
+  \node[font=\footnotesize,align=left] at (2.35,1.72) {latent $= D_0\theta + \varepsilon h$};
+  \draw[dashed,gray] (2.9,1.5) -- (0,1.5);
+  \draw[dashed,gray] (2.9,1.5) -- (2.9,0);
+  \node[font=\footnotesize,color=RuleGrey,align=center] at (1.45,-0.72)
+     {$\Ph$ annihilates this component:\\$\Ph D_0\theta = 0$ for every $\theta$};
+  \node[font=\footnotesize,color=NavyLink,align=center] at (-1.05,0.75)
+     {$\Ph$ fixes\\this one};
+\end{tikzpicture}
+\caption{Why the floor is injected rather than inherited. For \emph{any}
+potential $\theta$ the clean-limit flow $D_0\theta$ lies wholly in the gradient
+subspace, so $\Ph D_0\theta = 0$ and no choice of $\theta$ --- however skewed
+--- leaves harmonic mass behind. Adding $\varepsilon h$ along a unit harmonic
+direction gives $\|\Ph(\text{latent})\|^2 = \varepsilon^2$ exactly: a known
+answer for the quantity being calibrated.\label{fig:inject}}
+\end{figure}
+
 \section{Estimation}
 
 \subsection{The model}
@@ -287,6 +353,16 @@ empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=.86\textwidth]{fig-window.pdf}
+\caption{The floor is an intercept, so which points the fit may use decides it.
+Ten measured energies from one graph at $\varepsilon=0.3$. Model
+\eqref{eq:model} is a straight line in $1/k$; fitting all of them lets the
+small-$k$ end, where the $O(k^{-2})$ term lives, dominate the least squares.
+Same data, same estimator, one decision.\label{fig:window}}
+\end{figure}
+
 \noindent
 The window is therefore derived per configuration from quantities already
 available in closed form,
@@ -323,7 +399,22 @@ the fit as misspecified rather than informative. But the same guard reads
 $c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 1.01$, essentially exact, at a separation
 where the floor is still $1.86\times$ too high. It is necessary and not
 sufficient, and we say so wherever it appears. Reporting it as \emph{the} gate
-would have licensed exactly the errors it cannot see.
+would have licensed exactly the errors it cannot see. Figure~\ref{fig:guard}
+shows the blind spot as a region rather than an anecdote, and shows that
+improving the estimator moved it without closing it: under the tuned
+configuration a case remains where the floor is recovered at $0.05\times$ its
+true value --- twenty times too small --- while the guard reads $1.00$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig-guard.pdf}
+\caption{The guard's blind spot. Each point is a configuration; the green band
+is where the $c$-check passes, the grey band where the floor is actually
+correct. Points in the green band but outside the grey one are the failures the
+guard cannot see. Tuning the estimator (right) removed most bad configurations
+but not the blind spot itself --- and made its worst case more extreme, not
+less.\label{fig:guard}}
+\end{figure}
 
 \paragraph{Distinguish degradation from destruction.} When emitting synthetic
 judgement logs, a target flow whose magnitude falls inside the representable band
@@ -350,6 +441,15 @@ settled because nothing in the output marked it as variable. Re-measured over
 $20$ independent base seeds the residual was $1.6\% \pm 0.2\%$ and coverage was
 \emph{typically} $13/16$ --- so ``15/16'', reported twice as the result, had been
 the best of twenty draws.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=.86\textwidth]{fig-draws.pdf}
+\caption{Twenty independent base seeds of the same quantity, with the three
+figures we successively reported as \emph{the} result marked below. Each was a
+legitimate draw; none was the quantity. The spread is wide enough that a single
+run supports almost any of them.\label{fig:draws}}
+\end{figure}
 
 The mechanism that exposed it is worth stating because it recurs: adding one
 field to the configuration changed the configuration's hash, the seed derivation
@@ -431,15 +531,37 @@ that is the conservative direction in which to be wrong.
 The most consequential limit the method establishes is not a defect but a fact
 about the object.
 
-\begin{observation}[$b_1$ is a property of the graph, not the item count]
-Under the observed filling at edge retention $0.45$, the fraction of graphs with
-$b_1 = 0$ runs $28.8\%$ at $n=8$, $10.8\%$ at $n=12$, and $11.9\%$ at $n=14$. It
-plateaus; adding items does not drive it to zero.
+\begin{observation}[$b_1$ is non-monotone in the item count]
+Under the observed filling at fixed edge retention $0.45$, the fraction of
+graphs with $b_1 = 0$ falls from $64.7\%$ at $n=6$ to a minimum of $11.4\%$ at
+$n=12$, then \emph{rises} again --- $21.6\%$ at $n=18$, $44.8\%$ at $n=24$,
+$64.2\%$ at $n=28$. Mean $b_1$ peaks at $n=14$ and decays thereafter.
 \end{observation}
+
+\noindent
+The mechanism is immediate once seen: at fixed retention, more items means more
+\emph{observed triples}, and filling them destroys the very holes the
+certificate reads. Beyond the optimum, collecting more items reduces the
+instrument's sensitivity toward zero. We had originally recorded this as a
+plateau, on evidence that stopped at $n=14$; extending the sweep showed the
+rise. Figure~\ref{fig:rho} shows both this curve and the $\rho$ trade-off.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{fig-rho-plateau.pdf}
+\caption{Left: the residual falls monotonically as the resolvability margin
+$\rho$ falls, because a smaller $\rho$ demands a longer, cleaner tail --- but
+cells become unfittable as the grid stops reaching the required window, so the
+two must be tuned together. Right: the $b_1=0$ rate against item count at fixed
+edge retention. There is an interior optimum; past it, more items destroy the
+holes.\label{fig:rho}}
+\end{figure}
 
 The same fact appeared independently as the filling dependence of the fit window
 (\S5.3), where a constant calibrated under one topology under-read the floor by
-$6\times$ under another. These are one object. Since $\Ph$ is determined by the
+$6\times$ under another. These are one object, and the non-monotonicity sharpens
+it: not only does scaling the item count fail to fix topology dependence, past
+an optimum it actively removes the structure being measured. Since $\Ph$ is determined by the
 comparison graph, so are the floor, the variance coefficient $c$, and any
 threshold derived from them.
 
