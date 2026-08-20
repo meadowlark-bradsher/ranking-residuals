@@ -553,7 +553,16 @@ two-skeleton of the random flag complex on $G(n,p)$, whose first homology has a
 sharp vanishing threshold in the edge density that tends to zero as
 $n \to \infty$~\cite{kahle2014}. Any fixed retention eventually exceeds it,
 forcing $b_1 \to 0$: past some item count, collecting more data provably removes
-the structure the certificate reads, not merely fails to add to it.
+the structure the certificate reads, not merely fails to add to it.\footnote{The
+asymptotic exponent is not yet visible at the sizes swept here. Bisecting for the
+retention $p^{*}$ at which $\Pr[b_1 = 0]$ crosses $1/2$ gives $0.595$, $0.581$,
+$0.515$, $0.475$, $0.449$, $0.429$ at $n = 8, 12, 16, 20, 24, 30$ --- a fitted
+decay of $n^{-0.27}$ against the asymptotic $n^{-1/2}$, with $p^{*}/n^{-1/2}$
+drifting monotonically from $1.68$ to $2.35$. The threshold is decaying as the
+theory requires; the exponent has not converged. This cuts the useful way
+operationally: at realistic $n$ the usable window is \emph{wider} than the
+asymptotic form suggests, so the constraint should be evaluated at the deployment's
+own $(n,p)$ rather than from the limit.}
 
 \begin{figure}[h]
 \centering
@@ -619,7 +628,7 @@ M.~Kahle.
 \newblock Topology of random simplicial complexes: a survey.
 \newblock In \emph{Algebraic Topology: Applications and New Directions},
 volume 620 of \emph{Contemporary Mathematics}, pages 201--221. American
-Mathematical Society, 2014.
+Mathematical Society, 2014. \newblock arXiv:1301.7165.
 
 \bibitem{kendall1940}
 M.~G.~Kendall and B.~Babington Smith.
