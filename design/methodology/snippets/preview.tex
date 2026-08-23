@@ -1,0 +1,20 @@
+% Compile-check harness for the snippets in this directory.
+% Each snippet is written to drop into the target paper unchanged; this file
+% exists only to prove they typeset, and to stub the labels they cite outward.
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1.05in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\begin{document}
+% --- stubs for labels the snippets reference in the target document ----------
+\section{Topological Bounds (stub)}\label{sec:topological_bounds}
+This section is a stub. It exists so the outward cross-references in the
+snippets below resolve during compile-checking; in the target paper they point
+at the real section.
+
+\input{numerical-experiments}
+\end{document}
