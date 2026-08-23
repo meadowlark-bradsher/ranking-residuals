@@ -39,9 +39,8 @@ ORDER = [
     (M, "The problem", None),
     (M, "Setting and conventions", None),
     (B, "Setting",
-     "The next two sections restate the setting in the notation the analytic "
-     "arguments need, and then establish what the construction forces before any "
-     "measurement is taken."),
+     "The next two sections introduce the glued construction and establish what "
+     "it forces, before any measurement is taken."),
     (B, "Structure is forced by symmetry---except on the bridge", None),
     (M, "Known-answer construction", None),
     (B, "Bridge-invariance of the harmonic signal", None),
@@ -70,6 +69,22 @@ for src, title, note in ORDER:
 # the bridge paper cites the methodology paper; inside one document those become
 # internal references, so strip the outward citations rather than leave [1] hanging
 body = "\n".join(chunks)
+# The bridge paper must stand alone, so it re-defines D_0, D_1, L_1 and P_h --
+# all of which Part I has already given. In the combined document that paragraph
+# is redundant except for the characterisation of ker L_1, which Lemma 1's proof
+# uses, so it is replaced rather than dropped. The section is also retitled: it
+# is not a second "Setting", it is the glued object.
+body = body.replace("\\section{Setting}", "\\section{The glued construction}", 1)
+body = body.replace(
+    """Write $D_0\\in\\R^{E\\times V}$ for the coboundary (gradient) operator, in the
+formulation of~\\cite{jiang2011}, and $D_1$ for the triangle coboundary, with the fundamental identity $D_1D_0=0$. The graph Helmholtzian is
+\\[
+L_1=D_0D_0^{\\top}+D_1^{\\top}D_1;
+\\]
+the harmonic space is $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and $\\Ph$ is the orthogonal projector onto it. We use one standard fact repeatedly.""",
+    """With $D_0$, $D_1$, $L_1$ and $\\Ph$ as in \\S1, we use throughout the
+characterisation $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and one standard fact.""")
+
 body = body.replace(r"\cite[Principle 3]{bradsher2026}", "Principle~\\ref{prin:nouniversal}")
 body = body.replace(r"\cite[\S3.2]{bradsher2026}", "\\S\\ref{subsec:bridgepc}")
 body = body.replace(r"\cite[\S5]{bradsher2026}", "\\S\\ref{sec:estimation}")
