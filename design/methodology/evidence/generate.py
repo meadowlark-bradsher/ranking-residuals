@@ -45,11 +45,16 @@ def structural():
     cfg = RigConfig().validate()
 
     r = {}
-    for n, exp in ((5, 0.200), (6, 0.2222)):
+    for n, published in ((5, 0.200), (6, 0.2222)):
         e = list(itertools.combinations(range(n), 2))
         v = np.arange(n, dtype=float)
         Y = np.sign(np.array([v[j] - v[i] for i, j in e]))
-        r[f"n{n}"] = hodge.analyze_flow(n, e, Y, filling="empty")["fractions"]["harmonic"]
+        got = hodge.analyze_flow(n, e, Y, filling="empty")["fractions"]["harmonic"]
+        # The second element is the value the papers print. Comparing against it
+        # here is what makes the claim self-checking rather than merely recording
+        # whatever the code currently produces.
+        assert abs(got - published) < 5e-4, f"n={n}: {got} vs published {published}"
+        r[f"n{n}"] = got
     claim("pm1-trap", asserts="A +-1 sign flow of a perfectly transitive order deposits "
           "spurious harmonic mass, and the amount is n-dependent, not a constant.",
           cited_in=["methodology sec 2, 'Magnitude, not sign'"], value=r,
@@ -169,27 +174,35 @@ def bridge(cfg):
           tol={"kind": "rel", "value": 0.05}, kind="stochastic",
           test="tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias")
 
-    n = c.n_vertices
+    n, ni = c.n_vertices, c.n_int
     D0, D1 = hodge.build_operators(n, a.edges, hodge.triangles_for_filling(a.edges, "empty"))
     _, _, Ph = hodge.hodge_projectors(D0, D1)
     Eb = set(a.blocks["ic"].edges)
-    s0 = np.zeros(n); s0[:6] = np.arange(6, dtype=float); s0[6:] = -1.0
-    scal = {}
-    for lam in (0.5, 1.0, 2.0, 3.0):
-        s2 = s0.copy(); s2[:6] *= lam
+    s0 = np.zeros(n); s0[:ni] = np.arange(ni, dtype=float); s0[ni:] = -1.0
+
+    def excess(lam):
+        """||P_h (D0 s)|Eb||^2 with the integer block scaled by lam."""
+        s2 = s0.copy(); s2[:ni] *= lam
         pr = np.array([(s2[j] - s2[i]) if (i, j) in Eb else 0.0 for (i, j) in a.edges])
-        scal[str(lam)] = {"excess": float(pr @ Ph @ pr), "over_lambda_sq": float(pr @ Ph @ pr) / lam ** 2}
+        return float(pr @ Ph @ pr)
+
+    scal = {str(lam): {"excess": excess(lam), "over_lambda_sq": excess(lam) / lam ** 2}
+            for lam in (0.5, 1.0, 2.0, 3.0)}
+    # lam = 0 is the load-bearing case -- it is what shows the bias comes from the
+    # order rather than the coin -- so it is measured here, not asserted. A
+    # hardcoded 0.0 would make the claim incapable of ever failing.
     claim("spread-scaling", asserts="The persistent bias equals ||P_h (D0 s)|Eb||^2 and is exactly "
           "quadratic in the integer scale; at zero spread it is exactly zero.",
           cited_in=["bridge sec 8.3(i)", "bridge sec 8.3(ii)"],
-          value={**scal, "flat_block": 0.0},
+          value={**scal, "flat_block": excess(0.0)},
           tol={"kind": "abs", "value": 1e-9},
-          note="A law, not a fit: the quotient by lambda^2 is constant.")
+          note="A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured.")
 
     Ycc = np.array([a.Y_expected[k] if e in ccs else 0.0 for k, e in enumerate(a.edges)])
     rng = np.random.default_rng(0); en = []
     for _ in range(2000):
-        psi = np.zeros(n); psi[:6] = np.arange(6, dtype=float); psi[6:] = rng.normal(0, 5, 5)
+        psi = np.zeros(n); psi[:ni] = np.arange(ni, dtype=float)
+        psi[ni:] = rng.normal(0, 5, n - ni)
         Y = D0 @ psi + Ycc
         en.append(float(Y @ Ph @ Y))
     en = np.array(en)
@@ -223,12 +236,10 @@ def estimator(cfg):
     claim("fit-window", asserts="Fitting the full k grid biases the intercept; restricting to "
           "k >= 64 recovers it. The floor is an intercept, so the window decides it.",
           cited_in=["methodology sec 5.3", "methodology fig 3"],
-          value={"k": ks, "energies": E, "true_floor": eps ** 2,
+          value={"k": ks, "energies": E, "true_floor": eps ** 2, "fit_k_min": 64,
                  "intercept_full_grid": float(full[0]), "intercept_windowed": float(win[0])},
           tol={"kind": "rel", "value": 0.05}, kind="stochastic")
 
-    for filling, lab in (("observed", "observed"), ("empty", "empty")):
-        pass
     fill = {}
     for f in ("observed", "empty"):
         d0, d1 = hodge.build_operators(n, mask, hodge.triangles_for_filling(mask, f))
@@ -270,7 +281,7 @@ def estimator(cfg):
 
 # ---------------------------------------------------------------- sweeps (slow)
 def sweeps(cfg):
-    base = RigConfig().validate()
+    base = cfg
 
     ratios, covs = [], []
     for bs in range(20):
@@ -465,7 +476,14 @@ if __name__ == "__main__":
         sweeps(cfg)
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
                          text=True, cwd=HERE).stdout.strip()
-    out = {"meta": {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    # Recorded history, not measurements: the three residual figures successively
+    # reported as "the" result before the quantity was characterised across seeds.
+    # They belong with the evidence because Figure 5 plots them, but they are not
+    # claims -- nothing regenerates them, so they sit outside `claims`.
+    annotations = {"historical_residual_estimates":
+                   {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.6%)": 0.974}}
+    out = {"annotations": annotations,
+           "meta": {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     "commit": sha, "numpy": np.__version__,
                     "python": f"{sys.version_info.major}.{sys.version_info.minor}",
                     "n_claims": len(CLAIMS)},

@@ -38,9 +38,11 @@ M, B = sections(METH), sections(BRIDGE)
 ORDER = [
     (M, "The problem", None),
     (M, "Setting and conventions", None),
-    (B, "Setting",
-     "The next two sections introduce the glued construction and establish what "
-     "it forces, before any measurement is taken."),
+    (B, "What this note establishes, and what it does not",
+     "The next four sections take up a prior question -- which of the answers "
+     "above are theorems about the construction rather than measurements -- and "
+     "establish what the glued construction forces before any run."),
+    (B, "Setting", None),
     (B, "Structure is forced by symmetry---except on the bridge", None),
     (M, "Known-answer construction", None),
     (B, "Bridge-invariance of the harmonic signal", None),
@@ -58,6 +60,26 @@ ORDER = [
     (M, "What the method does not establish", None),
 ]
 
+def must_replace(text, old, new, label, count=1):
+    """Substitute, and fail loudly if the source no longer contains the target.
+
+    The section lookup above raises when a title moves; these substitutions used
+    to fail silently, which is worse. combined.tex deliberately carries no
+    `bradsher2026` bibitem -- it relies on the citation rewrites below -- so a
+    missed replacement ships a document with duplicated definitions and undefined
+    citations. LaTeX reports those as warnings, not errors, so a build that looks
+    clean would carry them.
+    """
+    found = text.count(old)
+    if found != count:
+        raise SystemExit(
+            f"build.py: {label}: expected {count} occurrence(s), found {found}.\n"
+            f"  The source paper was probably reworded. Update the target text in\n"
+            f"  build.py to match, or the combined draft will be wrong.\n"
+            f"  Looking for: {old[:90]!r}...")
+    return text.replace(old, new, count)
+
+
 chunks = []
 for src, title, note in ORDER:
     if title not in src:
@@ -74,8 +96,10 @@ body = "\n".join(chunks)
 # is redundant except for the characterisation of ker L_1, which Lemma 1's proof
 # uses, so it is replaced rather than dropped. The section is also retitled: it
 # is not a second "Setting", it is the glued object.
-body = body.replace("\\section{Setting}", "\\section{The glued construction}", 1)
-body = body.replace(
+body = must_replace(body, "\\section{Setting}", "\\section{The glued construction}",
+                    "retitle the bridge paper's Setting section")
+body = must_replace(
+    body,
     """Write $D_0\\in\\R^{E\\times V}$ for the coboundary (gradient) operator, in the
 formulation of~\\cite{jiang2011}, and $D_1$ for the triangle coboundary, with the fundamental identity $D_1D_0=0$. The graph Helmholtzian is
 \\[
@@ -83,13 +107,23 @@ L_1=D_0D_0^{\\top}+D_1^{\\top}D_1;
 \\]
 the harmonic space is $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and $\\Ph$ is the orthogonal projector onto it. We use one standard fact repeatedly.""",
     """With $D_0$, $D_1$, $L_1$ and $\\Ph$ as in \\S\\ref{sec:problem}, we use throughout the
-characterisation $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and one standard fact.""")
+characterisation $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and one standard fact.""",
+    "drop the bridge paper's duplicate operator definitions")
 
-body = body.replace(r"\cite[Principle 3]{bradsher2026}", "Principle~\\ref{prin:nouniversal}")
-body = body.replace(r"\cite[\S3.2]{bradsher2026}", "\\S\\ref{subsec:bridgepc}")
-body = body.replace(r"\cite[\S5]{bradsher2026}", "\\S\\ref{sec:estimation}")
-body = body.replace(r"The calibration methodology~\cite{bradsher2026} validates",
-                    "The methodology of Part~I validates")
+body = must_replace(body, r"\cite[Principle 3]{bradsher2026}",
+                    "Principle~\\ref{prin:nouniversal}", "Principle 3 citation", count=2)
+body = must_replace(body, r"\cite[\S3.2]{bradsher2026}",
+                    "\\S\\ref{subsec:bridgepc}", "S3.2 citation", count=2)
+body = must_replace(body, r"\cite[\S5]{bradsher2026}",
+                    "\\S\\ref{sec:estimation}", "S5 citation")
+body = must_replace(body, r"The calibration methodology~\cite{bradsher2026} validates",
+                    "The methodology of Part~I validates", "opening citation")
+
+# Nothing may cite the methodology paper by key once combined: combined.tex has
+# no such bibitem, and LaTeX would only warn.
+if "bradsher2026" in body:
+    raise SystemExit("build.py: a \\cite{bradsher2026} survived into the combined body; "
+                     "combined.tex has no such bibitem and LaTeX will only warn.")
 (HERE / "combined-body.tex").write_text(body)
 print(f"  wrote combined-body.tex: {len(ORDER)} sections, {len(body.splitlines())} lines")
 print(f"  from methodology: {sum(1 for s,_,_ in ORDER if s is M)}   from bridge: {sum(1 for s,_,_ in ORDER if s is B)}")

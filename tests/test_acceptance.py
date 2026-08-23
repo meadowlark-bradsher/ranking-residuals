@@ -336,28 +336,46 @@ def test_8_10_round_trip_residual_vanishes_with_emit_k(cfg):
 # These pin the two claims of design/methodology/bridge-invariance.tex that the
 # paper itself flags as wanting a check rather than trust (its Remark 2).
 
-@pytest.mark.parametrize("gap", [0.25, 1.0, 25.0, 500.0])
 @pytest.mark.parametrize("filling", ["empty", "observed"])
-def test_bridge_invariance_under_surrogate_level(cfg, gap, filling):
+def test_bridge_invariance_under_surrogate_level(cfg, filling):
     """Theorem 1: harmonic energy is invariant across the admissible bridge class.
 
     A flow supported on the bridge and lying in im(D0) must be CONSTANT there,
     since D0.psi has to vanish on both blocks -- so the admissible class is
     exactly a shift of the surrogate level. Sweeping it over 2000x must not move
-    the harmonic energy, under either filling, while the bridge's own energy
-    changes by two orders of magnitude.
+    the harmonic energy, while the bridge's own energy changes by two orders of
+    magnitude.
+
+    The invariance is asserted ACROSS the sweep rather than against the circle
+    floor. Under the observed filling the circle block is pure curl, so both
+    sides of that comparison are zero and it would hold no matter what the bridge
+    did -- half the cases would pass by construction and detect nothing.
     """
-    c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient",
-                  bridge_mode="bias_rule", bridge_gap=gap)
-    a = assemble(c)
-    h = oracle.projector_split(c.n_vertices, a.edges, a.Y_expected, filling)["energies"]["harmonic"]
-    cc = set(a.blocks["cc"].edges)
-    circle = oracle.projector_split(
-        c.n_vertices, a.edges,
-        np.array([a.Y_expected[i] if e in cc else 0.0 for i, e in enumerate(a.edges)]),
-        filling)["energies"]["harmonic"]
-    assert h == pytest.approx(circle, abs=1e-9), (
-        f"gap={gap} filling={filling}: {h:.6f} != circle floor {circle:.6f}")
+    gaps = [0.25, 1.0, 25.0, 500.0]
+    seen, rms = [], []
+    for gap in gaps:
+        c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient",
+                      bridge_mode="bias_rule", bridge_gap=gap)
+        a = assemble(c)
+        seen.append(oracle.projector_split(
+            c.n_vertices, a.edges, a.Y_expected, filling)["energies"]["harmonic"])
+        rms.append(a.blocks["ic"].rms())
+
+    assert max(seen) - min(seen) < 1e-9, (
+        f"filling={filling}: harmonic energy moved across the sweep: {seen}")
+    # The sweep has to actually vary the bridge, or the invariance is vacuous.
+    assert max(rms) > 50 * min(rms), f"bridge barely changed: {rms}"
+
+    if filling == "empty":
+        c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient", bridge_mode="bias_rule")
+        a = assemble(c)
+        cc = set(a.blocks["cc"].edges)
+        circle = oracle.projector_split(
+            c.n_vertices, a.edges,
+            np.array([a.Y_expected[i] if e in cc else 0.0 for i, e in enumerate(a.edges)]),
+            "empty")["energies"]["harmonic"]
+        assert circle > 1.0, "the invariant value must be a real signal, not zero"
+        assert seen[0] == pytest.approx(circle, abs=1e-9)
 
 
 def test_zero_mean_bridge_leaves_a_persistent_bias(cfg):

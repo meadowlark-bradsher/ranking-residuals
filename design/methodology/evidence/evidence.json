@@ -1,7 +1,14 @@
 {
+ "annotations": {
+  "historical_residual_estimates": {
+   "v5 (~10%)": 0.9,
+   "v6 (3-6%)": 0.955,
+   "v6b (~2.6%)": 0.974
+  }
+ },
  "meta": {
   "generated": "2026-08-23",
-  "commit": "1df514e",
+  "commit": "af12b5a",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 23
@@ -250,7 +257,7 @@
      "excess": 429.5454545454546,
      "over_lambda_sq": 47.727272727272734
     },
-    "flat_block": 0.0
+    "flat_block": -4.529869999977729e-16
    },
    "tolerance": {
     "kind": "abs",
@@ -258,7 +265,7 @@
    },
    "kind": "exact",
    "test": null,
-   "note": "A law, not a fit: the quotient by lambda^2 is constant."
+   "note": "A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured."
   },
   "fabricator-family-invisible": {
    "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
@@ -310,6 +317,7 @@
      0.09412519469539628
     ],
     "true_floor": 0.09,
+    "fit_k_min": 64,
     "intercept_full_grid": 0.18637251113678063,
     "intercept_windowed": 0.08421886815956191
    },

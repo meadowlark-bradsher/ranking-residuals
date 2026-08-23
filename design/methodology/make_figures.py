@@ -14,8 +14,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).parent
-_EV = json.load(open(HERE/"evidence"/"evidence.json"))["claims"]
+_DOC = json.load(open(HERE/"evidence"/"evidence.json"))
+_EV = _DOC["claims"]
 V = lambda cid: _EV[cid]["value"]
+A = lambda key: _DOC["annotations"][key]
 G = V("guard-blind-spot")
 
 plt.rcParams.update({
@@ -29,20 +31,21 @@ INK, ACC, BAD, OK = "#222222", "#1F4E79", "#B0392C", "#2C6E49"
 
 def fig_window():
     d = V("fit-window"); k = np.array(d["k"], float); E = np.array(d["energies"])
-    A = lambda K: np.column_stack([np.ones(len(K)), 1.0/np.asarray(K, float)])
-    ffull = np.linalg.lstsq(A(k), E, rcond=None)[0]
-    sel = k >= 64
-    fwin = np.linalg.lstsq(A(k[sel]), E[sel], rcond=None)[0]
+    design = lambda K: np.column_stack([np.ones(len(K)), 1.0/np.asarray(K, float)])
+    ffull = np.linalg.lstsq(design(k), E, rcond=None)[0]
+    kmin = d["fit_k_min"]          # from the claim, so figure and paper cannot diverge
+    sel = k >= kmin
+    fwin = np.linalg.lstsq(design(k[sel]), E[sel], rcond=None)[0]
     d = {**d, "full": {"floor": ffull[0], "c": ffull[1]},
          "window": {"floor": fwin[0], "c": fwin[1]}}
     fig, ax = plt.subplots(figsize=(5.4, 3.1))
     x = 1/k
-    ax.axvspan(1/64, x.max()*1.08, color=BAD, alpha=.06)
+    ax.axvspan(1/kmin, x.max()*1.08, color=BAD, alpha=.06)
     xs = np.linspace(0, x.max()*1.08, 200)
     ax.plot(xs, d["full"]["floor"] + d["full"]["c"]*xs, color=BAD, lw=1.5,
             label=f"fit on all $k$  $\\to$ {d['full']['floor']:.3f}")
     ax.plot(xs, d["window"]["floor"] + d["window"]["c"]*xs, color=ACC, lw=1.5,
-            label=f"fit on $k\\geq 64$  $\\to$ {d['window']['floor']:.4f}")
+            label=f"fit on $k\\geq {kmin:.0f}$  $\\to$ {d['window']['floor']:.4f}")
     ax.axhline(d["true_floor"], color=OK, ls="--", lw=1.3,
                label=f"true floor $\\varepsilon^2$ = {d['true_floor']:.3f}")
     ax.plot(x, E, "o", color=INK, ms=4.5, zorder=5)
@@ -50,7 +53,7 @@ def fig_window():
     ax.plot([0], [d["window"]["floor"]], "o", color=ACC, ms=7, zorder=6)
     ax.set_xlim(-0.002, x.max()*1.08); ax.set_ylim(-0.05, max(E)*1.05)
     ax.set_xlabel("$1/k$"); ax.set_ylabel(r"harmonic energy $\|P_h Y\|^2$")
-    ax.text(1/64*1.06, max(E)*.93, "contaminated by\nthe $O(k^{-2})$ term",
+    ax.text(1/kmin*1.06, max(E)*.93, "contaminated by\nthe $O(k^{-2})$ term",
             color=BAD, fontsize=7.4, va="top")
     ax.legend(loc="upper left", bbox_to_anchor=(.30, 1.02))
     fig.tight_layout(); fig.savefig(HERE/"fig-window.pdf"); plt.close(fig)
@@ -93,7 +96,7 @@ def fig_guard():
 
 def fig_draws():
     r = np.array(V("residual-across-draws")["ratios"])
-    hist = {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.6%)": 0.974}
+    hist = A("historical_residual_estimates")
     fig, ax = plt.subplots(figsize=(5.4, 2.5))
     ax.axvline(1.0, color=OK, ls="--", lw=1.3, zorder=1)
     ax.text(1.001, 1.62, "oracle", color=OK, fontsize=7.5)

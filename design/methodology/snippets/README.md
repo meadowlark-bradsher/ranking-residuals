@@ -21,7 +21,9 @@ target paper.
 ## Provenance of the numbers
 
 Every quantitative claim traces to `design/specs/calibration-rig-spec.md` or to
-`design/methodology/figdata/*.json`. Where a figure depends on a configuration
+`design/methodology/evidence/evidence.json`, where each is a registered claim
+with an explicit tolerance and can be re-checked with `evidence/verify.py`. Where
+a figure depends on a configuration
 default, the default is named inline. That convention is not decoration: two
 numbers in the first draft of `numerical-experiments.tex` had gone stale when a
 default moved underneath them — the `±log(2R−1)` magnification factor (quoted as
