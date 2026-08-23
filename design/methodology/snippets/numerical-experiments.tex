@@ -1,0 +1,145 @@
+% =============================================================================
+% Snippet: Numerical Experiments and Rig Validation
+% Target: the topological-bounds paper (references \ref{sec:topological_bounds})
+%
+% Every figure below is traceable to design/specs/calibration-rig-spec.md or to
+% design/methodology/evidence/evidence.json in the ranking-residuals repo, where
+% each is a registered claim with a tolerance. Where a value
+% depends on a configuration default, the default is named inline, because two
+% numbers in the first draft of this section had silently gone stale when a
+% default moved.
+% =============================================================================
+
+\section{Numerical Experiments and Rig Validation}
+\label{sec:numerical_experiments}
+
+To validate the theoretical invariance properties established in
+Section~\ref{sec:topological_bounds}, we evaluate the framework using a synthetic
+Hodge calibration instrument ($1{,}586$ lines of rig code, exercised by a further
+$571$ lines of acceptance tests). The instrument generates paired comparisons
+across mixed populations consisting of a strictly ordered integer topology and an
+unorderable, rotationally structured complex topology on the unit circle. The
+decomposition itself is not reimplemented: the rig is a data source for a fixed
+reference implementation it imports and never forks.
+
+\subsection{Asymptotic Intercept Estimation and Logit Bias}
+In finite-sample comparison regimes where each item pair is evaluated over a
+fixed budget of $k$ comparisons, the observed edge flow $Y$ is contaminated by
+low-$k$ logit bias. To decouple this sampling noise from the structural
+unrankability floor, we model the measured harmonic energy $\Vert P_h Y \Vert^2$
+using an ordinary least squares (OLS) linear regression in the inverse comparison
+domain $1/k$:
+
+\begin{equation}
+\Vert P_h Y \Vert^2 = \text{floor} + \frac{c}{k}
+  + \mathcal{O}\!\left(\frac{1}{k^2}\right)
+\label{eq:intercept}
+\end{equation}
+
+The target invariant structural parameter is recovered exactly as the asymptotic
+intercept where $1/k \to 0$. The slope $c$ is a fitted coefficient; it has an
+independent closed-form prediction $c_{\text{oracle}}$ (Section~\ref{subsec:filling}),
+and holding the two notationally distinct is what makes the agreement between
+them usable as a misspecification check.
+
+As illustrated in empirical sweeps, the small-$k$ tail is heavily dominated by
+the non-linear $\mathcal{O}(1/k^2)$ logit-bias term. Fitting across the full
+unwindowed grid ($k \in [8, 4096]$) artificially shifts the intercept upward to
+$0.186$ against a true misspecification oracle of $\epsilon^2 = 0.090$; on the
+shorter $k \in [8, 1024]$ grid the same fit gives $0.223$.
+Restricting the estimation window to the clean asymptotic tail ($k \ge 64$)
+suppresses the quadratic bias and recovers the analytical oracle floor to
+$0.87\text{--}0.95\times$ across separation parameters $\beta \in [0.15, 0.30]$.
+The decisive gain here is not the residual bias but its \emph{insensitivity} to
+$\beta$: the unwindowed fit ranges over $0.83\text{--}2.48\times$ on the same
+sweep, so the fixed cut converts a parameter-dependent estimate into a
+parameter-robust one. Tightening the band further, to
+$0.94\text{--}1.01\times$, requires the derived window of
+Section~\ref{subsec:filling} rather than any fixed cut.
+
+We note for completeness that modelling the contaminating term explicitly, by
+admitting a $c_2/k^2$ regressor, is worse than discarding the points it
+contaminates: the extended design is poorly conditioned and the additional
+parameter absorbs the intercept ($0.58\text{--}0.90\times$).
+
+\subsection{Topological Dependences of the Choice of Filling}
+\label{subsec:filling}
+The choice of topological simplicial closure significantly alters the internal
+capacity of the harmonic space. We evaluate two distinct filling regimes across
+identical boundary topologies:
+
+\begin{enumerate}
+    \item \textbf{Observed Filling:} Complex cyclic triads are closed into solid
+    2D faces upon observation, yielding a tighter harmonic footprint
+    ($b_1 = 2$, $c_{\text{oracle}} \approx 18$ on the reference graph).
+    \item \textbf{Empty Filling:} Triads are left un-filled, treating local
+    cyclic contradictions as persistent global harmonic holes
+    ($b_1 = 20$, $c_{\text{oracle}} = 160$).
+\end{enumerate}
+
+Because $c_{\text{oracle}}$ scales by nearly an order of magnitude based on
+filling choice, a fixed data-gathering threshold cannot guarantee numerical
+stability: the $k \ge 64$ cut calibrated under the observed filling under-reads
+the floor by a factor of six under the empty one ($0.0156$ against a true
+$0.090$). We resolve this by implementing a dynamically derived minimum budget
+window ($k_{\min}$), computed per configuration via
+
+\begin{equation}
+k_{\min} = \frac{c_{\text{oracle}}}{\rho \cdot \text{floor}},
+\qquad
+c_{\text{oracle}} = \operatorname{tr}\!\Big(P_h \cdot
+  \operatorname{diag}\big(1/(p_e(1-p_e))\big)\Big),
+\label{eq:kmin}
+\end{equation}
+
+where $\rho$ is a resolvability margin: at $k_{\min}$ the variance term equals
+$\rho$ times the floor being resolved, its largest value among the retained
+points, so a smaller $\rho$ admits only cleaner, higher-$k$ data. Enforcing this
+data-dependent lower bound lets both filling regimes converge to the identical
+target floor, and tightens the recovery band to $0.94\text{--}1.01\times$.
+
+Two qualifications are load-bearing. First, the convergence is conditional on the
+comparison budget actually reaching $k_{\min}$; a grid that cannot is flagged and
+\emph{not fitted}, since a fit performed below its own window silently misreports
+the floor rather than failing. That proviso is not free --- the empty filling's
+larger $c_{\text{oracle}}$ raises $k_{\min}$ by nearly the same order of
+magnitude. Second, what this eliminates is the need for a \emph{calibrated
+constant per filling}, not the choice of filling itself. The closure decision
+remains a modelling choice that determines $b_1$ and the dimension of the
+harmonic space, and hence what the certificate is measuring at all: one
+circulating flow on a single triangle reads as pure harmonic when the triple is
+left open and pure curl when it is closed. The filling must still be declared;
+what no longer has to be re-derived per filling is the estimation window.
+
+\subsection{Quantization Artifacts and Quantized Emitters}
+When mapping real-valued log-odds models to discrete comparison logs, two severe
+edge cases surface at the quantization boundary. Both are dangerous for the same
+reason: each yields a well-formed decomposition rather than an exception, so
+nothing downstream can detect that the returned quantity is meaningless.
+
+\paragraph{The Low-$k$ Tie Collapse Trap:} At the lower comparison limit
+($k = 2$), passing a binary rule through a quantized emitter computes
+$\text{round}(2 \cdot \sigma(1)) = 1$, generating an identical 1--1 tie on every
+edge. This forces the entire emitted flow $Y \to 0$, rendering structural
+asymmetries unobservable without triggering an explicit runtime exception.
+
+\paragraph{Mixed-Configuration Rescaling Distortion:} Approximating a binary rule
+by emitting all $R$ rows unidirectionally yields an edge magnitude of
+$\pm\log(2R - 1)$. While exact for pure sign-rule configurations --- mass
+fractions being scale-invariant --- executing this path within a mixed population
+introduces a scaling mismatch that magnifies the complex block against adjacent
+blocks by that same $\log(2R-1)$ factor: $2.708\times$ at the $R = 8$ at which
+the effect was first measured, and $4.84\times$ at the instrument's present
+default of $R = 64$. The resulting round-trip error of $0.269$ masquerades as an
+intrinsic decomposition artifact.
+
+The instrument suppresses both by dispatching per block across three
+non-interchangeable emission paths rather than collapsing to a single one.
+Native win-count replay is bit-exact, reproducing the internal decomposition to a
+measured round-trip deviation of $0.00\mathrm{e}{+}00$. The unidirectional sign
+path is retained but \emph{gated} to configurations that are entirely sign rules,
+where a uniform rescaling cannot distort a mix. The quantized magnitude path
+$w = \text{round}(k \cdot \sigma(Y))$ is approximate by construction --- exact
+only in the limit $k \to \infty$ --- and reports its residual rather than
+absorbing it into a tolerance. A flow that quantizes away entirely raises, while
+an edge that legitimately rounds to a tie is counted and reported.

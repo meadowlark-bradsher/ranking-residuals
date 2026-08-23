@@ -225,3 +225,10 @@ design/methodology/*.pdf
 design/methodology/*.log
 design/methodology/*.aux
 design/methodology/*.png
+design/methodology/snippets/*.pdf
+design/methodology/*.png
+design/methodology/combined/*.pdf
+design/methodology/combined/combined-body.tex
+
+# macOS Finder metadata
+.DS_Store

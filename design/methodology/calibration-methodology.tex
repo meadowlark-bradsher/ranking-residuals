@@ -58,7 +58,7 @@ method establishes: the certificate's threshold is a function of the deployment'
 own comparison topology, so there is no universal threshold to ship.
 \end{abstract}
 
-\section{The problem}
+\section{The problem}\label{sec:problem}
 
 Let $\mathcal{G}=(V,E)$ be a comparison graph: vertices are items, and an edge
 $(i,j)$ with $i<j$ records that the pair was compared. A \emph{flow}
@@ -77,7 +77,9 @@ Helmholtzian. The gradient part is exactly the rankable content: it is the
 gradient of a scalar potential, and that potential is the ranking. The harmonic
 part is the interesting one. It is globally cyclic --- inconsistent, but with no
 triangle to blame --- and its dimension is the first Betti number
-$b_1 = |E| - \rank D_0 - \rank D_1$, the number of independent holes.
+$b_1 = |E| - \rank D_0 - \rank D_1$, the number of independent holes. We write
+$\Ph$ for the orthogonal projector onto $\ker L_1$; it is the operator every
+measurement below is taken through.
 
 A criterion whose comparison flow carries large harmonic mass has no consistent
 scalar order, \emph{and} the failure is invisible to any triangle-local
@@ -209,7 +211,7 @@ under the observed one. It is simultaneously the cleanest adversarial signal
 available and a direct demonstration that the curl/harmonic split is a modelling
 choice rather than a property of the data.
 
-\subsection{The bridge must be potential-consistent}
+\subsection{The bridge must be potential-consistent}\label{subsec:bridgepc}
 
 The integer--complex bridge admits no natural rule, so it is a configuration
 axis: a coin flip drawn fresh per comparison (variance, decaying), a coin flip
@@ -292,7 +294,7 @@ direction gives $\|\Ph(\text{latent})\|^2 = \varepsilon^2$ exactly: a known
 answer for the quantity being calibrated.\label{fig:inject}}
 \end{figure}
 
-\section{Estimation}
+\section{Estimation}\label{sec:estimation}
 
 \subsection{The model}
 
@@ -310,7 +312,19 @@ method on $\mathrm{logit}(\hat p_e)$,
 c \;=\; \tr\!\Big(\Ph \cdot \operatorname{diag}\big(1/(p_e(1-p_e))\big)\Big),
 \label{eq:coracle}
 \end{equation}
-which gives an independent check on the fit. Model \eqref{eq:model} is linear in
+which gives an independent check on the fit. Equation~\eqref{eq:coracle} is not
+the whole $O(k^{-1})$ coefficient. The plug-in estimator $\mathrm{logit}(\hat
+p_e)$ also carries a mean bias $b_e=(2p_e-1)/\bigl(2p_e(1-p_e)\bigr)$ at order
+$k^{-1}$, and expanding $\|\Ph\mathbb{E}[Y]\|^2$ rather than
+$\mathbb{E}\|\Ph Y\|^2$ leaves a cross term
+$2\varepsilon\langle h,\Ph b\rangle/k$ beside it. Measured on one graph, adding
+it moves the fitted-to-predicted ratio from $1.251$, $1.296$, $1.404$ to
+$1.194$, $1.196$, $1.244$ at $\varepsilon=0.2,0.3,0.4$ --- not closing the gap,
+but flattening its drift in $\varepsilon$, which is the part that made the check
+hard to read. The residual disagreement is a further $O(k^{-1})$ contribution not
+yet accounted for. We keep \eqref{eq:coracle} as the shipped predictor, since it
+is what the guard was calibrated against, and record the cross term as the
+identified next term rather than an unexplained constant. Model \eqref{eq:model} is linear in
 $(\text{floor}, c)$ under $x = 1/k$, so the floor is simply the intercept of an
 ordinary least-squares line, fitted per seed --- the graph, and hence $\Ph$ and
 the true floor, are held fixed within a seed --- and aggregated across seeds.
@@ -328,11 +342,13 @@ edge set. If the sparsity mask were redrawn per $k$, the floor would not be
 constant across the sweep and \eqref{eq:model} would not be a well-posed fit. The
 mask is drawn once per seed; only the Bernoulli outcomes vary with $k$.
 
-\subsection{The fit window, and why it is derived}
+\subsection{The fit window, and why it is derived}\label{subsec:window}
 
 The $O(k^{-2})$ term in \eqref{eq:model} is not negligible at small $k$, and a
 two-parameter fit absorbs it into the intercept. Fitting the full grid biases the
-floor by factors of $0.83$ to $2.48$ depending on separation. Adding an explicit
+floor by factors of $0.83$ to $2.48$ depending on separation --- on the graph of
+Figure~\ref{fig:window} an intercept of $0.186$ against a true floor of $0.090$,
+where the windowed fit gives $0.084$. Adding an explicit
 $c_2/k^2$ term is worse, not better --- it is poorly conditioned and eats the
 intercept. Discarding the contaminated points works.
 
@@ -347,7 +363,7 @@ graph:
 \toprule
 \textbf{Filling} & $b_1$ & $c$ & \textbf{floor at $k\!\geq\!64$} & \textbf{true} \\
 \midrule
-observed & $2$  & $17$  & $0.0807$ & $0.090$ \\
+observed & $2$  & $18$  & $0.0807$ & $0.090$ \\
 empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
 \bottomrule
 \end{tabular}
@@ -576,7 +592,7 @@ holes.\label{fig:rho}}
 \end{figure}
 
 The same fact appeared independently as the filling dependence of the fit window
-(\S5.3), where a constant calibrated under one topology under-read the floor by
+(\S\ref{subsec:window}), where a constant calibrated under one topology under-read the floor by
 $6\times$ under another. These are one object, and the non-monotonicity sharpens
 it: not only does scaling the item count fail to fix topology dependence, past
 an optimum it actively removes the structure being measured. Since $\Ph$ is determined by the
@@ -590,7 +606,7 @@ generate the matched null and derive the window on it --- recomputed whenever th
 comparison \emph{pattern} changes, not only when the item set does.
 \end{principle}
 
-The derived window of \S5.3 is the template for this at one level down. The
+The derived window of \S\ref{subsec:window} is the template for this at one level down. The
 failure it corrects --- a constant calibrated under one topology, silently wrong
 under another --- is precisely the failure a transferred threshold would make.
 
