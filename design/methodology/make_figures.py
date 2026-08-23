@@ -89,7 +89,7 @@ def fig_draws():
     ax.plot(r, np.full_like(r, 1.0), "o", color=ACC, ms=5, alpha=.75, zorder=4)
     m, se = r.mean(), r.std(ddof=1)/np.sqrt(len(r))
     ax.errorbar([m], [0.55], xerr=[1.96*se], fmt="s", color=INK, ms=5, capsize=3, zorder=5)
-    ax.text(m, 0.30, f"mean {m:.4f}\n$\\pm${1.96*se:.4f} (95\\%)", ha="center", fontsize=7.4)
+    ax.text(m, 0.30, f"mean {m:.4f}\n$\\pm${1.96*se:.4f} (95%)", ha="center", fontsize=7.4)
     for i, (lab, v) in enumerate(hist.items()):
         ax.plot([v], [1.45], "v", color=BAD, ms=6)
         ax.text(v, 1.55, lab, ha="center", fontsize=6.8, color=BAD)
@@ -106,7 +106,7 @@ def fig_rho_and_plateau():
     a1.errorbar(rho, b, yerr=se, fmt="o-", color=ACC, ms=4, lw=1.4, capsize=2.5,
                 label="residual bias")
     a1.set_xscale("log"); a1.set_xticks(rho); a1.set_xticklabels([str(r) for r in rho])
-    a1.set_xlabel(r"$\rho$"); a1.set_ylabel("residual bias (\\%)"); a1.axhline(0, color="#aaa", lw=.6)
+    a1.set_xlabel(r"$\rho$"); a1.set_ylabel("residual bias (%)"); a1.axhline(0, color="#aaa", lw=.6)
     a1b = a1.twinx()
     a1b.plot(rho, [r["short"] for r in R], "s--", color=BAD, ms=3.5, lw=1.1,
              label="unfittable cells")
@@ -118,7 +118,7 @@ def fig_rho_and_plateau():
 
     P = [q for q in D["plateau"] if q["filling"] == "observed"]
     n = [q["n"] for q in P]; rate = [100*q["rate"] for q in P]
-    a2.plot(n, rate, "o-", color=ACC, ms=4, lw=1.5, label=r"\% with $b_1=0$")
+    a2.plot(n, rate, "o-", color=ACC, ms=4, lw=1.5, label=r"% with $b_1=0$")
     lo = int(np.argmin(rate))
     a2.plot([n[lo]], [rate[lo]], "o", ms=9, mfc="none", mec=BAD, mew=1.6)
     a2.annotate(f"minimum, $n={n[lo]}$", (n[lo], rate[lo]), textcoords="offset points",
@@ -128,7 +128,7 @@ def fig_rho_and_plateau():
     a2b.set_ylabel(r"mean $b_1$", color=OK, fontsize=8)
     a2b.tick_params(axis="y", colors=OK, labelsize=7.5)
     a2.set_xlabel("$n$ (items), edge retention fixed at $0.45$")
-    a2.set_ylabel(r"\% of graphs with $b_1=0$")
+    a2.set_ylabel(r"% of graphs with $b_1=0$")
     a2.set_title("more items eventually destroys the holes", fontsize=8.5)
     fig.tight_layout(); fig.savefig(HERE/"fig-rho-plateau.pdf"); plt.close(fig)
 

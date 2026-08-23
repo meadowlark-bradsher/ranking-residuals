@@ -51,7 +51,9 @@ Throughout we work in the flow space $\R^E$ of the union graph and fix the empty
 
 \section{Setting}
 
-Let $G=(V,E)$ be the union graph. Its vertices split into an integer block $V_{\Z}$ carrying real values $\{s_i\}$ (a total order) and a circle block $V_{\C}$ of $m$ points at angles $2\pi k/m$ (no order: $\C$ is not an orderable field, and the equal spacing is chosen so the modulus surrogate is constant and cannot smuggle one in). Its edges split into three blocks: integer--integer ($E_{II}$), circle--circle ($E_{CC}$), and bridge ($E_b$, joining the two).
+Let $G=(V,E)$ be the union graph. Its vertices split into an integer block $V_{\Z}$ carrying real values $\{s_i\}$ (a total order, the
+regime the paired-comparison literature has assumed since~\cite{kendall1940} and
+modelled since~\cite{bradley1952}) and a circle block $V_{\C}$ of $m$ points at angles $2\pi k/m$ (no order: the equal spacing is chosen so the modulus surrogate is constant and cannot smuggle one in)\footnote{That $\C$ admits no field order is a pleasant way to say this, but it is not what does the work; Proposition~1(b)'s $\Z/m$-equivariance is. The construction would behave identically on any $m$-point set carrying a free $\Z/m$ action and no invariant order.}. Its edges split into three blocks: integer--integer ($E_{II}$), circle--circle ($E_{CC}$), and bridge ($E_b$, joining the two).
 
 Write $D_0\in\R^{E\times V}$ for the coboundary (gradient) operator, in the
 formulation of~\cite{jiang2011}, and $D_1$ for the triangle coboundary, with the fundamental identity $D_1D_0=0$. The graph Helmholtzian is
@@ -132,7 +134,7 @@ Theorem~1 kills $B$ under any filling, because Lemma~1 never touches $D_1$. Fill
 The subtle step is that $Y_{cc}$ remains divergence-free on the enlarged graph. It is divergence-free on $E_{CC}$ by construction and identically zero on $E_b$; adding bridge edges therefore changes its divergence at no vertex, so it stays in the cycle space and, under the empty filling, stays fully harmonic. This is precisely the identity the rig confirms when the potential-consistent bridge reads the circle block's energy exactly ($10.0=10.0$ in \cite[\S3.2]{bradsher2026}): that measurement is the check on this step, and is the one place I would re-run the construction rather than trust the prose.
 \end{remark}
 
-\section{The three bridge modes are three covariance sources}
+\section{The three bridge modes are three covariance sources}\label{sec:modes}
 
 Theorem~1 is a first-moment statement. Its randomised companion turns the three bridge modes into one formula, and reads the rig's whole classification off the second moment.
 
@@ -184,12 +186,17 @@ Deterministic gradient & nowhere & $0$ & $0$ (mass $=\|\Ph Y_{cc}\|^2$ exactly) 
 \end{center}
 
 \noindent
-The mapping of these three rows onto the rig's implemented bridge modes is not
-one-to-one; \S\ref{sec:numconf} measures which of them satisfy the corollary's hypothesis and
-which do not.
+\textbf{The rows above are conditional on $\mathbb{E}[B]\in\im D_0$, and the rig's
+coin modes do not satisfy it.} Their coins are centred on zero rather than on the
+potential-consistent surrogate, so the first row does \emph{not} describe them:
+their harmonic energy decays to a nonzero systematic floor, not to
+$\|\Ph Y_{cc}\|^2$. Measured, the fresh coin settles at $57.75$ against a circle
+floor of $10.00$ and stays there. \S\ref{sec:numconf} gives the measurement and
+\S\ref{subsec:property} locates the cause. A reader who stops here should carry
+away that a zero-centred coin is \emph{not} the annealed case.
 
 \begin{remark}[``Deterministic'' is two corners, not one]
-Zero variance is not a single cell. A deterministic bridge contributes zero harmonic only if it is a gradient (the potential-consistent surrogate); the constant surrogate is also deterministic but, by Theorem~1's properness clause, sits at a fixed harmonic bias---the rig's $57.7$ against the invariant $10.0$. The map therefore has four corners on two independent axes, $\{\text{gradient},\text{non-gradient}\}\times\{\text{annealed},\text{quenched},\text{none}\}$, and \S3.2 of the rig exists to keep the two deterministic corners apart.
+Zero variance is not a single cell. A deterministic bridge contributes zero harmonic only if it is a gradient (the potential-consistent surrogate); the constant surrogate is also deterministic but, by Theorem~1's properness clause, sits at a fixed harmonic bias---the rig's $57.7$ against the invariant $10.0$. The map therefore has four corners on two independent axes, $\{\text{gradient},\text{non-gradient}\}\times\{\text{annealed},\text{quenched},\text{none}\}$, and \cite[\S3.2]{bradsher2026} exists to keep the two deterministic corners apart.
 \end{remark}
 
 \begin{remark}[The persistent coin is fully random, then frozen]
@@ -219,6 +226,41 @@ the bias-plus-variance decomposition of harmonic energy under the projector. The
 The signal the certificate detects is the harmonic energy that survives the closure of every available limit: $R\to\infty$ (anneal sampling and annealed disorder), re-instantiation of the quenched disorder (average $W$ out), and gradient-neutralisation of the bridge (set $\mathbb{E}[B]\in\im D_0$). By Corollary~1 and~\eqref{eq:biasvar} this is $\|\Ph\mathbb{E}_{\infty}[Y]\|^2$, the systematic floor alone. Rankability fails exactly when it is nonzero.
 \end{definition}
 
+\subsection{A strict limit: perfect fabricators are invisible at every level}
+
+\S\ref{subsec:invar} shows that one potential-consistent bridge is invisible. The
+stronger statement bounds what the certificate can ever do, and costs nothing extra.
+
+\begin{proposition}[Gradient families are invisible under re-instantiation]
+Let $B$ be random with $B(\omega)\in\im D_0$ for \emph{every} realisation, not
+merely in mean. Then $\mathbb{E}[B]\in\im D_0$ and $B-\mathbb{E}[B]\in\im D_0$
+pointwise, so $\operatorname{range}\Cov(B)\subseteq\im D_0$ and, by Lemma~1,
+\[
+\|\Ph\mathbb{E}[Y]\|^2=\|\Ph Y_{cc}\|^2,
+\qquad
+\tr\!\bigl(\Ph\,\Cov(B)\,\Ph\bigr)=0 .
+\]
+Both terms of \eqref{eq:biasvar} are blind to the family: it is invisible in every
+moment, not only the first.
+\end{proposition}
+
+The consequence is a genuine limit, not a gap in the calibration. Re-instantiation
+is the one limit that separates quenched disorder from signal (Remark~4), and it
+does not separate this. A judge that invents a \emph{different but internally
+consistent} order on each re-instantiation --- a family of perfect fabricators ---
+is indistinguishable from a judge with no bridge at all, at every level of
+resampling available. Measured over $2000$ independent fabricators, each placing
+the complex items at its own levels: harmonic energy $10.000000$, standard
+deviation $2.6\times10^{-13}$.
+
+This is the honest boundary of the method, and it deserves stating as strictly as
+the validation protocol states its expected failures. The certificate detects
+\emph{incoherence}; a fabricator is not incoherent. It is confidently wrong in an
+internally consistent way, which is exactly the failure a harmonic reading cannot
+see. Detecting it needs a different statistic --- one sensitive to the
+\emph{dispersion} of the fitted gradient across re-instantiations rather than to
+its harmonic residue.
+
 \section{What is purchased without experiment, and what is not}
 
 \begin{proposition}[Shape is analytic; constants are topological]
@@ -237,7 +279,7 @@ The same identity marks the boundary of identifiability. Separating quenched noi
 Everything above is analytic, so the rig cannot confirm it --- but it can check
 the steps the proofs identify as load-bearing, and Remark~2 names one
 explicitly. Doing so confirms Theorem~1 in a stronger form than stated, and
-corrects how \S5's table maps onto the rig's implemented modes.
+corrects how \S\ref{sec:modes}'s table maps onto the rig's implemented modes.
 
 \subsection{Theorem 1 holds across the whole admissible class}\label{subsec:invar}
 
@@ -334,7 +376,7 @@ the judge that fabricates an order rather than flailing --- leaves the signal
 untouched.
 \end{remark}
 
-\subsection{What the bias is a property of}
+\subsection{What the bias is a property of}\label{subsec:property}
 
 It is tempting to read \S\ref{subsec:hypothesis} as ``a flailing judge leaves a
 large persistent signal.'' That reading misplaces the cause, and correcting it
@@ -388,7 +430,7 @@ calibrated against is not a \emph{noisy} judge: uniform noise is annealed by
 replication like any other variance, and \eqref{eq:biasvar} says so. It is a
 judge that is noisy about some pairs and decisive about others. Incoherence
 becomes a persistent false signal exactly when there is coherence elsewhere for
-it to contradict --- which is why the two reference lines of \S5 bracket a
+it to contradict --- which is why the two reference lines of \S\ref{sec:modes} bracket a
 deployed comparator not by how much it errs, but by whether its errors respect
 the order it asserts everywhere else.
 
@@ -397,6 +439,17 @@ the order it asserts everywhere else.
 M. Bradsher.
 \newblock \emph{A Known-Answer Methodology for Calibrating a Harmonic Rankability Certificate}.
 \newblock Working paper, August 2026.
+
+\bibitem{kendall1940}
+M.~G.~Kendall and B.~Babington Smith.
+\newblock On the method of paired comparisons.
+\newblock \emph{Biometrika}, 31(3/4):324--345, 1940.
+
+\bibitem{bradley1952}
+R.~A.~Bradley and M.~E.~Terry.
+\newblock Rank analysis of incomplete block designs: I. The method of paired
+comparisons.
+\newblock \emph{Biometrika}, 39(3/4):324--345, 1952.
 
 \bibitem{jiang2011}
 X. Jiang, L.-H. Lim, Y. Yao, and Y. Ye.

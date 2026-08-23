@@ -82,7 +82,7 @@ formulation of~\\cite{jiang2011}, and $D_1$ for the triangle coboundary, with th
 L_1=D_0D_0^{\\top}+D_1^{\\top}D_1;
 \\]
 the harmonic space is $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and $\\Ph$ is the orthogonal projector onto it. We use one standard fact repeatedly.""",
-    """With $D_0$, $D_1$, $L_1$ and $\\Ph$ as in \\S1, we use throughout the
+    """With $D_0$, $D_1$, $L_1$ and $\\Ph$ as in \\S\\ref{sec:problem}, we use throughout the
 characterisation $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and one standard fact.""")
 
 body = body.replace(r"\cite[Principle 3]{bradsher2026}", "Principle~\\ref{prin:nouniversal}")
