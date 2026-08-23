@@ -330,3 +330,79 @@ def test_8_10_round_trip_residual_vanishes_with_emit_k(cfg):
         devs.append(max(abs(internal[x] - rt[x]) for x in ("gradient", "curl", "harmonic")))
     assert devs[-1] < devs[0] / 5, devs
     assert devs[-1] < 5e-3, devs
+
+
+# ---------------------------------------------------------------- bridge-invariance
+# These pin the two claims of design/methodology/bridge-invariance.tex that the
+# paper itself flags as wanting a check rather than trust (its Remark 2).
+
+@pytest.mark.parametrize("gap", [0.25, 1.0, 25.0, 500.0])
+@pytest.mark.parametrize("filling", ["empty", "observed"])
+def test_bridge_invariance_under_surrogate_level(cfg, gap, filling):
+    """Theorem 1: harmonic energy is invariant across the admissible bridge class.
+
+    A flow supported on the bridge and lying in im(D0) must be CONSTANT there,
+    since D0.psi has to vanish on both blocks -- so the admissible class is
+    exactly a shift of the surrogate level. Sweeping it over 2000x must not move
+    the harmonic energy, under either filling, while the bridge's own energy
+    changes by two orders of magnitude.
+    """
+    c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient",
+                  bridge_mode="bias_rule", bridge_gap=gap)
+    a = assemble(c)
+    h = oracle.projector_split(c.n_vertices, a.edges, a.Y_expected, filling)["energies"]["harmonic"]
+    cc = set(a.blocks["cc"].edges)
+    circle = oracle.projector_split(
+        c.n_vertices, a.edges,
+        np.array([a.Y_expected[i] if e in cc else 0.0 for i, e in enumerate(a.edges)]),
+        filling)["energies"]["harmonic"]
+    assert h == pytest.approx(circle, abs=1e-9), (
+        f"gap={gap} filling={filling}: {h:.6f} != circle floor {circle:.6f}")
+
+
+def test_zero_mean_bridge_leaves_a_persistent_bias(cfg):
+    """The rig's coin modes fall OUTSIDE Corollary 1's hypothesis.
+
+    The corollary needs E[B] in im(D0), where B is the residual against the
+    global potential. A coin centred on zero has mean total bridge flow 0, so
+    E[B] = -(D0 s)|Eb, which varies with i and is not constant -- not in im(D0).
+    Its systematic floor is therefore the constant-bridge bias, not the circle
+    floor, and replication anneals only the variance around it.
+
+    This is the distinction section 8.6 does not make: that test measures the
+    bridge block ALONE, which does decay. A certificate reads the combined flow,
+    which does not.
+    """
+    c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient")
+    floors = {}
+    for mode in ("bias_rule", "variance_fresh", "variance_fixed"):
+        a = assemble(c.with_(bridge_mode=mode))
+        floors[mode] = oracle.projector_split(
+            c.n_vertices, a.edges, a.Y_expected, "empty")["energies"]["harmonic"]
+
+    cc = set(assemble(c).blocks["cc"].edges)
+    a0 = assemble(c)
+    circle = oracle.projector_split(
+        c.n_vertices, a0.edges,
+        np.array([a0.Y_expected[i] if e in cc else 0.0 for i, e in enumerate(a0.edges)]),
+        "empty")["energies"]["harmonic"]
+
+    # only the potential-consistent bridge satisfies the hypothesis
+    assert floors["bias_rule"] == pytest.approx(circle, abs=1e-9)
+    assert floors["variance_fresh"] > circle + 1.0
+    assert floors["variance_fixed"] > circle + 1.0
+
+    # and the fresh coin's COMBINED flow converges to its own floor, not the circle's
+    tail = []
+    for R in (512, 2048):
+        vals = [oracle.projector_split(
+                    c.n_vertices, *(lambda a: (a.edges, a.Y))(assemble(
+                        c.with_(bridge_mode="variance_fresh", bridge_R=R, seed=s))),
+                    "empty")["energies"]["harmonic"]
+                for s in range(40)]
+        tail.append(float(np.mean(vals)))
+    assert tail[1] < tail[0], "the variance term must still be annealing"
+    assert tail[1] > circle + 1.0, (
+        f"combined flow settled at {tail[1]:.3f}; it must NOT reach the circle "
+        f"floor {circle:.3f} -- a thrashing judge leaves a persistent bias")
+    assert tail[1] == pytest.approx(floors["variance_fresh"], rel=0.02)

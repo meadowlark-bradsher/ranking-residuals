@@ -182,6 +182,11 @@ Deterministic gradient & nowhere & $0$ & $0$ (mass $=\|\Ph Y_{cc}\|^2$ exactly) 
 \end{tabular}
 \end{center}
 
+\noindent
+The mapping of these three rows onto the rig's implemented bridge modes is not
+one-to-one; \S7 measures which of them satisfy the corollary's hypothesis and
+which do not.
+
 \begin{remark}[``Deterministic'' is two corners, not one]
 Zero variance is not a single cell. A deterministic bridge contributes zero harmonic only if it is a gradient (the potential-consistent surrogate); the constant surrogate is also deterministic but, by Theorem~1's properness clause, sits at a fixed harmonic bias---the rig's $57.7$ against the invariant $10.0$. The map therefore has four corners on two independent axes, $\{\text{gradient},\text{non-gradient}\}\times\{\text{annealed},\text{quenched},\text{none}\}$, and \S3.2 of the rig exists to keep the two deterministic corners apart.
 \end{remark}
@@ -225,6 +230,108 @@ The first sentence is the content of the cited results, none of which references
 So the perspective pays out exactly where structure is at stake and not where a number is. One need not run the rig to know that the signal is bridge-invariant, that the constant bridge floors at a fixed bias, that fresh-coin variance decays as $1/R$, or that a frozen judge's cyclicity does not---these follow from (2) and Lemma~1. One must still compute $\tr(\Ph\Cov(Y)\Ph)$ on the deployment's own topology to place the null, and (2) says why it cannot be inherited.
 
 The same identity marks the boundary of identifiability. Separating quenched noise from genuine signal requires the re-instantiation limit---but a single deployed judge is its disorder, so that limit is unavailable from replication and the two are operationally one failure to a downstream ranking. The distinction re-enters only under independent re-instantiation: fresh judges, varied pair sets, a re-drawn comparison graph. That is the analytic reason a matched null must be built by resampling the topology, not by replicating counts on a fixed one---the covariance in (2) that carries the quenched term is a property of the graph, and only a new graph resamples it.
+
+\section{Numerical confirmation, and one correction to the mapping}
+
+Everything above is analytic, so the rig cannot confirm it --- but it can check
+the steps the proofs identify as load-bearing, and Remark~2 names one
+explicitly. Doing so confirms Theorem~1 in a stronger form than stated, and
+corrects how \S5's table maps onto the rig's implemented modes.
+
+\subsection{Theorem 1 holds across the whole admissible class}
+
+Theorem~1 admits $B\in\im D_0$ supported on $E_b$. That class is smaller and more
+concrete than it looks: $D_0\psi$ must vanish on $E_{II}$ and $E_{CC}$, so $\psi$
+is constant on each block, so $B$ is \emph{constant} on the bridge. The admissible
+class is exactly a shift of the surrogate level. Sweeping that shift over three
+orders of magnitude, on the rig's $n_{\Z}=6$, $m=5$ configuration:
+
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+surrogate gap & bridge RMS & $\|\Ph Y\|^2$ (empty) & $\|\Ph Y\|^2$ (observed) \\
+\midrule
+$0.25$ & $3.24$   & $10.000000$ & $0.000000$ \\
+$1.0$  & $3.89$   & $10.000000$ & $0.000000$ \\
+$25.0$ & $27.55$  & $10.000000$ & $0.000000$ \\
+$500.0$& $502.50$ & $10.000000$ & $0.000000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The harmonic energy is invariant to machine precision while the bridge's own
+energy changes by a factor of $155$. Remark~1 is visible in the same table: the
+invariance holds under both fillings, while its \emph{value} does not.
+
+\subsection{The rig's coin modes fall outside Corollary 1's hypothesis}
+\label{subsec:hypothesis}
+
+Corollary~1 requires $\mathbb{E}[B]\in\im D_0$, where $B$ is the bridge residual
+relative to the global potential of (1). The rig's fresh and persistent coins are
+centred on zero, so their mean \emph{total} bridge flow is $0$ and hence
+\[
+\mathbb{E}[B] \;=\; 0-(D_0s)\big|_{E_b},
+\qquad\text{entries } s_i-s_\gamma,
+\]
+which varies with $i$, is therefore not constant, and by the characterisation
+above is not in $\im D_0$. The hypothesis fails. Measured systematic floors
+$\|\Ph\mathbb{E}[Y]\|^2$ confirm it:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrl@{}}
+\toprule
+Bridge mode & $\|\Ph\mathbb{E}[Y]\|^2$ & Corollary~1 hypothesis \\
+\midrule
+Deterministic gradient & $10.0000$  & satisfied ($\mathbb{E}[B]=0$) \\
+Fresh coin             & $57.7273$  & violated \\
+Persistent coin        & $255.6410$ & violated \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The consequence is that the fresh coin does \emph{not} decay to the circle floor.
+Two quantities must be kept apart, and only one of them decays:
+
+\begin{center}
+\small
+\begin{tabular}{@{}rrr@{}}
+\toprule
+$R$ & bridge block alone & combined flow \\
+\midrule
+$8$    & $16.2341$ & $75.0539$ \\
+$32$   & $3.2401$  & $60.1853$ \\
+$128$  & $0.7319$  & $58.3649$ \\
+$512$  & $0.1906$  & $57.8858$ \\
+$2048$ & $0.0488$  & $57.7498$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The bridge block considered in isolation decays as $1/R$, which is what the rig's
+own acceptance test measures. But a certificate reads the combined flow, and that
+converges to $57.7273$ --- precisely the bias a \emph{constant} bridge leaves,
+because the two residuals differ by a constant and constants on $E_b$ lie in
+$\im D_0$.
+
+The correction is to the identification, not to the mathematics. Corollary~1's
+fresh-coin row describes a coin centred on the potential-consistent surrogate; a
+coin centred on zero is a different object, namely that coin plus a
+constant-bridge bias. A judge that flails on incomparable pairs is modelled by
+the latter.
+
+\begin{remark}[A thrashing judge does not wash out]
+This sharpens the reference lines the rig exists to provide. Replication anneals
+the flailing judge's \emph{variance} and leaves its \emph{bias}: at
+$R=2048$ the combined harmonic energy is still $57.75$ against a circle floor of
+$10.00$. The intuition that incomparability-induced noise averages away is
+correct only for the bridge block in isolation. Against an ordered population it
+does not, because a zero-mean bridge disagrees with the global potential by a
+non-gradient field of fixed size. Only the potential-consistent surrogate ---
+the judge that fabricates an order rather than flailing --- leaves the signal
+untouched.
+\end{remark}
 
 \begin{thebibliography}{9}
 \bibitem{bradsher2026}
