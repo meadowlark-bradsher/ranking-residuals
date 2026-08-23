@@ -8,6 +8,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{booktabs}
+\usepackage{enumitem}
 \usepackage{microtype}
 \usepackage[T1]{fontenc}
 \usepackage[hidelinks]{hyperref}
@@ -238,7 +239,7 @@ the steps the proofs identify as load-bearing, and Remark~2 names one
 explicitly. Doing so confirms Theorem~1 in a stronger form than stated, and
 corrects how \S5's table maps onto the rig's implemented modes.
 
-\subsection{Theorem 1 holds across the whole admissible class}
+\subsection{Theorem 1 holds across the whole admissible class}\label{subsec:invar}
 
 Theorem~1 admits $B\in\im D_0$ supported on $E_b$. That class is smaller and more
 concrete than it looks: $D_0\psi$ must vanish on $E_{II}$ and $E_{CC}$, so $\psi$
@@ -332,6 +333,64 @@ non-gradient field of fixed size. Only the potential-consistent surrogate ---
 the judge that fabricates an order rather than flailing --- leaves the signal
 untouched.
 \end{remark}
+
+\subsection{What the bias is a property of}
+
+It is tempting to read \S\ref{subsec:hypothesis} as ``a flailing judge leaves a
+large persistent signal.'' That reading misplaces the cause, and correcting it
+changes what the reference line actually warns about.
+
+The excess over the circle floor has a closed form. Since
+$\mathbb{E}[B]=-(D_0s)|_{E_b}$, Corollary~1 gives
+\begin{equation}
+\mathbb{E}\,\|\Ph Y\|^2-\|\Ph Y_{cc}\|^2
+\;\longrightarrow\;
+\bigl\|\Ph\,(D_0s)|_{E_b}\bigr\|^2
+\qquad (R\to\infty),
+\label{eq:excess}
+\end{equation}
+the harmonic energy of the potential-consistent bridge taken alone --- verified
+to six digits against the sampled limit ($47.727273$ both ways). Three
+consequences follow, and none of them mentions the coin.
+
+\begin{enumerate}[label=(\roman*),leftmargin=2.2em]
+\item \textbf{It is exactly quadratic in the integer scale.} Replacing $s$ by
+$\lambda s$ multiplies \eqref{eq:excess} by $\lambda^2$ identically. Measured
+excesses of $11.93$, $47.73$, $190.91$, $429.55$ at $\lambda=0.5,1,2,3$ give a
+constant quotient of $47.7273$: a law, not a fit.
+
+\item \textbf{It vanishes precisely when the integer block is flat.} A flow
+supported on $E_b$ lies in $\im D_0$ exactly when it is constant there
+(\S\ref{subsec:invar}), and $(D_0s)|_{E_b}$ has entries $s_\gamma-s_i$, constant
+iff $s$ is constant on $V_{\Z}$. Measured at zero spread: excess $0.000000$ ---
+the same coin, the same bridge, the same judge.
+
+\item \textbf{The magnitude is a configuration, not a result.} At
+$n_{\Z}=6$ it is $47.73$; at $n_{\Z}=10$ and $14$, with the same unit spread,
+$275.0$ and $838.2$. Quoting it as a size is a category error.
+\end{enumerate}
+
+So the bias is not produced by the flailing. It is produced by the disagreement
+between a bridge that declines to order and a population that is ordered, and its
+magnitude measures exactly how much order is being declined. A judge that flails
+where there is no order to contradict leaves nothing behind.
+
+Read this way, \S\ref{subsec:invar} and \S\ref{subsec:hypothesis} are one fact
+seen from two sides. A bridge whose mean respects the global potential is
+invisible to the certificate however large it is --- the surrogate level moved
+over three orders of magnitude in \S\ref{subsec:invar} without shifting the
+reading. A bridge whose mean does not respect it leaves a residue equal to the
+harmonic part of the potential it declined. Invariance and bias are the same
+statement about $\im D_0$, read in the two directions.
+
+The operational form is the one to carry forward. What a certificate must be
+calibrated against is not a \emph{noisy} judge: uniform noise is annealed by
+replication like any other variance, and \eqref{eq:biasvar} says so. It is a
+judge that is noisy about some pairs and decisive about others. Incoherence
+becomes a persistent false signal exactly when there is coherence elsewhere for
+it to contradict --- which is why the two reference lines of \S5 bracket a
+deployed comparator not by how much it errs, but by whether its errors respect
+the order it asserts everywhere else.
 
 \begin{thebibliography}{9}
 \bibitem{bradsher2026}
