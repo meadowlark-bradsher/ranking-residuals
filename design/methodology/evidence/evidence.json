@@ -1,0 +1,1070 @@
+{
+ "meta": {
+  "generated": "2026-08-23",
+  "commit": "1df514e",
+  "numpy": "1.26.4",
+  "python": "3.12",
+  "n_claims": 23
+ },
+ "claims": {
+  "pm1-trap": {
+   "claim": "A +-1 sign flow of a perfectly transitive order deposits spurious harmonic mass, and the amount is n-dependent, not a constant.",
+   "cited_in": [
+    "methodology sec 2, 'Magnitude, not sign'"
+   ],
+   "value": {
+    "n5": 0.2,
+    "n6": 0.2222222222222222
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_invariants.py::test_5_1_pm1_of_a_transitive_order_is_not_a_gradient",
+   "note": null
+  },
+  "clean-gradient-zero": {
+   "claim": "An all-integer value-difference flow reads zero harmonic under both fillings.",
+   "cited_in": [
+    "methodology sec 3.1 oracle table"
+   ],
+   "value": {
+    "empty": 3.19268006221441e-31,
+    "observed": 1.1487834281759506e-30
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-12
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_2_clean_integer_pool_reads_zero_harmonic",
+   "note": null
+  },
+  "equal-spaced-complex": {
+   "claim": "An equal-spaced complex pool is pure harmonic under the empty filling and pure curl under the observed one.",
+   "cited_in": [
+    "methodology sec 3.1 oracle table",
+    "methodology fig 1"
+   ],
+   "value": {
+    "empty_harmonic": 1.0,
+    "observed_curl": 0.9999999999999997
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-12
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_3_equal_spaced_complex_only",
+   "note": null
+  },
+  "b1-rank-formula": {
+   "claim": "b1 of a complex-only pool under the empty filling is (m-1)(m-2)/2.",
+   "cited_in": [
+    "methodology sec 3.1 oracle table"
+   ],
+   "value": {
+    "3": 1,
+    "5": 6,
+    "7": 15,
+    "9": 28
+   },
+   "tolerance": {
+    "kind": "exact_int"
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_4_b1_matches_rank_formula",
+   "note": null
+  },
+  "eps-squared-floor": {
+   "claim": "The injected misspecification gives a budget-independent floor of exactly eps^2.",
+   "cited_in": [
+    "methodology sec 3.1 oracle table",
+    "methodology sec 4",
+    "methodology fig 2"
+   ],
+   "value": {
+    "0.1": 0.010000000000038988,
+    "0.2": 0.04000000000003903,
+    "0.4": 0.1600000000000388
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-12
+   },
+   "kind": "exact",
+   "test": "tests/test_invariants.py::test_2_5_injected_floor_is_exactly_eps_squared",
+   "note": null
+  },
+  "gradient-annihilated": {
+   "claim": "P_h annihilates D0.theta for every theta, so no latent shape can produce a budget-independent floor.",
+   "cited_in": [
+    "methodology sec 4, Observation 1",
+    "methodology fig 2"
+   ],
+   "value": {
+    "1.0": 3.219700547840708e-14,
+    "1.5": 3.6429528238816985e-14,
+    "2.0": 3.8910691819305664e-14,
+    "3.0": 4.270877041433433e-14,
+    "6.0": 5.0031901457585894e-14
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_invariants.py::test_5_6_theta_shape_can_never_produce_a_floor",
+   "note": null
+  },
+  "bridge-invariance": {
+   "claim": "A potential-consistent bridge leaves the harmonic energy equal to the circle block's; a constant bridge does not.",
+   "cited_in": [
+    "methodology sec 3.2",
+    "bridge Theorem 1",
+    "bridge sec 8.1"
+   ],
+   "value": {
+    "circle_only": 10.0,
+    "potential_consistent": 10.00000000000004,
+    "constant_bridge": 57.72727272727275
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_6_three_bridge_behaviours_are_correctly_labelled",
+   "note": null
+  },
+  "surrogate-level-invariance": {
+   "claim": "Harmonic energy is invariant across the whole admissible bridge class, which is exactly a shift of the surrogate level, under both fillings and across a 2000x range.",
+   "cited_in": [
+    "bridge sec 8.1 table"
+   ],
+   "value": {
+    "0.25": {
+     "bridge_rms": 3.2371540999258386,
+     "empty": 10.000000000000052,
+     "observed": 2.3433319662229728e-14
+    },
+    "1.0": {
+     "bridge_rms": 3.8944404818493075,
+     "empty": 10.00000000000004,
+     "observed": 2.3618206476463558e-14
+    },
+    "25.0": {
+     "bridge_rms": 27.552979270247103,
+     "empty": 9.999999999999808,
+     "observed": -9.209329713243948e-13
+    },
+    "500.0": {
+     "bridge_rms": 502.5029021475067,
+     "empty": 9.999999999828916,
+     "observed": -3.988821319795238e-10
+    }
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_bridge_invariance_under_surrogate_level",
+   "note": null
+  },
+  "systematic-floors": {
+   "claim": "Only the potential-consistent bridge satisfies Corollary 1's hypothesis; the zero-centred coins carry a systematic floor.",
+   "cited_in": [
+    "bridge sec 8.2 table"
+   ],
+   "value": {
+    "bias_rule": 10.00000000000004,
+    "variance_fresh": 57.72727272727273,
+    "variance_fixed": 255.64104923937205
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias",
+   "note": null
+  },
+  "thrashing-does-not-wash-out": {
+   "claim": "The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor.",
+   "cited_in": [
+    "bridge sec 8.2 table",
+    "bridge Remark 5"
+   ],
+   "value": {
+    "8": {
+     "bridge_alone": 16.234087858973943,
+     "combined": 75.05393428228068
+    },
+    "32": {
+     "bridge_alone": 3.240106133533923,
+     "combined": 60.185299036361776
+    },
+    "128": {
+     "bridge_alone": 0.7319436626234632,
+     "combined": 58.3648703409539
+    },
+    "512": {
+     "bridge_alone": 0.19061943820400373,
+     "combined": 57.885769477136485
+    },
+    "2048": {
+     "bridge_alone": 0.04876310470941341,
+     "combined": 57.749773925603776
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": "tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias",
+   "note": null
+  },
+  "spread-scaling": {
+   "claim": "The persistent bias equals ||P_h (D0 s)|Eb||^2 and is exactly quadratic in the integer scale; at zero spread it is exactly zero.",
+   "cited_in": [
+    "bridge sec 8.3(i)",
+    "bridge sec 8.3(ii)"
+   ],
+   "value": {
+    "0.5": {
+     "excess": 11.931818181818183,
+     "over_lambda_sq": 47.727272727272734
+    },
+    "1.0": {
+     "excess": 47.72727272727275,
+     "over_lambda_sq": 47.72727272727275
+    },
+    "2.0": {
+     "excess": 190.909090909091,
+     "over_lambda_sq": 47.72727272727275
+    },
+    "3.0": {
+     "excess": 429.5454545454546,
+     "over_lambda_sq": 47.727272727272734
+    },
+    "flat_block": 0.0
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "A law, not a fit: the quotient by lambda^2 is constant."
+  },
+  "fabricator-family-invisible": {
+   "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
+   "cited_in": [
+    "bridge sec 8.4, Proposition 3"
+   ],
+   "value": {
+    "mean": 9.999999999999833,
+    "sd": 2.631344073992009e-13,
+    "circle_floor": 10.0
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "sd is at machine precision; the claim is exactness, not a small number."
+  },
+  "fit-window": {
+   "claim": "Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "methodology fig 3"
+   ],
+   "value": {
+    "k": [
+     8,
+     16,
+     32,
+     64,
+     128,
+     256,
+     512,
+     1024,
+     2048,
+     4096
+    ],
+    "energies": [
+     1.1570047441100688,
+     0.8379878935141839,
+     0.6989683848256087,
+     0.47969332286883326,
+     0.27121160166749975,
+     0.17738644311238114,
+     0.13131331445738867,
+     0.10914019558188492,
+     0.10119974260301792,
+     0.09412519469539628
+    ],
+    "true_floor": 0.09,
+    "intercept_full_grid": 0.18637251113678063,
+    "intercept_windowed": 0.08421886815956191
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": null
+  },
+  "filling-dependence": {
+   "claim": "b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other.",
+   "cited_in": [
+    "methodology sec 5.3 table"
+   ],
+   "value": {
+    "observed": {
+     "b1": 2,
+     "c_oracle": 18.072197533376897
+    },
+    "empty": {
+     "b1": 20,
+     "c_oracle": 160.44875095871674
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.02
+   },
+   "kind": "exact",
+   "test": null,
+   "note": null
+  },
+  "delta-method-cross-term": {
+   "claim": "The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps.",
+   "cited_in": [
+    "methodology sec 5.1"
+   ],
+   "value": {
+    "0.2": {
+     "c_fit": 17.361431930108946,
+     "c_var_only": 13.87794182579808,
+     "cross_term": 0.6619668762990131,
+     "ratio_var_only": 1.251009130030745,
+     "ratio_with_cross": 1.1940537100900024
+    },
+    "0.3": {
+     "c_fit": 18.313861301017408,
+     "c_var_only": 14.129044616088985,
+     "cross_term": 1.186929289494097,
+     "ratio_var_only": 1.296185396722656,
+     "ratio_with_cross": 1.1957359952370719
+    },
+    "0.4": {
+     "c_fit": 20.22086989069715,
+     "c_var_only": 14.405763836248957,
+     "cross_term": 1.8523255312712805,
+     "ratio_var_only": 1.4036652357034862,
+     "ratio_with_cross": 1.2437420802405967
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": null
+  },
+  "residual-across-draws": {
+   "claim": "The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
+   "cited_in": [
+    "methodology sec 9 table",
+    "methodology fig 5",
+    "methodology v7 note"
+   ],
+   "value": {
+    "ratios": [
+     0.9962283483854136,
+     0.9922583220052307,
+     0.9969456660782542,
+     1.0001325788250746,
+     0.9942387167026495,
+     0.9912071693323306,
+     0.9928254479807056,
+     0.9945132724295963,
+     0.9963235137744094,
+     0.9985905554367962,
+     0.9926971232529972,
+     1.0052482506487104,
+     0.9944045426533106,
+     0.9971580952433311,
+     0.9884014643940692,
+     0.998986442843592,
+     0.9947249147663917,
+     0.9918762610448293,
+     0.9948165566191443,
+     1.001495316557622
+    ],
+    "coverage": [
+     16,
+     15,
+     14,
+     16,
+     15,
+     15,
+     16,
+     15,
+     15,
+     14,
+     13,
+     14,
+     15,
+     13,
+     16,
+     16,
+     14,
+     13,
+     15,
+     14
+    ],
+    "mean": 0.9956536279487229,
+    "se": 0.0008766187064261056,
+    "residual_pct": 0.4346372051277081,
+    "per_draw_min_pct": -0.5248250648710373,
+    "per_draw_max_pct": 1.1598535605930826,
+    "coverage_median": 15
+   },
+   "tolerance": {
+    "kind": "abs_pct",
+    "value": 0.5
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Tolerance is 0.5 percentage points, comfortably inside the 1.0 pt per-draw spread."
+  },
+  "rho-tradeoff": {
+   "claim": "The residual falls monotonically as rho falls, because a smaller rho demands a longer tail -- but cells become unfittable as the grid stops reaching the window, so rho and the grid must be tuned together.",
+   "cited_in": [
+    "methodology sec 9",
+    "methodology fig 6 left",
+    "methodology v7 note"
+   ],
+   "value": [
+    {
+     "rho": 1.0,
+     "bias_pct": -0.11790832447868826,
+     "se_pct": 0.5703691256720503,
+     "unfittable": 4.0
+    },
+    {
+     "rho": 1.5,
+     "bias_pct": -0.05128107150544903,
+     "se_pct": 0.4562214830929817,
+     "unfittable": 4.0
+    },
+    {
+     "rho": 2.0,
+     "bias_pct": -0.1900321337469757,
+     "se_pct": 0.3897873465975803,
+     "unfittable": 3.0
+    },
+    {
+     "rho": 3.0,
+     "bias_pct": 1.5520155234853505,
+     "se_pct": 0.3095570982852962,
+     "unfittable": 0.16666666666666666
+    },
+    {
+     "rho": 4.5,
+     "bias_pct": 2.5359779240881064,
+     "se_pct": 0.27006977761077794,
+     "unfittable": 0.0
+    },
+    {
+     "rho": 6.0,
+     "bias_pct": 3.1974566713050323,
+     "se_pct": 0.2853990988684765,
+     "unfittable": 0.0
+    },
+    {
+     "rho": 9.0,
+     "bias_pct": 4.941324642896294,
+     "se_pct": 0.5111400724616214,
+     "unfittable": 0.0
+    }
+   ],
+   "tolerance": {
+    "kind": "abs_pct",
+    "value": 0.8
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Measured on the k->4096 grid, where the trade-off is visible."
+  },
+  "b1-non-monotone": {
+   "claim": "The b1=0 rate is non-monotone in n with an interior minimum; past it, more items destroy the holes the certificate reads.",
+   "cited_in": [
+    "methodology sec 10, Observation 2",
+    "methodology fig 6 right"
+   ],
+   "value": [
+    {
+     "n": 6,
+     "rate": 0.647,
+     "mean_b1": 0.42463914065122527
+    },
+    {
+     "n": 8,
+     "rate": 0.264,
+     "mean_b1": 1.1990663554518173
+    },
+    {
+     "n": 10,
+     "rate": 0.14533333333333334,
+     "mean_b1": 2.0796666666666668
+    },
+    {
+     "n": 12,
+     "rate": 0.11366666666666667,
+     "mean_b1": 2.7046666666666668
+    },
+    {
+     "n": 14,
+     "rate": 0.12633333333333333,
+     "mean_b1": 2.8783333333333334
+    },
+    {
+     "n": 16,
+     "rate": 0.158,
+     "mean_b1": 2.7453333333333334
+    },
+    {
+     "n": 18,
+     "rate": 0.21566666666666667,
+     "mean_b1": 2.322
+    },
+    {
+     "n": 20,
+     "rate": 0.279,
+     "mean_b1": 1.8993333333333333
+    },
+    {
+     "n": 24,
+     "rate": 0.448,
+     "mean_b1": 1.0886666666666667
+    },
+    {
+     "n": 28,
+     "rate": 0.6423333333333333,
+     "mean_b1": 0.564
+    }
+   ],
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Deterministic mask seeds, so drift comes only from numpy version changes."
+  },
+  "kahle-finite-n": {
+   "claim": "The vanishing threshold decays as the theory requires, but the asymptotic exponent is not yet visible at these sizes.",
+   "cited_in": [
+    "methodology sec 10 footnote"
+   ],
+   "value": {
+    "points": [
+     {
+      "n": 8,
+      "p_star": 0.5947265625,
+      "n_pow_-0.5": 0.3535533905932738
+     },
+     {
+      "n": 12,
+      "p_star": 0.5814453125,
+      "n_pow_-0.5": 0.28867513459481287
+     },
+     {
+      "n": 16,
+      "p_star": 0.5150390625,
+      "n_pow_-0.5": 0.25
+     },
+     {
+      "n": 20,
+      "p_star": 0.4751953125,
+      "n_pow_-0.5": 0.22360679774997896
+     },
+     {
+      "n": 24,
+      "p_star": 0.4486328125,
+      "n_pow_-0.5": 0.2041241452319315
+     },
+     {
+      "n": 30,
+      "p_star": 0.4287109375,
+      "n_pow_-0.5": 0.18257418583505536
+     }
+    ],
+    "fitted_exponent": -0.2737990760110971,
+    "asymptotic_exponent": -0.5
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": null
+  },
+  "adversarial-monotone": {
+   "claim": "The systematic floor follows m(m-1)/2 exactly, while the raw harmonic fraction moves far less, being diluted by per-block energy.",
+   "cited_in": [
+    "methodology sec 9"
+   ],
+   "value": [
+    {
+     "m": 0,
+     "floor": -2.557050885099772e-13,
+     "raw_fraction": 3.19268006221441e-31
+    },
+    {
+     "m": 3,
+     "floor": 2.9999999999993268,
+     "raw_fraction": 0.0008176614881439084
+    },
+    {
+     "m": 5,
+     "floor": 10.00000000000042,
+     "raw_fraction": 0.0020096463022508037
+    },
+    {
+     "m": 7,
+     "floor": 20.999999999999112,
+     "raw_fraction": 0.0033402258628916818
+    },
+    {
+     "m": 9,
+     "floor": 35.999999999999886,
+     "raw_fraction": 0.004735595895816891
+    }
+   ],
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-06
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_7_systematic_floor_monotone_in_complex_fraction",
+   "note": null
+  },
+  "zeta-blind": {
+   "claim": "On a 4-cycle beside a transitive triangle, zeta reports perfect consistency while a third of the energy is harmonic.",
+   "cited_in": [
+    "methodology sec 9"
+   ],
+   "value": {
+    "zeta": 1.0,
+    "observed_triples": 1,
+    "harmonic": 0.4
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 1e-09
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_8_zeta_misses_the_planted_harmonic",
+   "note": null
+  },
+  "guard-blind-spot": {
+   "claim": "The c-oracle check is necessary but not sufficient: configurations exist that pass it while the floor is badly wrong.",
+   "cited_in": [
+    "methodology sec 6",
+    "methodology fig 4"
+   ],
+   "value": {
+    "historical": [
+     {
+      "beta": 0.15,
+      "eps": 0.2,
+      "ratio": 0.9310242927713878,
+      "c_ratio": 1.0689437143560503,
+      "saturation": 0.05507038806242843
+     },
+     {
+      "beta": 0.15,
+      "eps": 0.3,
+      "ratio": 0.9567661253107128,
+      "c_ratio": 1.1412795671345604,
+      "saturation": 0.05097019214060273
+     },
+     {
+      "beta": 0.15,
+      "eps": 0.4,
+      "ratio": 0.9977595994927526,
+      "c_ratio": 1.099453168910478,
+      "saturation": 0.053375674109716956
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.2,
+      "ratio": 0.9670082239170563,
+      "c_ratio": 1.0990912450061954,
+      "saturation": 0.09509804365072734
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.3,
+      "ratio": 0.9646871098931331,
+      "c_ratio": 1.0548254415735299,
+      "saturation": 0.09271757575338764
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.4,
+      "ratio": 0.9652261642864618,
+      "c_ratio": 1.2258026316604913,
+      "saturation": 0.0963552592015904
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.2,
+      "ratio": 1.0233530698578561,
+      "c_ratio": 0.9132831218310493,
+      "saturation": 0.14806625710260188
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.3,
+      "ratio": 0.9749415625693674,
+      "c_ratio": 1.0893544330601304,
+      "saturation": 0.13993214789628297
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.4,
+      "ratio": 0.9639317096203757,
+      "c_ratio": 1.0989050077573133,
+      "saturation": 0.1473641630354998
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.2,
+      "ratio": 0.8705026598819788,
+      "c_ratio": 1.0818606046589585,
+      "saturation": 0.20073706479767542
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.3,
+      "ratio": 0.9854851466835289,
+      "c_ratio": 1.1393679289618786,
+      "saturation": 0.19406036576862126
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.4,
+      "ratio": 0.9901513607101056,
+      "c_ratio": 0.9774724353919306,
+      "saturation": 0.18930844966801977
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.2,
+      "ratio": 1.0022349140724707,
+      "c_ratio": 1.0983531644745652,
+      "saturation": 0.2893803266892393
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.3,
+      "ratio": 1.0100523168359263,
+      "c_ratio": 1.0916348592491847,
+      "saturation": 0.3068599964355319
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.4,
+      "ratio": 0.9685280918503099,
+      "c_ratio": 1.1281146941853617,
+      "saturation": 0.2945027638794516
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.2,
+      "ratio": 0.8816818214479845,
+      "c_ratio": 1.2934005231926973,
+      "saturation": 0.38893553060859554
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.3,
+      "ratio": 1.0375903336311416,
+      "c_ratio": 1.0750254583507757,
+      "saturation": 0.3900272707654031
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.4,
+      "ratio": 1.0504044732409252,
+      "c_ratio": 1.0952039322326752,
+      "saturation": 0.3859504628874627
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.2,
+      "ratio": 0.9774938248407337,
+      "c_ratio": 1.030089713672566,
+      "saturation": 0.4581399596735053
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.3,
+      "ratio": 0.7853617129395811,
+      "c_ratio": 1.1671221481341938,
+      "saturation": 0.4753448920604328
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.4,
+      "ratio": 1.1120305717377985,
+      "c_ratio": 0.9482397867130579,
+      "saturation": 0.458972769304518
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.2,
+      "ratio": 1.8016658017385618,
+      "c_ratio": 0.7230213360832947,
+      "saturation": 0.5185493253277659
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.3,
+      "ratio": 1.5484316373219358,
+      "c_ratio": 0.4626337446494705,
+      "saturation": 0.5113301883092125
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.4,
+      "ratio": 1.2062125699719217,
+      "c_ratio": 0.5525697757537574,
+      "saturation": 0.5127044431683758
+     }
+    ],
+    "current": [
+     {
+      "beta": 0.15,
+      "eps": 0.2,
+      "ratio": 1.0215072270712056,
+      "c_ratio": 0.965949026217002,
+      "saturation": 0.04970420737876838
+     },
+     {
+      "beta": 0.15,
+      "eps": 0.3,
+      "ratio": 1.0087773790967225,
+      "c_ratio": 0.8534667469352946,
+      "saturation": 0.05433732248902855
+     },
+     {
+      "beta": 0.15,
+      "eps": 0.4,
+      "ratio": 0.9927557071372023,
+      "c_ratio": 1.2138348022726588,
+      "saturation": 0.05260406060250783
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.2,
+      "ratio": 0.9832435054163524,
+      "c_ratio": 1.053512814689335,
+      "saturation": 0.09252218923589661
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.3,
+      "ratio": 0.9967210174323554,
+      "c_ratio": 1.0464619888042312,
+      "saturation": 0.09747827494681775
+     },
+     {
+      "beta": 0.2,
+      "eps": 0.4,
+      "ratio": 0.9938277972855492,
+      "c_ratio": 1.1115864697479854,
+      "saturation": 0.09537348308664825
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.2,
+      "ratio": 0.9954155258847147,
+      "c_ratio": 0.9821056023806444,
+      "saturation": 0.14001106771281538
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.3,
+      "ratio": 1.0141305931839473,
+      "c_ratio": 1.0370166019986975,
+      "saturation": 0.1387405628459129
+     },
+     {
+      "beta": 0.25,
+      "eps": 0.4,
+      "ratio": 0.9917497539777029,
+      "c_ratio": 1.145945636234876,
+      "saturation": 0.14739035240480147
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.2,
+      "ratio": 1.0068408263684046,
+      "c_ratio": 1.143474479519912,
+      "saturation": 0.19777060323557788
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.3,
+      "ratio": 0.9775460055758723,
+      "c_ratio": 1.253249503974502,
+      "saturation": 0.21107870245102636
+     },
+     {
+      "beta": 0.3,
+      "eps": 0.4,
+      "ratio": 0.9992408977371088,
+      "c_ratio": 1.0198655692982719,
+      "saturation": 0.18811453923577034
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.2,
+      "ratio": 0.9693454687647236,
+      "c_ratio": 1.1023603149281045,
+      "saturation": 0.28799037792208404
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.3,
+      "ratio": 0.9890503145379967,
+      "c_ratio": 1.1547973635055393,
+      "saturation": 0.30985754686268246
+     },
+     {
+      "beta": 0.4,
+      "eps": 0.4,
+      "ratio": 0.96672551537999,
+      "c_ratio": 1.291716336749185,
+      "saturation": 0.28952772206489397
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.2,
+      "ratio": 1.001263509968688,
+      "c_ratio": 1.1153790188010604,
+      "saturation": 0.3929559999892831
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.3,
+      "ratio": 0.9973227659212586,
+      "c_ratio": 1.1822339632974312,
+      "saturation": 0.37505228872137153
+     },
+     {
+      "beta": 0.5,
+      "eps": 0.4,
+      "ratio": 0.9838833588670558,
+      "c_ratio": 1.043457495424244,
+      "saturation": 0.38993531674009757
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.2,
+      "ratio": 1.0979953343324773,
+      "c_ratio": 0.9700770739490674,
+      "saturation": 0.4620155040035519
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.3,
+      "ratio": 1.0146152895789788,
+      "c_ratio": 1.1493542617045174,
+      "saturation": 0.46221579127948126
+     },
+     {
+      "beta": 0.6,
+      "eps": 0.4,
+      "ratio": 0.9951031494446733,
+      "c_ratio": 1.2405030166742894,
+      "saturation": 0.4525582477542381
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.2,
+      "ratio": 0.04910974622021041,
+      "c_ratio": 0.9961136419048792,
+      "saturation": 0.5071311613061827
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.3,
+      "ratio": 0.930429927283577,
+      "c_ratio": 1.1015635532046983,
+      "saturation": 0.5072971127933013
+     },
+     {
+      "beta": 0.7,
+      "eps": 0.4,
+      "ratio": 1.062179362063511,
+      "c_ratio": 0.8742692484283583,
+      "saturation": 0.5018177540282691
+     }
+    ]
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.1
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": null
+  },
+  "saturation-gate": {
+   "claim": "beta=0.3 sits on the saturation gate; 0.25 clears it.",
+   "cited_in": [
+    "methodology sec 6",
+    "spec sec 2.6, Delta E"
+   ],
+   "value": {
+    "0.25": {
+     "mean": 0.14218989707286175,
+     "p95": 0.17841173596021673,
+     "reject_pct": 0.5
+    },
+    "0.3": {
+     "mean": 0.19534776476978064,
+     "p95": 0.24282327751181124,
+     "reject_pct": 43.45
+    },
+    "0.6": {
+     "mean": 0.4556218479022175,
+     "p95": 0.5335619369903992,
+     "reject_pct": 100.0
+    }
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "kind": "stochastic",
+   "test": "tests/test_invariants.py::test_2_6_saturation_gate_rejects_extreme_separation",
+   "note": null
+  }
+ }
+}

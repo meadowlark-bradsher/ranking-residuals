@@ -42,9 +42,10 @@ and holding the two notationally distinct is what makes the agreement between
 them usable as a misspecification check.
 
 As illustrated in empirical sweeps, the small-$k$ tail is heavily dominated by
-the non-linear $\mathcal{O}(1/k^2)$ logit-bias term. Fitting across a full
-unwindowed grid ($k \in [8, 1024]$) artificially shifts the intercept upward to
-$0.220$ against a true misspecification oracle of $\epsilon^2 = 0.090$.
+the non-linear $\mathcal{O}(1/k^2)$ logit-bias term. Fitting across the full
+unwindowed grid ($k \in [8, 4096]$) artificially shifts the intercept upward to
+$0.186$ against a true misspecification oracle of $\epsilon^2 = 0.090$; on the
+shorter $k \in [8, 1024]$ grid the same fit gives $0.223$.
 Restricting the estimation window to the clean asymptotic tail ($k \ge 64$)
 suppresses the quadratic bias and recovers the analytical oracle floor to
 $0.87\text{--}0.95\times$ across separation parameters $\beta \in [0.15, 0.30]$.
@@ -69,7 +70,7 @@ identical boundary topologies:
 \begin{enumerate}
     \item \textbf{Observed Filling:} Complex cyclic triads are closed into solid
     2D faces upon observation, yielding a tighter harmonic footprint
-    ($b_1 = 2$, $c_{\text{oracle}} = 17$ on the reference graph).
+    ($b_1 = 2$, $c_{\text{oracle}} \approx 18$ on the reference graph).
     \item \textbf{Empty Filling:} Triads are left un-filled, treating local
     cyclic contradictions as persistent global harmonic holes
     ($b_1 = 20$, $c_{\text{oracle}} = 160$).

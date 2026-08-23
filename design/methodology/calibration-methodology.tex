@@ -346,7 +346,9 @@ mask is drawn once per seed; only the Bernoulli outcomes vary with $k$.
 
 The $O(k^{-2})$ term in \eqref{eq:model} is not negligible at small $k$, and a
 two-parameter fit absorbs it into the intercept. Fitting the full grid biases the
-floor by factors of $0.83$ to $2.48$ depending on separation. Adding an explicit
+floor by factors of $0.83$ to $2.48$ depending on separation --- on the graph of
+Figure~\ref{fig:window} an intercept of $0.186$ against a true floor of $0.090$,
+where the windowed fit gives $0.084$. Adding an explicit
 $c_2/k^2$ term is worse, not better --- it is poorly conditioned and eats the
 intercept. Discarding the contaminated points works.
 
@@ -361,7 +363,7 @@ graph:
 \toprule
 \textbf{Filling} & $b_1$ & $c$ & \textbf{floor at $k\!\geq\!64$} & \textbf{true} \\
 \midrule
-observed & $2$  & $17$  & $0.0807$ & $0.090$ \\
+observed & $2$  & $18$  & $0.0807$ & $0.090$ \\
 empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
 \bottomrule
 \end{tabular}
