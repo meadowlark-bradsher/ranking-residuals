@@ -1,0 +1,104 @@
+% Combined draft. Generated body: run build.py after editing either source paper.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1.05in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\definecolor{NavyLink}{HTML}{1F4E79}
+\definecolor{RuleGrey}{HTML}{888888}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,decorations.pathmorphing}
+\usepackage[T1]{fontenc}
+\usepackage[colorlinks=true,linkcolor=NavyLink,citecolor=NavyLink,urlcolor=NavyLink]{hyperref}
+\graphicspath{{../}}
+% The sources are set at 1in margins; this draft uses 1.05in, which leaves a few
+% paragraphs a couple of points over. Let TeX stretch rather than reword them.
+\emergencystretch=1.5em
+
+\newtheorem{observation}{Observation}
+\newtheorem{principle}{Principle}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}\newtheorem{definition}{Definition}
+\theoremstyle{remark}\newtheorem{remark}{Remark}
+
+\newcommand{\grad}{\operatorname{grad}}
+\newcommand{\curl}{\operatorname{curl}}
+\newcommand{\harm}{\operatorname{harm}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\im}{\operatorname{im}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Ph}{P_{\mathrm{h}}}
+\newcommand{\Pg}{P_{\mathrm{g}}}
+\newcommand{\Pc}{P_{\mathrm{c}}}
+
+\title{\vspace{-1.5em}Calibrating a Harmonic Rankability Certificate:\\
+Known Answers, Forced Structure, and the Limits of Transfer}
+\author{Meadowlark Bradsher}
+\date{August 2026 --- combined draft}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+A rankability certificate based on the Hodge decomposition of a comparison graph
+reports the fraction of comparison flow admitting no consistent scalar ordering.
+Used as a decision procedure it needs a threshold, and the threshold cannot be
+read off the mathematics: on finite, noisy, sparsely sampled data a genuinely
+rankable criterion still deposits harmonic mass. This draft combines two lines of
+work on that problem. The first manufactures comparison data whose decomposition
+is known in closed form, validates an instrument against those known answers, and
+records the estimator, guard, and reporting disciplines that survived contact
+with measurement. The second asks which of those known answers are theorems about
+the construction rather than empirical facts, and finds that the harmonic signal
+is invariant across every bridge whose mean flow is a gradient, that the block
+structure is forced by symmetry everywhere except on the bridge, and that one
+bias-plus-variance identity on the harmonic projector organises the whole
+apparatus. Their intersection is the operative result: the shape of every
+harmonic reading is available without running the instrument, the constants are
+not, and the reason is the same topology-dependence that forbids a universal
+threshold.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+\input{combined-body}
+
+\begin{thebibliography}{9}
+\bibitem{jiang2011}
+X.~Jiang, L.-H.~Lim, Y.~Yao, and Y.~Ye.
+\newblock Statistical ranking and combinatorial Hodge theory.
+\newblock \emph{Mathematical Programming}, 127(1):203--244, 2011.
+
+\bibitem{kahle2014}
+M.~Kahle.
+\newblock Topology of random simplicial complexes: a survey.
+\newblock In \emph{Algebraic Topology: Applications and New Directions},
+volume 620 of \emph{Contemporary Mathematics}, pages 201--221. American
+Mathematical Society, 2014. \newblock arXiv:1301.7165.
+
+\bibitem{kendall1940}
+M.~G.~Kendall and B.~Babington Smith.
+\newblock On the method of paired comparisons.
+\newblock \emph{Biometrika}, 31(3/4):324--345, 1940.
+
+\bibitem{bradley1952}
+R.~A.~Bradley and M.~E.~Terry.
+\newblock Rank analysis of incomplete block designs: I. The method of paired
+comparisons.
+\newblock \emph{Biometrika}, 39(3/4):324--345, 1952.
+\end{thebibliography}
+
+\end{document}
