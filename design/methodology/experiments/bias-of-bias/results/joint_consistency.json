@@ -1,0 +1,82 @@
+{
+ "probe": "joint_consistency",
+ "question": "Are the tight window and the logit correction two views of one cause, or two independent channels?",
+ "falsifies": "If the correction still removes a comparable amount at the tightest window, they are separate channels and neither fix is complete on its own.",
+ "verdict": "supported",
+ "value": {
+  "rows": [
+   {
+    "window": 64,
+    "uncorrected": 0.05466117562367247,
+    "uncorrected_se": 0.003224771143411208,
+    "firth": -0.002701731416647835,
+    "firth_se": 0.002217600649605545,
+    "correction_effect": -0.0573629070403203
+   },
+   {
+    "window": 128,
+    "uncorrected": 0.01772375440276497,
+    "uncorrected_se": 0.0019298661005596313,
+    "firth": 0.004134215915218835,
+    "firth_se": 0.0015858216788578298,
+    "correction_effect": -0.013589538487546134
+   },
+   {
+    "window": 256,
+    "uncorrected": 0.005168178478174271,
+    "uncorrected_se": 0.0014352211974424677,
+    "firth": 0.0015810913163019297,
+    "firth_se": 0.0013989200568496514,
+    "correction_effect": -0.003587087161872341
+   },
+   {
+    "window": 512,
+    "uncorrected": 0.0017146300986068002,
+    "uncorrected_se": 0.0013253284017743204,
+    "firth": 0.0005556726422860348,
+    "firth_se": 0.0013141117839655242,
+    "correction_effect": -0.0011589574563207654
+   },
+   {
+    "window": 1024,
+    "uncorrected": 0.0003846375472192521,
+    "uncorrected_se": 0.0015882891025588344,
+    "firth": -2.4472440569211876e-05,
+    "firth_se": 0.0015825972539194376,
+    "correction_effect": -0.000409109987788464
+   },
+   {
+    "window": 2048,
+    "uncorrected": -0.0032059733954057116,
+    "uncorrected_se": 0.0024239754248874747,
+    "firth": -0.003365140164340177,
+    "firth_se": 0.002420688100386467,
+    "correction_effect": -0.00015916676893446523
+   }
+  ],
+  "effect_decays": true,
+  "effect_shrinkage_tightest_over_loosest": 0.0027747333101962065
+ },
+ "config": {
+  "n": 12,
+  "p": 0.45,
+  "beta": 0.25,
+  "gamma": 2.0,
+  "ks": [
+   16,
+   32,
+   64,
+   128,
+   256,
+   512,
+   1024,
+   2048,
+   4096
+  ],
+  "seeds": 220,
+  "reps": 384,
+  "filling": "observed",
+  "eps": 0.3
+ },
+ "note": "Applying both must not overcorrect; if it did, they would be double-counting one bias."
+}

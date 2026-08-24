@@ -1,0 +1,42 @@
+{
+ "probe": "bias_corrected",
+ "question": "Does correcting the plug-in logit bias collapse the residual?",
+ "falsifies": "The residual shrinking by less than half refutes the logit transform as the dominant cause; growing refutes it outright.",
+ "verdict": "supported",
+ "value": {
+  "uncorrected": {
+   "mean": 0.007220472395790976,
+   "se": 0.0015627562462955135,
+   "n": 189
+  },
+  "firth": {
+   "mean": 0.001283831047403698,
+   "se": 0.0014364607644048425,
+   "n": 189
+  },
+  "ratio_after_over_before": 0.17780430102496902
+ },
+ "config": {
+  "n": 12,
+  "p": 0.45,
+  "beta": 0.25,
+  "gamma": 2.0,
+  "ks": [
+   16,
+   32,
+   64,
+   128,
+   256,
+   512,
+   1024,
+   2048,
+   4096
+  ],
+  "seeds": 220,
+  "reps": 384,
+  "filling": "observed",
+  "eps": 0.3,
+  "rho": 1.5
+ },
+ "note": "Y_corrected = logit(p^) - (2p^-1)/(2k p^(1-p^))."
+}

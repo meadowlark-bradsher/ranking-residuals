@@ -1,0 +1,87 @@
+{
+ "probe": "rho_squared",
+ "question": "Does the residual bias scale as rho^2, as pure curvature leak predicts?",
+ "falsifies": "bias/rho^2 should be a constant. A reduced chi-square above 5 against a common constant refutes rho^2 scaling; below 2 supports it.",
+ "verdict": "refuted",
+ "value": {
+  "rows": [
+   {
+    "rho": 0.5,
+    "bias_frac": 0.0019550270931250426,
+    "se": 0.0014607578267133966,
+    "n": 189,
+    "median_window": 409.27890475474504
+   },
+   {
+    "rho": 1.0,
+    "bias_frac": 0.004102049565125062,
+    "se": 0.001440797731636527,
+    "n": 189,
+    "median_window": 204.63945237737252
+   },
+   {
+    "rho": 2.0,
+    "bias_frac": 0.014927770209461507,
+    "se": 0.0017676017244701563,
+    "n": 189,
+    "median_window": 102.31972618868626
+   },
+   {
+    "rho": 4.0,
+    "bias_frac": 0.03814461016725506,
+    "se": 0.002470086528316162,
+    "n": 189,
+    "median_window": 51.15986309434313
+   },
+   {
+    "rho": 8.0,
+    "bias_frac": 0.05206003324598877,
+    "se": 0.004885299560263082,
+    "n": 189,
+    "median_window": 25.579931547171565
+   },
+   {
+    "rho": 12.0,
+    "bias_frac": 0.0453168098780228,
+    "se": 0.007520317103391818,
+    "n": 189,
+    "median_window": 17.053287698114374
+   }
+  ],
+  "ratio_weighted_mean": 0.0006423603535708029,
+  "chi2": 227.8216375798625,
+  "dof": 5,
+  "reduced_chi2": 45.5643275159725
+ },
+ "config": {
+  "n": 12,
+  "p": 0.45,
+  "beta": 0.25,
+  "gamma": 2.0,
+  "ks": [
+   16,
+   32,
+   64,
+   128,
+   256,
+   512,
+   1024,
+   2048,
+   4096
+  ],
+  "seeds": 220,
+  "reps": 384,
+  "filling": "observed",
+  "eps": 0.3,
+  "rhos": [
+   0.5,
+   1.0,
+   2.0,
+   4.0,
+   8.0,
+   12.0
+  ],
+  "fit_k_min": 0
+ },
+ "note": "Same draws refitted at each rho, window unclamped: rho is isolated exactly."
+}
