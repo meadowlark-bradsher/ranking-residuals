@@ -1,5 +1,21 @@
 # bias-of-bias
 
+> **Status: independent replication, not the cited source.**
+>
+> The exact-energy residual computed here (`report_exact.py` ->
+> `results/exact_energy_residual.json`, **+0.36349% +- 0.00199%** over 20 base
+> seeds) replicates the registered claim `residual-exact` in
+> `../../evidence/`, which reports **+0.36238% +- 0.00238%** and is the value
+> the paper quotes.
+>
+> The two agree well inside either standard error. They are not bit-identical:
+> the implementations were written separately, and small differences in cell
+> handling are enough to move the fourth decimal. That is what makes this a
+> useful replication rather than a second opinion from the same code -- but it
+> also means **only one of them should ever be cited**. Cite `residual-exact`.
+> Treat a disagreement between the two beyond a few standard errors as a signal
+> that one implementation has drifted, and reconcile before publishing either.
+
 Hunting the mechanism behind the residual in the floor estimator.
 
 The name is literal. The floor the rig recovers *is* a bias term —

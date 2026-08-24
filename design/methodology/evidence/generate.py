@@ -659,9 +659,16 @@ def residual_exact(cfg):
           "near-deterministic.",
           cited_in=["methodology sec 9 table", "methodology fig 5", "methodology v8 note"],
           value=two, tol={"kind": "abs", "value": 0.02}, kind="stochastic",
-          note="Deterministic given the mask, so this reproduces bit-for-bit on fixed "
+          note="CANONICAL value for the exact residual; the paper quotes this one. "
+               "Deterministic given the mask, so it reproduces bit-for-bit on fixed "
                "numpy; the residual stochasticity is topology draw only. Compare "
-               "residual-across-draws, which is the same quantity measured at reps=16.")
+               "residual-across-draws, the same quantity measured at reps=16. "
+               "An INDEPENDENT REPLICATION lives at design/methodology/experiments/"
+               "bias-of-bias (report_exact.py -> results/exact_energy_residual.json) "
+               "and reports +0.36349% +- 0.00199%. It agrees well inside either "
+               "standard error but is not bit-identical, the two implementations "
+               "having been written separately; cite this claim rather than that file "
+               "so a single number travels.")
 
     claim("residual-fit-variants", asserts="Because c2 is a closed form it can be subtracted "
           "rather than fitted. Subtracting it removes most of the residual; fitting it as a "
