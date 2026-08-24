@@ -314,17 +314,28 @@ c \;=\; \tr\!\Big(\Ph \cdot \operatorname{diag}\big(1/(p_e(1-p_e))\big)\Big),
 \end{equation}
 which gives an independent check on the fit. Equation~\eqref{eq:coracle} is not
 the whole $O(k^{-1})$ coefficient. The plug-in estimator $\mathrm{logit}(\hat
-p_e)$ also carries a mean bias $b_e=(2p_e-1)/\bigl(2p_e(1-p_e)\bigr)$ at order
-$k^{-1}$, and expanding $\|\Ph\mathbb{E}[Y]\|^2$ rather than
-$\mathbb{E}\|\Ph Y\|^2$ leaves a cross term
-$2\varepsilon\langle h,\Ph b\rangle/k$ beside it. Measured on one graph, adding
-it moves the fitted-to-predicted ratio from $1.251$, $1.296$, $1.404$ to
-$1.194$, $1.196$, $1.244$ at $\varepsilon=0.2,0.3,0.4$ --- not closing the gap,
-but flattening its drift in $\varepsilon$, which is the part that made the check
-hard to read. The residual disagreement is a further $O(k^{-1})$ contribution not
-yet accounted for. We keep \eqref{eq:coracle} as the shipped predictor, since it
-is what the guard was calibrated against, and record the cross term as the
-identified next term rather than an unexplained constant. Model \eqref{eq:model} is linear in
+p_e)$ is a raw clamped logit --- the $1/(2k)$ clamp binds only at $w\in\{0,k\}$,
+with probability below $10^{-13}$ across the fit window, so it is not a
+continuity correction --- and therefore carries its mean bias
+$b_e=(2p_e-1)/\bigl(2p_e(1-p_e)\bigr)$ at order $k^{-1}$ in full. Expanding
+$\|\Ph\mathbb{E}[Y]\|^2$ rather than $\mathbb{E}\|\Ph Y\|^2$ leaves a cross term
+beside it, and because $\Ph\lambda = \varepsilon h$ exactly it collapses to a
+scalar with no projector left in it:
+\begin{equation}
+c_1 \;=\; \tr(\Ph V) \;+\; 2\varepsilon\,\langle h, b\rangle,
+\qquad V=\operatorname{diag}\big(1/(p_e(1-p_e))\big).
+\label{eq:c1}
+\end{equation}
+Computed on exact binomial energies rather than sampled ones,
+\eqref{eq:c1} reproduces the measured $O(k^{-1})$ coefficient to eight decimal
+places on both calibration topologies, while \eqref{eq:coracle} alone is short by
+$4.5\%$ and $0.2\%$. The cross term therefore \emph{completes} the delta-method
+oracle rather than refining it, and there is no further $O(k^{-1})$
+contribution: an earlier reading of this gap as one was an artefact of estimating
+$c$ with a two-parameter fit on sampled energies, which absorbs part of the
+$O(k^{-2})$ term treated in \S\ref{subsec:window}. We keep \eqref{eq:coracle} as
+the shipped predictor, since it is what the guard was calibrated against and what
+the derived window uses. Model \eqref{eq:model} is linear in
 $(\text{floor}, c)$ under $x = 1/k$, so the floor is simply the intercept of an
 ordinary least-squares line, fitted per seed --- the graph, and hence $\Ph$ and
 the true floor, are held fixed within a seed --- and aggregated across seeds.
@@ -348,9 +359,14 @@ The $O(k^{-2})$ term in \eqref{eq:model} is not negligible at small $k$, and a
 two-parameter fit absorbs it into the intercept. Fitting the full grid biases the
 floor by factors of $0.83$ to $2.48$ depending on separation --- on the graph of
 Figure~\ref{fig:window} an intercept of $0.186$ against a true floor of $0.090$,
-where the windowed fit gives $0.084$. Adding an explicit
-$c_2/k^2$ term is worse, not better --- it is poorly conditioned and eats the
-intercept. Discarding the contaminated points works.
+where the windowed fit gives $0.084$. Adding $c_2/k^2$ as a \emph{free} third
+parameter is worse, not better --- on sampled energies it is poorly conditioned
+and eats the intercept. What that objection assumed, and what \S\ref{sec:results}
+retires, is that $c_2$ is unknown. It is not: it has a closed form in the null
+the rig already constructs, so the leak can be removed by subtracting a known
+quantity rather than by spending a parameter to recover it. Discarding the
+contaminated points remains the cheaper option; subtracting $c_2$ is the option
+when the last tenth of a percent matters.
 
 Our first formulation declared a constant, $k \geq 64$. That was calibrated under
 the observed filling and is wrong under any filling with a different $c$. On one
@@ -465,7 +481,10 @@ the best of twenty draws.
 \caption{Twenty independent base seeds of the same quantity, with the three
 figures we successively reported as \emph{the} result marked below. Each was a
 legitimate draw; none was the quantity. The spread is wide enough that a single
-run supports almost any of them.\label{fig:draws}}
+run supports almost any of them --- but the spread is Monte Carlo. The same
+quantity computed with exact energies is $+0.3624\% \pm 0.0024\%$, a per-draw
+range of $0.046$ pt against the $1.685$ pt plotted here. The three figures are
+draws from the sampling law, not from the estimator.\label{fig:draws}}
 \end{figure}
 
 The mechanism that exposed it is worth stating because it recurs: adding one
@@ -479,8 +498,8 @@ reproduce byte-identical output.
 \section{Validation protocol}
 
 Acceptance is defined as a numbered list of claims, each with a test that
-exercises it against the real instrument. The current suite is $62$ tests in
-$2.4$ seconds, fast enough to run on every edit. Three features are deliberate.
+exercises it against the real instrument. The current suite is $70$ tests in
+$4.5$ seconds, fast enough to run on every edit. Three features are deliberate.
 
 \emph{Negative controls carry equal weight.} $\varepsilon=0$ must yield a floor
 whose interval covers zero; the symmetric latent shape must yield a floor
@@ -498,7 +517,7 @@ marker converted the pass into a failure and forced the stale exemption to be
 deleted rather than carried on unexamined. A widened tolerance would have
 absorbed the improvement silently.
 
-\section{Results}
+\section{Results}\label{sec:results}
 
 The instrument reproduces every known answer (Table 2). The synthetic adversarial
 sweep behaves as predicted: with equal spacing every complex--complex edge
@@ -534,16 +553,66 @@ $\rho = 1.5$, grid to $16384$  & $+0.43\% \pm 0.09\%$ & median $15/16$ & $0.00$ 
 $(-0.7\%, +3.4\%)$ to $(-0.52\%, +1.16\%)$.\label{tab:rho}}
 \end{table}
 
-A bias of $+0.43\% \pm 0.09\%$ survives both levers. It remains statistically
-real ($t=5.0$) but is now roughly a third of the per-cell sampling spread ---
-below the resolution at which any single sweep can see it. Neither margin nor
-grid length removes it, so closing it further would require a different
-mechanism. We note its direction: the floor is under-read, so a threshold
-calibrated from it sits slightly low, biasing toward false alarms rather than
-missed detections. For an instrument whose purpose is detecting non-rankability,
-that is the conservative direction in which to be wrong.
+A bias of $+0.43\% \pm 0.09\%$ survives both levers, and neither margin nor grid
+length removes it --- because neither addresses it. The residual is not an
+unexplained constant but the $O(k^{-2})$ term of \eqref{eq:model} leaking into a
+two-parameter intercept. Over any window of positive $x=1/k$ the omitted
+$c_2/k^2$ projects onto the constant and biases the fitted intercept low, by the
+amount the residual measures.
 
-\section{Scope: the threshold is topology-bound}
+Two facts fix what $c_2$ is. The mean bias $b$ that completes the $O(k^{-1})$
+coefficient in \eqref{eq:c1} is nearly irrelevant here: expanding both the mean
+and the variance to second order gives
+$c_2 = \langle b,\Ph b\rangle + 2\varepsilon\langle h,b_2\rangle + \sum_e
+(\Ph)_{ee}\,v_2(p_e)$, and the composition is $95$--$99\%$ the third term, with
+$\langle b,\Ph b\rangle$ contributing about $1\%$. The expectation that whatever
+drives the $1/k$ correction also drives the $1/k^2$ one is wrong by two orders of
+magnitude. The term that does drive it is the second-order \emph{variance} of the
+logit, in closed form
+\begin{equation}
+v_2(p) \;=\; \frac{2}{pq} \;+\; \frac{3}{2}\cdot\frac{(2p-1)^2}{(pq)^2},
+\qquad q = 1-p,
+\label{eq:v2}
+\end{equation}
+confirmed against exact binomial moments and independently by a third-order delta
+method, in which the $2/(pq)$ piece is the near-boundary $g'g'''$ tail.
+
+Computed with exact energies over $20$ base seeds --- no Monte Carlo --- the
+residual is $+0.3624\% \pm 0.0024\%$. Two consequences follow. First, the shipped
+$\pm 0.09$ pt band was almost entirely $\texttt{reps}=16$ sampling noise rather
+than base-seed variation: the underlying quantity is near-deterministic, and its
+standard error is some forty times narrower than the sampled figure it explains.
+Second, the residual grows with $\varepsilon$ as part of the same mechanism, not
+separately --- the derived window $k_{\min} = \tr(\Ph V)/(\rho\varepsilon^2)$
+admits lower-$k$ points as $\varepsilon$ rises, so larger-$\varepsilon$ cells fit
+nearer the region where $c_2/k^2$ is largest.
+
+Three computations confirm the attribution, all exact on both sides. Subtracting
+the closed-form $c_2$ before the two-parameter fit moves the residual to
+$+0.0791\% \pm 0.0010\%$; fitting $c_2$ as a third parameter moves it to
+$-0.0088\% \pm 0.0004\%$; and changing the edge estimator moves the residual in
+the proportion its $c_2$ moves. A per-edge continuity-corrected estimator
+$\mathrm{logit}\big((w+\tfrac12)/(k+1)\big)$ has $v_2^F = \tfrac12
+(2p-1)^2/(pq)^2$ --- it annihilates the $2/(pq)$ boundary term of \eqref{eq:v2}
+outright --- giving $21.19\%$ of the raw $c_2$ on this topology and $22.75\%$ of
+the raw residual, agreement to under $2$ pp. That estimator is used here only as
+a diagnostic probe, and only per edge; it is not Firth-penalised Bradley--Terry
+on the joint design, whose penalty does not factorise over edges and which we
+have not tested.
+
+No universal reduction factor exists, which is itself the point:
+$v_2^F/v_2$ runs from $0$ at $p=\tfrac12$ to $\tfrac13$ as $p\to 0$, so the
+corrected-to-raw $c_2$ ratio is bounded in $(0,\tfrac13)$ and set by the
+$\Ph$-weighted edge-probability mix --- $5.2\%$ on a mid-range topology against
+$21.2\%$ on one whose edges reach $p\approx0.08$. The mechanism is universal; its
+magnitude is topological, as \S\ref{sec:scope} would predict.
+
+The direction is unchanged and remains the conservative one: the floor is
+under-read, so a threshold calibrated from it sits slightly low, biasing toward
+false alarms rather than missed detections. For an instrument whose purpose is
+detecting non-rankability, that is the direction in which to be wrong.
+
+\section{Scope: the threshold is topology-bound}\label{sec:scope}
 
 The most consequential limit the method establishes is not a defect but a fact
 about the object.
