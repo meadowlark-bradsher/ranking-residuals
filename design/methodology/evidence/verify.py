@@ -103,8 +103,10 @@ def main():
     cfg = generate.structural()
     generate.bridge(cfg)
     generate.estimator(cfg)
+    generate.residual_mechanism(cfg)
     if "--fast" not in sys.argv:
         generate.sweeps(cfg)
+        generate.residual_exact(cfg)
     fresh = generate.CLAIMS
 
     print(f"  stored {stored['meta']['generated']} on numpy {stored['meta']['numpy']}"

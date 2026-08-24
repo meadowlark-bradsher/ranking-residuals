@@ -7,11 +7,11 @@
   }
  },
  "meta": {
-  "generated": "2026-08-23",
-  "commit": "af12b5a",
+  "generated": "2026-08-24",
+  "commit": "c352252",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 23
+  "n_claims": 30
  },
  "claims": {
   "pm1-trap": {
@@ -387,6 +387,155 @@
    "kind": "stochastic",
    "test": null,
    "note": null
+  },
+  "c1-cross-term-completes": {
+   "claim": "The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 4.5% and 0.2%.",
+   "cited_in": [
+    "methodology sec 5.1",
+    "methodology sec 9"
+   ],
+   "value": {
+    "nZ6": {
+     "measured": 4.393506881295747,
+     "tr_Ph_V": 4.205506721102253,
+     "cross": 0.18800016022346278,
+     "closed": 4.393506881325716,
+     "ratio_to_closed": 0.9999999999931788,
+     "ratio_to_var_only": 1.0447033312894622
+    },
+    "nZ12": {
+     "measured": 36.761258893769195,
+     "tr_Ph_V": 36.6868917091739,
+     "cross": 0.07436725039036605,
+     "closed": 36.761258959564266,
+     "ratio_to_closed": 0.9999999982102062,
+     "ratio_to_var_only": 1.0020270778234586
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 1e-06
+   },
+   "kind": "exact",
+   "test": "tests/test_invariants.py::test_7_c1_equals_variance_plus_cross",
+   "note": null
+  },
+  "c2-variance-dominated": {
+   "claim": "The 1/k^2 coefficient is 95-99% the SECOND-ORDER VARIANCE of the logit and only ~1% the mean-bias term b'P_h b. The natural expectation that the vector driving the 1/k correction also drives the 1/k^2 one is wrong by two orders of magnitude.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "methodology sec 9"
+   ],
+   "value": {
+    "c2": {
+     "nZ6": {
+      "measured": 10.401285336847653,
+      "reconstructed": 10.401285314071917,
+      "ratio": 0.9999999978102959
+     },
+     "nZ12": {
+      "measured": 207.6015938147723,
+      "reconstructed": 207.60043090084798,
+      "ratio": 0.9999943983381682
+     }
+    },
+    "composition": {
+     "nZ6": {
+      "b_Ph_b": 0.009439020482356281,
+      "cross_2nd": 0.044805471559806846,
+      "variance": 0.9457555079578368
+     },
+     "nZ12": {
+      "b_Ph_b": 0.014619519829234595,
+      "cross_2nd": -0.00514285398852339,
+      "variance": 0.9905233341592888
+     }
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.0001
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "Decomposition reconstructs the measured c2 to ~1e-6 relative, so the three terms are the whole of it -- there is no unaccounted fourth contribution."
+  },
+  "v2-closed-forms": {
+   "claim": "The 1/k^2 variance coefficient has closed form v2 = 2/(pq) + (3/2)(2p-1)^2/(pq)^2 for the shipped clamped logit, and v2 = (1/2)(2p-1)^2/(pq)^2 for a per-edge continuity-corrected estimator. Both match the exact extraction to its own precision; the corrected form is zero at p = 1/2.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "methodology sec 9"
+   ],
+   "value": {
+    "clamped_logit": {
+     "max_abs_dev": 0.003170738535558826,
+     "closed_at_p": {
+      "0.08": 222.56025519848765,
+      "0.15": 60.89965397923875,
+      "0.25": 21.333333333333332,
+      "0.35": 11.399589421567445,
+      "0.45": 8.32568105295378,
+      "0.55": 8.325681052953781,
+      "0.70": 14.96598639455782,
+      "0.80": 33.593750000000014
+     }
+    },
+    "firth": {
+     "max_abs_dev": 0.0031773669168249086,
+     "closed_at_p": {
+      "0.08": 65.12878071833647,
+      "0.15": 15.07112648981161,
+      "0.25": 3.5555555555555554,
+      "0.35": 0.8694602101195512,
+      "0.45": 0.08162432404856641,
+      "0.55": 0.08162432404856662,
+      "0.70": 1.8140589569160985,
+      "0.80": 7.031250000000004
+     }
+    }
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.005
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "Tolerance is extraction-limited, not form-limited: the polynomial fit resolves v2 to ~1e-3 absolute at the extreme p, well inside the gap between these two forms. Independently derived by third-order delta method."
+  },
+  "firth-localises-boundary": {
+   "claim": "A per-edge continuity-corrected estimator removes the c1 cross term exactly (c1_F = tr(P_h V)) and annihilates the 2/(pq) near-boundary term of v2, cutting the asymmetry term 3/2 -> 1/2. The resulting c2 ratio is bounded in (0, 1/3) and is set by the P_h-weighted edge-probability mix -- 5.2% on a mid-range topology, 21.2% on one whose edges reach p ~ 0.08. No universal reduction factor exists.",
+   "cited_in": [
+    "methodology sec 9"
+   ],
+   "value": {
+    "nZ6": {
+     "c1_raw": 4.393506881295747,
+     "c1_firth": 4.205506721103552,
+     "c1_firth_minus_trPhV": 1.298516849601583e-12,
+     "c2_raw": 10.401285336847653,
+     "c2_firth": 0.5407566226823424,
+     "c2_ratio": 0.05198940372942706,
+     "p_edge_min": 0.2502859718315365,
+     "p_edge_max": 0.4657526085558434
+    },
+    "nZ12": {
+     "c1_raw": 36.761258893769195,
+     "c1_firth": 36.68689169869875,
+     "c1_firth_minus_trPhV": -1.0475147860233847e-08,
+     "c2_raw": 207.6015938147723,
+     "c2_firth": 43.98725649912183,
+     "c2_ratio": 0.21188303852025547,
+     "p_edge_min": 0.07905004439291399,
+     "p_edge_max": 0.48308545024687644
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.0001
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "DIAGNOSTIC PROBE, not a recommended fix, and PER-EDGE only: this is the drop-in for logodds_from_counts, exactly (w+1/2)/(k+1) with no clamp needed. It is NOT Firth-penalised BTL on the joint sparse design, whose penalty does not factorise over edges and is untested. Do not write 'Firth' unqualified."
   },
   "residual-across-draws": {
    "claim": "The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
@@ -1073,6 +1222,102 @@
    "kind": "stochastic",
    "test": "tests/test_invariants.py::test_2_6_saturation_gate_rejects_extreme_separation",
    "note": null
+  },
+  "residual-exact": {
+   "claim": "With Monte Carlo removed (exact binomial energies) the two-parameter floor is under-read by +0.36% over 20 base seeds with a standard error of 0.002 pt. The shipped +-0.09 pt band is therefore almost entirely reps=16 sampling noise, not base-seed variation: the underlying quantity is near-deterministic.",
+   "cited_in": [
+    "methodology sec 9 table",
+    "methodology fig 5",
+    "methodology v8 note"
+   ],
+   "value": {
+    "mean_pct": 0.3623765529022555,
+    "se_pct": 0.0023790006519456134,
+    "min_pct": 0.3408968355410047,
+    "max_pct": 0.38664161682345766,
+    "range_pct": 0.04574478128245296,
+    "n_base_seeds": 20
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Deterministic given the mask, so this reproduces bit-for-bit on fixed numpy; the residual stochasticity is topology draw only. Compare residual-across-draws, which is the same quantity measured at reps=16."
+  },
+  "residual-fit-variants": {
+   "claim": "Because c2 is a closed form it can be subtracted rather than fitted. Subtracting it removes most of the residual; fitting it as a free third parameter removes essentially all of it on exact energies. Both are reported across base seeds -- these are topology-dependent, not single draws.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "methodology sec 9"
+   ],
+   "value": {
+    "two_param": {
+     "mean_pct": 0.3623765529022555,
+     "se_pct": 0.0023790006519456134,
+     "min_pct": 0.3408968355410047,
+     "max_pct": 0.38664161682345766,
+     "range_pct": 0.04574478128245296,
+     "n_base_seeds": 20
+    },
+    "three_param": {
+     "mean_pct": -0.008753909845944374,
+     "se_pct": 0.0003926766708830553,
+     "min_pct": -0.011322574161964916,
+     "max_pct": -0.005099872092717561,
+     "range_pct": 0.0062227020692473545,
+     "n_base_seeds": 20
+    },
+    "c2_subtracted": {
+     "mean_pct": 0.07912952319759192,
+     "se_pct": 0.000991688961920563,
+     "min_pct": 0.06994917980072124,
+     "max_pct": 0.08821636677899258,
+     "range_pct": 0.018267186978271344,
+     "n_base_seeds": 20
+    }
+   },
+   "tolerance": {
+    "kind": "abs",
+    "value": 0.02
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "EVIDENCE for the mechanism, not a recommended remedy. The three-parameter figure is measured on EXACT energies; its behaviour at reps=16, where a third parameter may cost more variance than the bias it removes, is not measured here and is the original sec 5.3 objection."
+  },
+  "residual-tracks-c2": {
+   "claim": "Changing the edge estimator moves the residual in the proportion its c2 moves. A per-edge continuity-corrected estimator has 21.19% of the raw c2 on this topology and yields 22.7% of the raw residual -- agreement to under 2 pp, with no Monte Carlo on either side. Residual is proportional to c2.",
+   "cited_in": [
+    "methodology sec 9"
+   ],
+   "value": {
+    "firth": {
+     "mean_pct": 0.08242969126386557,
+     "se_pct": 0.0011228008181006785,
+     "min_pct": 0.07964777143535384,
+     "max_pct": 0.08476691285835836,
+     "range_pct": 0.005119141423004514,
+     "n_base_seeds": 5
+    },
+    "raw": {
+     "mean_pct": 0.3623765529022555,
+     "se_pct": 0.0023790006519456134,
+     "min_pct": 0.3408968355410047,
+     "max_pct": 0.38664161682345766,
+     "range_pct": 0.04574478128245296,
+     "n_base_seeds": 20
+    },
+    "residual_ratio": 0.22746971514489647,
+    "c2_ratio_nZ12": 0.2119
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Ratio is taken against the 20-base-seed raw mean, so both arms are the quantity the paper quotes. Taking it against the 5-seed raw mean instead gives 22.94%; the c2-tracking claim survives either pairing. The corrected estimator is a DIAGNOSTIC PROBE and per-edge only -- see firth-localises-boundary."
   }
  }
 }

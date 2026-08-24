@@ -25,7 +25,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import hodge
-from rig import fit, flows, oracle
+from rig import fit, flows, moments, oracle
 from rig.config import RigConfig
 from rig.graph import assemble
 from rig.sweep import floor_measurement, floor_sweep
@@ -279,6 +279,135 @@ def estimator(cfg):
           tol={"kind": "rel", "value": 0.05}, kind="stochastic")
 
 
+# ---------------------------------------------------------------- residual mechanism
+def _calibration_topology(n_int, gamma=2.0, eps=0.3, n_cplx=5, filling="observed"):
+    """The first fittable mask of the floor path, reproduced exactly.
+
+    Mirrors rig.sweep.floor_measurement's seed derivation rather than drawing a
+    fresh mask: the coefficients below are properties of THAT graph, and a mask
+    drawn any other way would give different -- equally correct -- numbers for a
+    different topology. n_cplx never enters the graph but does enter the config
+    fingerprint, hence derive_seed, so it must be carried.
+    """
+    cfg = RigConfig().validate().with_(n_int=n_int, n_cplx=n_cplx)
+    for s in range(cfg.seeds):
+        mask = flows.sample_sparse_graph(
+            n_int, cfg.btl.p, np.random.default_rng(cfg.derive_seed("floor_mask", gamma, eps, s)))
+        if len(mask) < 3:
+            continue
+        D0, D1 = hodge.build_operators(n_int, mask, hodge.triangles_for_filling(mask, filling))
+        _, _, Ph = hodge.hodge_projectors(D0, D1)
+        try:
+            h = flows.harmonic_unit(D0, D1)
+        except ValueError:
+            continue                                  # b1 = 0: nothing to inject into
+        th = flows.latent_potential(n_int, cfg.btl, gamma,
+                                    np.random.default_rng(cfg.derive_seed("theta", s)))
+        lam = flows.misspecified_latent(D0, th, eps, h)
+        return {"Ph": Ph, "pe": 1 / (1 + np.exp(-lam)), "lam": lam, "h": h,
+                "eps": eps, "floor": float(lam @ Ph @ lam), "n_edges": len(mask)}
+    raise RuntimeError(f"no fittable mask at n_int={n_int}")
+
+
+def residual_mechanism(cfg):
+    """The 1/k and 1/k^2 coefficients of the harmonic energy, exactly (no sampling).
+
+    These are the mechanism behind the floor residual. Everything here is a closed
+    form or an exact binomial sum, so it is `exact`-kind: any drift at all means a
+    changed code path, not a noisier draw.
+    """
+    T = {"nZ6": _calibration_topology(6), "nZ12": _calibration_topology(12)}
+
+    c1, c2, comp = {}, {}, {}
+    for tag, t in T.items():
+        Ph, pe, eps, h = t["Ph"], t["pe"], t["eps"], t["h"]
+        got = moments.series_coefficients(Ph, pe, t["floor"])
+        V = 1.0 / (pe * (1 - pe))
+        b = moments.bias_vector(pe)
+        tr = float(np.trace(Ph @ np.diag(V)))
+        cross = 2 * eps * float(h @ b)
+        c1[tag] = {"measured": got[0], "tr_Ph_V": tr, "cross": cross,
+                   "closed": tr + cross, "ratio_to_closed": got[0] / (tr + cross),
+                   "ratio_to_var_only": got[0] / tr}
+        # b2 is the 1/k^2 term of the MEAN; extracted the same way as c1/c2 so the
+        # decomposition is checked against the same machinery it is meant to explain.
+        ks = np.array([2 ** j for j in range(11, 18)], float)
+        MU = np.array([moments.edge_moments(pe, int(k))[0] for k in ks])
+        VA = np.array([moments.edge_moments(pe, int(k))[1] for k in ks])
+        u = ks[0] / ks
+        A = np.column_stack([u ** j for j in range(1, 5)])
+        b2 = np.linalg.lstsq(A, MU - np.log(pe / (1 - pe)), rcond=None)[0][1] * ks[0] ** 2
+        v2n = np.linalg.lstsq(A, VA, rcond=None)[0][1] * ks[0] ** 2
+        parts = {"b_Ph_b": float(b @ Ph @ b), "cross_2nd": 2 * eps * float(h @ b2),
+                 "variance": float(np.diag(Ph) @ v2n)}
+        tot = sum(parts.values())
+        c2[tag] = {"measured": got[1], "reconstructed": tot, "ratio": tot / got[1]}
+        comp[tag] = {k: v / tot for k, v in parts.items()}
+
+    claim("c1-cross-term-completes", asserts="The 1/k coefficient of the harmonic energy is "
+          "tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the "
+          "delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on "
+          "both calibration topologies, while variance-only is off by 4.5% and 0.2%.",
+          cited_in=["methodology sec 5.1", "methodology sec 9"], value=c1,
+          tol={"kind": "rel", "value": 1e-6},
+          test="tests/test_invariants.py::test_7_c1_equals_variance_plus_cross")
+
+    claim("c2-variance-dominated", asserts="The 1/k^2 coefficient is 95-99% the SECOND-ORDER "
+          "VARIANCE of the logit and only ~1% the mean-bias term b'P_h b. The natural "
+          "expectation that the vector driving the 1/k correction also drives the 1/k^2 one "
+          "is wrong by two orders of magnitude.",
+          cited_in=["methodology sec 5.3", "methodology sec 9"],
+          value={"c2": c2, "composition": comp}, tol={"kind": "rel", "value": 1e-4},
+          note="Decomposition reconstructs the measured c2 to ~1e-6 relative, so the three "
+               "terms are the whole of it -- there is no unaccounted fourth contribution.")
+
+    # Closed forms are checked against the extraction rather than asserted: a formula
+    # that merely reproduces its own derivation is not evidence.
+    ps = np.array([0.08, 0.15, 0.25, 0.35, 0.45, 0.55, 0.70, 0.80])
+    ks = np.array([2 ** j for j in range(12, 19)], float)
+    u = ks[0] / ks
+    A = np.column_stack([u ** j for j in range(1, 5)])
+    v2fit = {}
+    for est in ("clamped_logit", "firth"):
+        VA = np.array([moments.edge_moments(ps, int(k), est)[1] for k in ks])
+        num = np.linalg.lstsq(A, VA, rcond=None)[0][1] * ks[0] ** 2
+        closed = moments.v2(ps, est)
+        v2fit[est] = {"max_abs_dev": float(np.abs(num - closed).max()),
+                      "closed_at_p": {f"{p:.2f}": float(c) for p, c in zip(ps, closed)}}
+    claim("v2-closed-forms", asserts="The 1/k^2 variance coefficient has closed form "
+          "v2 = 2/(pq) + (3/2)(2p-1)^2/(pq)^2 for the shipped clamped logit, and "
+          "v2 = (1/2)(2p-1)^2/(pq)^2 for a per-edge continuity-corrected estimator. Both "
+          "match the exact extraction to its own precision; the corrected form is zero at "
+          "p = 1/2.", cited_in=["methodology sec 5.3", "methodology sec 9"], value=v2fit,
+          tol={"kind": "abs", "value": 5e-3},
+          note="Tolerance is extraction-limited, not form-limited: the polynomial fit "
+               "resolves v2 to ~1e-3 absolute at the extreme p, well inside the gap between "
+               "these two forms. Independently derived by third-order delta method.")
+
+    fir = {}
+    for tag, t in T.items():
+        Ph, pe, eps, h = t["Ph"], t["pe"], t["eps"], t["h"]
+        raw = moments.series_coefficients(Ph, pe, t["floor"], estimator="clamped_logit")
+        fth = moments.series_coefficients(Ph, pe, t["floor"], estimator="firth")
+        tr = float(np.trace(Ph @ np.diag(1.0 / (pe * (1 - pe)))))
+        fir[tag] = {"c1_raw": raw[0], "c1_firth": fth[0], "c1_firth_minus_trPhV": fth[0] - tr,
+                    "c2_raw": raw[1], "c2_firth": fth[1], "c2_ratio": fth[1] / raw[1],
+                    "p_edge_min": float(pe.min()), "p_edge_max": float(pe.max())}
+    claim("firth-localises-boundary", asserts="A per-edge continuity-corrected estimator "
+          "removes the c1 cross term exactly (c1_F = tr(P_h V)) and annihilates the 2/(pq) "
+          "near-boundary term of v2, cutting the asymmetry term 3/2 -> 1/2. The resulting "
+          "c2 ratio is bounded in (0, 1/3) and is set by the P_h-weighted edge-probability "
+          "mix -- 5.2% on a mid-range topology, 21.2% on one whose edges reach p ~ 0.08. "
+          "No universal reduction factor exists.",
+          cited_in=["methodology sec 9"], value=fir, tol={"kind": "rel", "value": 1e-4},
+          note="DIAGNOSTIC PROBE, not a recommended fix, and PER-EDGE only: this is the "
+               "drop-in for logodds_from_counts, exactly (w+1/2)/(k+1) with no clamp "
+               "needed. It is NOT Firth-penalised BTL on the joint sparse design, whose "
+               "penalty does not factorise over edges and is untested. Do not write "
+               "'Firth' unqualified.")
+    return T
+
+
 # ---------------------------------------------------------------- sweeps (slow)
 def sweeps(cfg):
     base = cfg
@@ -426,6 +555,146 @@ def sweeps(cfg):
           test="tests/test_invariants.py::test_2_6_saturation_gate_rejects_extreme_separation")
 
 
+# ---------------------------------------------------------------- residual, exact (slow)
+def _exact_residual(cfg, estimator="clamped_logit", models=("2param",)):
+    """One base seed's floor residual with Monte Carlo removed.
+
+    Follows floor_measurement exactly -- same seeds, same derived window, same
+    'observed' filling default -- and differs ONLY in that the energies are exact
+    rather than averaged over `reps` draws. That is what makes the difference
+    attributable to the fit model rather than to sampling.
+    """
+    ks = np.array(cfg.btl.k, dtype=float)
+    out = {m: [] for m in models}
+    for gamma in cfg.btl.gamma:
+        for eps in cfg.eps:
+            if eps <= 0:
+                continue                      # no floor to resolve; not a ratio cell
+            cell = {m: [] for m in models}
+            for s in range(cfg.seeds):
+                mask = flows.sample_sparse_graph(
+                    cfg.n_int, cfg.btl.p,
+                    np.random.default_rng(cfg.derive_seed("floor_mask", gamma, eps, s)))
+                if len(mask) < 3:
+                    continue
+                D0, D1 = hodge.build_operators(
+                    cfg.n_int, mask, hodge.triangles_for_filling(mask, "observed"))
+                _, _, Ph = hodge.hodge_projectors(D0, D1)
+                try:
+                    h = flows.harmonic_unit(D0, D1)
+                except ValueError:
+                    continue
+                th = flows.latent_potential(
+                    cfg.n_int, cfg.btl, gamma,
+                    np.random.default_rng(cfg.derive_seed("theta", s)))
+                lam = flows.misspecified_latent(D0, th, eps, h)
+                pe = 1 / (1 + np.exp(-lam))
+                # The window rule passes c_oracle = tr(P_h V) -- variance only, NOT the
+                # full c1. A continuity-corrected estimator leaves the leading variance
+                # untouched, so k_min is bit-identical under it and the window channel
+                # contributes nothing to any estimator comparison below.
+                need = oracle.required_fit_k_min(oracle.c_oracle(Ph, pe),
+                                                 oracle.floor_oracle(eps), cfg.rho)
+                window = max(cfg.btl.fit_k_min, need)
+                if len([k for k in cfg.btl.k if k >= window]) < 2:
+                    window = float(sorted(cfg.btl.k)[-2])
+                E = np.array([moments.exact_energy(Ph, pe, int(k), estimator)[0]
+                              for k in cfg.btl.k])
+                sel = ks >= window
+                K, Es = ks[sel], E[sel]
+                if "2param" in models:
+                    cell["2param"].append(
+                        fit.fit_floor_c(ks, E, window)["floor"] / eps ** 2)
+                if "3param" in models and sel.sum() >= 3:
+                    A3 = np.column_stack([np.ones_like(K), 1 / K, 1 / K ** 2])
+                    cell["3param"].append(
+                        np.linalg.lstsq(A3, Es, rcond=None)[0][0] / eps ** 2)
+                if "c2sub" in models:
+                    # c2 SUBTRACTED, not fitted: it is a closed form of the null the rig
+                    # already constructs, so spending a fit parameter on it is spending
+                    # variance to recover something already known.
+                    c2 = float(np.diag(Ph) @ moments.v2(pe, estimator))
+                    if estimator == "clamped_logit":
+                        # The mean-bias piece is ~1% of c2 and is identically zero for a
+                        # continuity-corrected estimator; adding it there would subtract
+                        # a term that does not exist.
+                        bv = moments.bias_vector(pe)
+                        c2 += float(bv @ Ph @ bv)
+                    A2 = np.column_stack([np.ones_like(K), 1 / K])
+                    cell["c2sub"].append(
+                        np.linalg.lstsq(A2, Es - c2 / K ** 2, rcond=None)[0][0] / eps ** 2)
+            for m in models:
+                if cell[m]:
+                    out[m].append(float(np.mean(cell[m])))
+    return {m: float(np.mean(v)) for m, v in out.items() if v}
+
+
+def _spread(vals):
+    a = 100.0 * (1.0 - np.array(vals, dtype=float))         # ratio -> residual %
+    return {"mean_pct": float(a.mean()),
+            "se_pct": float(a.std(ddof=1) / np.sqrt(len(a))),
+            "min_pct": float(a.min()), "max_pct": float(a.max()),
+            "range_pct": float(a.max() - a.min()), "n_base_seeds": len(a)}
+
+
+def residual_exact(cfg):
+    """The residual with sampling noise removed, across base seeds.
+
+    Base-seed count is the budget knob here: the quantity is deterministic given a
+    mask, so the only stochasticity left is which topologies get drawn. 20 matches
+    the shipped sweep's protocol so the two are comparable; the corrected-estimator
+    arm uses 5, which is ample given its s.e. is ~0.001 pt.
+    """
+    base = RigConfig().validate().with_(n_int=12, n_cplx=5)
+    raw = [_exact_residual(base.with_(seed=b), models=("2param", "3param", "c2sub"))
+           for b in range(20)]
+    fth = [_exact_residual(base.with_(seed=b), estimator="firth")["2param"]
+           for b in range(5)]
+
+    two = _spread([r["2param"] for r in raw])
+    claim("residual-exact", asserts="With Monte Carlo removed (exact binomial energies) the "
+          "two-parameter floor is under-read by +0.36% over 20 base seeds with a standard "
+          "error of 0.002 pt. The shipped +-0.09 pt band is therefore almost entirely "
+          "reps=16 sampling noise, not base-seed variation: the underlying quantity is "
+          "near-deterministic.",
+          cited_in=["methodology sec 9 table", "methodology fig 5", "methodology v8 note"],
+          value=two, tol={"kind": "abs", "value": 0.02}, kind="stochastic",
+          note="Deterministic given the mask, so this reproduces bit-for-bit on fixed "
+               "numpy; the residual stochasticity is topology draw only. Compare "
+               "residual-across-draws, which is the same quantity measured at reps=16.")
+
+    claim("residual-fit-variants", asserts="Because c2 is a closed form it can be subtracted "
+          "rather than fitted. Subtracting it removes most of the residual; fitting it as a "
+          "free third parameter removes essentially all of it on exact energies. Both are "
+          "reported across base seeds -- these are topology-dependent, not single draws.",
+          cited_in=["methodology sec 5.3", "methodology sec 9"],
+          value={"two_param": two,
+                 "three_param": _spread([r["3param"] for r in raw]),
+                 "c2_subtracted": _spread([r["c2sub"] for r in raw])},
+          tol={"kind": "abs", "value": 0.02}, kind="stochastic",
+          note="EVIDENCE for the mechanism, not a recommended remedy. The three-parameter "
+               "figure is measured on EXACT energies; its behaviour at reps=16, where a "
+               "third parameter may cost more variance than the bias it removes, is not "
+               "measured here and is the original sec 5.3 objection.")
+
+    f = _spread(fth)
+    claim("residual-tracks-c2", asserts="Changing the edge estimator moves the residual in "
+          "the proportion its c2 moves. A per-edge continuity-corrected estimator has "
+          "21.19% of the raw c2 on this topology and yields 22.7% of the raw residual -- "
+          "agreement to under 2 pp, with no Monte Carlo on either side. Residual is "
+          "proportional to c2.",
+          cited_in=["methodology sec 9"],
+          value={"firth": f, "raw": two,
+                 "residual_ratio": f["mean_pct"] / two["mean_pct"],
+                 "c2_ratio_nZ12": 0.2119},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          note="Ratio is taken against the 20-base-seed raw mean, so both arms are the "
+               "quantity the paper quotes. Taking it against the 5-seed raw mean instead "
+               "gives 22.94%; the c2-tracking claim survives either pairing. The corrected "
+               "estimator is a DIAGNOSTIC PROBE and per-edge only -- see "
+               "firth-localises-boundary.")
+
+
 def write_provenance(out):
     """Emit PROVENANCE.md from the evidence itself, so the index cannot go stale."""
     L = ["# Provenance index", "",
@@ -472,8 +741,10 @@ if __name__ == "__main__":
     cfg = structural()
     bridge(cfg)
     estimator(cfg)
+    residual_mechanism(cfg)
     if "--fast" not in sys.argv:
         sweeps(cfg)
+        residual_exact(cfg)
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
                          text=True, cwd=HERE).stdout.strip()
     # Recorded history, not measurements: the three residual figures successively
@@ -488,6 +759,11 @@ if __name__ == "__main__":
                     "python": f"{sys.version_info.major}.{sys.version_info.minor}",
                     "n_claims": len(CLAIMS)},
            "claims": CLAIMS}
+    if "--fast" in sys.argv:
+        print(f"  --fast: {len(CLAIMS)} fast claims OK, evidence.json NOT written "
+              f"(it would drop every slow claim). Use `verify.py --fast` to check, or "
+              f"run without --fast to regenerate.")
+        raise SystemExit(0)
     (HERE / "evidence.json").write_text(json.dumps(out, indent=1, default=float))
     write_provenance(out)
     print(f"  wrote evidence.json: {len(CLAIMS)} claims")

@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 import hodge
-from rig import flows, oracle, pool
+from rig import flows, moments, oracle, pool
 from rig.config import RigConfig
 from rig.emit import EmissionCollapse, emit_assembly, emit_from_flow, emit_from_signs
 from rig.graph import assemble
@@ -237,3 +237,73 @@ def test_9_timestamps_are_deterministic_never_wall_clock():
     stamps = [r[4] for r in emit_assembly(a, "x").rows]
     assert stamps == [r[4] for r in emit_assembly(assemble(cfg), "x").rows]
     assert all(s.startswith("2026-01-") for s in stamps)
+
+
+# ---------------------------------------------------------------- §7 exact energy
+def _fixture(n=12, gamma=2.0, eps=0.3, seed=11):
+    mask = flows.sample_sparse_graph(n, 0.45, np.random.default_rng(seed))
+    D0, D1 = hodge.build_operators(n, mask, hodge.triangles_for_filling(mask, "observed"))
+    _, _, Ph = hodge.hodge_projectors(D0, D1)
+    h = flows.harmonic_unit(D0, D1)
+    lat = flows.misspecified_latent(D0, flows.theta_gamma(n, 0.25, gamma), eps, h)
+    return Ph, 1 / (1 + np.exp(-lat)), lat, h, eps
+
+
+def test_7_exact_energy_matches_sampling():
+    """The factorisation E[Y'PhY] = mu'Ph mu + sum (Ph)_ee Var(Y_e) relies on edges being
+    INDEPENDENT. If a generator ever couples them the identity breaks silently, so it is
+    checked against actual draws rather than trusted."""
+    Ph, pe, *_ = _fixture()
+    rng = np.random.default_rng(4)
+    for k in (32, 512):
+        exact = moments.exact_energy(Ph, pe, k)[0]
+        w = rng.binomial(k, np.broadcast_to(pe, (200_000, len(pe))))
+        Y = flows.logodds_from_counts(w, k)
+        vals = np.einsum("ij,jk,ik->i", Y, Ph, Y)
+        se = vals.std(ddof=1) / np.sqrt(vals.size)
+        assert abs(vals.mean() - exact) < 5 * se, f"k={k}: {vals.mean()} vs exact {exact}"
+
+
+def test_7_windowed_moments_equal_untruncated():
+    """rig.moments windows the pmf for speed. If the window ever became too tight the
+    error would be silent and small -- exactly the kind that survives review."""
+    p = np.array([0.079, 0.15, 0.30, 0.483, 0.72])
+    for k in (8, 64, 4096):
+        for est in ("clamped_logit", "firth"):
+            mu, var = moments.edge_moments(p, k, est)
+            mu0, var0 = moments._moments_full(p, k, est)
+            assert np.abs(mu - mu0).max() < 1e-13
+            assert np.abs(var - var0).max() < 1e-12
+
+
+def test_7_c1_equals_variance_plus_cross():
+    """The 1/k coefficient is tr(Ph V) + 2 eps (h.b). Variance-only is the delta-method
+    oracle the guard uses; this pins that the cross term is a real omission, not noise."""
+    Ph, pe, lat, h, eps = _fixture()
+    floor = float(lat @ Ph @ lat)
+    c1 = moments.series_coefficients(Ph, pe, floor)[0]
+    assert c1 == pytest.approx(moments.c1_closed(Ph, pe, eps, h), rel=1e-6)
+    var_only = float(np.trace(Ph @ np.diag(1.0 / (pe * (1 - pe)))))
+    assert abs(c1 / var_only - 1.0) > 1e-4, "cross term vanished: check P_h lam = eps*h"
+
+
+def test_7_v2_closed_forms_match_extraction():
+    """Both closed forms, against the exact moments they are meant to describe."""
+    ps = np.array([0.08, 0.20, 0.35, 0.50, 0.65, 0.80])
+    ks = np.array([2 ** j for j in range(12, 18)], dtype=float)
+    u = ks[0] / ks
+    A = np.column_stack([u ** j for j in range(1, 5)])
+    for est in ("clamped_logit", "firth"):
+        VA = np.array([moments.edge_moments(ps, int(k), est)[1] for k in ks])
+        got = np.linalg.lstsq(A, VA, rcond=None)[0][1] * ks[0] ** 2
+        assert np.abs(got - moments.v2(ps, est)).max() < 5e-3
+    assert moments.v2(np.array([0.5]), "firth")[0] == pytest.approx(0.0, abs=1e-12)
+
+
+def test_7_firth_removes_the_cross_term():
+    """The probe's whole diagnostic value is that it zeroes the mean bias exactly."""
+    Ph, pe, lat, h, eps = _fixture()
+    floor = float(lat @ Ph @ lat)
+    c1_f = moments.series_coefficients(Ph, pe, floor, estimator="firth")[0]
+    var_only = float(np.trace(Ph @ np.diag(1.0 / (pe * (1 - pe)))))
+    assert c1_f == pytest.approx(var_only, rel=1e-6)
