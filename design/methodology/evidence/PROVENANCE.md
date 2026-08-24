@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-08-24 from commit `c352252`
+Generated 2026-08-24 from commit `db62542`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
