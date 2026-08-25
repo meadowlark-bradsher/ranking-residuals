@@ -372,8 +372,10 @@ Our first formulation declared a constant, $k \geq 64$. That was calibrated unde
 the observed filling and is wrong under any filling with a different $c$. On one
 graph:
 
-\begin{table}[h]
-\centering
+% Deliberately NOT a float. It has no caption and no label, so its only job is to
+% sit under "On one graph:" -- floating can separate it from that sentence but can
+% never help it. Recomposing into combined.tex did exactly that once.
+\begin{center}
 \small
 \begin{tabular}{@{}lrrrr@{}}
 \toprule
@@ -383,7 +385,7 @@ observed & $2$  & $18$  & $0.0807$ & $0.090$ \\
 empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{center}
 
 \begin{figure}[h]
 \centering
