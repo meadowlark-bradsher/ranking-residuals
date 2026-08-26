@@ -232,3 +232,8 @@ design/methodology/combined/combined-body.tex
 
 # macOS Finder metadata
 .DS_Store
+
+# Reference papers (third-party PDFs: cite them by arXiv id, don't vendor them).
+# Authored analysis in design/reference/ -- e.g. the DZW canonical briefing --
+# stays tracked; it is ours and nothing else records it.
+design/reference/*.pdf
