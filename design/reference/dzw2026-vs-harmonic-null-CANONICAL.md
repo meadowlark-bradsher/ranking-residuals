@@ -1,0 +1,107 @@
+<!--
+Relayed briefing artifact. Authored in the parallel paper thread against the full
+Dharamshi-Zou-Witten (2026) paper; committed here so the analysis stops living
+only in a chat log. Referenced by RAN-27 (prior-art read) by exactly this
+filename; governs RAN-28 (harmonic-zero null on the rig), RAN-29 (within-edge
+exchangeability audit) and RAN-30 (matcher conditioning).
+
+Supersedes the from-summary and RESOLVED versions, per its own status line.
+Paper elements are cited so any holder of the paper can re-check.
+-->
+
+# Dharamshi–Zou–Witten (2026) → Harmonic Rankability Null
+
+**Canonical briefing (current)**
+
+**Status.** Supersedes both prior versions (from-summary, and RESOLVED). Grounded in the actual paper via the verification pass, and incorporates the J1/J2 round-trip. This is the single artifact to carry between the reasoning thread, the verification thread, and the specialist conversation. Paper elements are cited so any holder of the paper can re-check. Open edges are marked as such.
+
+## Headline
+
+DZW triaged the null problem into three components and solved the two that are inference problems. The circular fit and the post-selection validity of a data-chosen hypothesis are solved outright. The third — ε-vs-cycle — is an identifiability problem, and the round-trip converted it from flat impossibility into a measurement problem with a named confound and a criterion-dependent scope. Two further structural results fell out: in the pre-specified fixed-graph case the certificate collapses to a classical score test, which demotes DZW from "the method" to "the method that earns its keep only at post-selection loop-choice and small n"; and comparison-level thinning likely replaces the noise-fission machinery entirely. Epic C's residual object is now small and precisely named.
+
+## The three-way triage (Epic C's reshaped object)
+
+**(1) The circular fit — inference — SOLVED.** The mechanism fits the conditional mean under the constraint of H₀ by construction (deliberately wrong when H₀ is false, so residual covariance carries power). Remark 5 states the double-dip exactly and is why a flexible learner can't be used: it orthogonalizes under both hypotheses and kills all power.
+
+**(2) Post-selection validity — inference — SOLVED, with a design boundary.** A hypothesis selected from the data (which harmonic loops to test) on a fixed graph is covered by Algorithm 3: select the null on x⁽¹⁾, fit under it, test on x⁽²⁾. Needs only conditional-mean properties. Boundary: the design must be fixed conditional on the item set — see the matcher ACTION.
+
+**(3) ε-vs-cycle — identifiability — REOPENED, not closed.** No orthogonalization separates "gradient + ε" from "gradient + cycle" at k→∞ within DZW's controlled setting (single judge, fixed graph). But J2 found a structural escape that survives scrutiny: replication across judges. The impossibility was never absolute — it was absolute along the axes the paper controls. Epic C's object is now "identifiability of cycle-vs-misspecification via judge-exchangeable ε, under a named confound, with a criterion-dependent scope" — not "build a better null."
+
+## The null to run — harmonic-zero, NOT pure Bradley–Terry (J1's central result)
+
+The "unit-level nuisance" version of the subspace null is vacuous, for a one-line reason: per edge the model is Binomial(k_e, p_e), a one-parameter family, so any per-edge nuisance ν_e in logit(p_e) = (D₀θ)_e + ν_e saturates the model — Θ₀ = Θ, H₀ constrains nothing. Misspecification here is not distributional (the binomial is exact if within-edge trials are iid); it is entirely mean-vector misspecification. Q1' as literally posed is dead.
+
+The live construction, one notch weaker, is the right null:
+
+> **H₀: logit p ∈ im D₀ ⊕ im δ₁ᵀ = (harmonic)^⊥** — the harmonic component of the mean flow is exactly zero, with the gradient and curl coordinates free.
+
+This is a linear-subspace constraint on the natural parameter of an exponential-family GLM. The constrained MLE exists, is asymptotically linear and efficient under standard conditions, so §3.3.2 applies cleanly, Supplement B.2's eigenvalue condition is met, and with discrete noise Remark 8 gives exact N, D. It strictly dominates the pure-BT null: all curl-type misspecification is absorbed into the null, rejections are driven only by harmonic content, and the size distortion under innocent ε is governed by ‖P_h ε‖ alone, not total ε. The rig experiment sharpens accordingly: measure Type-I inflation as a function of harmonic-projected ε, not raw ε.
+
+Two consequences worth sitting with:
+
+- **In the pre-specified, fixed-graph case, DZW collapses to a classical score test.** "Test b₁ omitted directions in a logistic regression" is a Rao score test, χ² with b₁ degrees of freedom, in the harmonic coordinates. The certificate, under this null, is a score test. That is referee-proof and may be the right instrument for the discriminant-validity demonstration. DZW's machinery then earns its keep only where the classical route fails: post-selection (which loops, chosen from data — Algorithm 3) and the small-n regime. Cleaner division of labor than earlier framing.
+- **Confirmed obstruction (a result for the author):** the §3.3.3 assumption-free character cannot be preserved for any heterogeneous null, structured or not — its estimator pools across units sharing a distribution, and here every edge is its own distribution with effectively one observation. Nothing to average over. Standardized residuals restore approximate exchangeability only asymptotically in k, which surrenders the exactness that made §3.3.3 attractive. So Q1' resolves as: construction exists (harmonic-zero null via §3.3.2), but §3.3.3's assumption-free strength is provably out of reach for this data shape.
+
+## Thinning likely replaces noise fission — but simplifies the architecture, not the regime (J1's second result + one caveat)
+
+Binomial(k_e, p_e) splits exactly at the trial level: randomly assign within-edge comparisons to two folds and X⁽¹⁾_e, X⁽²⁾_e are independent binomials with the same p_e. This is data thinning, available for free because the logging seam holds the raw Bernoullis. It gives exact fold independence — no conditional CLT, no (I+B)⁻¹, no Remark 13 weakening. Select loops on fold 1, fit the H₀-constrained model on fold 1, test orthogonality on fold 2 as a genuinely pre-specified hypothesis. The DZW architecture (fit-under-the-null carries the power; Remark 5 avoided because the fit is constrained to the null class) transfers wholesale, with simpler theory.
+
+**Caveat (do not let this read as "PP4 resolved").** Thinning removes the fission machinery, but each fold now carries half the k, and the small-n problem is in the edge count, not the within-edge trials. PP4 was never about the within-edge CLT — it was the CLT over ~27 edges, which thinning does not touch. So thinning simplifies the architecture without improving the regime; the rig-as-coverage-harness stays mandatory.
+
+**Precondition (auditable, not a leap):** thinning requires within-edge exchangeability — no position drift, criterion mixing, or time trend inside an edge. Position and criterion are in the seam, so this is an auditable check, and it gates whether thinning-replaces-fission is real.
+
+## Pressure points, resolved (compressed)
+
+- **PP1 — counts — DISSOLVED.** Remark 1 (Skellam / discrete-uniform noise), Remark 8 (exact N, D with discrete noise). Edge win counts fit the heterogeneity device; Proposition 2's closed form survives; nothing moves to log-odds.
+- **PP2 — the ε-floor — mismatch branch, and the paper forces it.** §3.3.3's assumption-free route needs iid-under-H₀; "flow is a gradient" is maximally heterogeneous with no recoverable exchangeability, so you are pushed to §3.3.2 — but to the harmonic-zero null above, not pure-BT. Enriching H₀ with flexible ε reruns Remark 5 inside the estimator (a class flexible enough to absorb unknown misspecification absorbs the harmonic alternative; power dies). ε is not absorbed — it is not an inference object.
+- **PP3 — g = the harmonic projection — GIFT, two caveats.** µₙ lives in the harmonic subspace by construction, so g = P_h is the principled collinear choice. (a) Post-selection theory (Theorem 3, Proposition 6, (I+B)⁻¹) is scalar-g; b₁ > 1 needs a scalar reduction (dominant harmonic direction) or a vector-g extension of Section 4 — real work. (b) g = P_h has power against ε too, since innocent misspecification lives in the same subspace — so it maximizes power against "not pure gradient," not "cyclic specifically." This is the identifiability problem reappearing in the power geometry.
+- **PP4 — asymptotic, and worse than priced.** Remark 13: convergence in probability, asymptotic. n is the edge count, not the comparison count. ~27 edges against their smallest tested n=200 — an order of magnitude below range. Thinning does not fix this. The rig coverage-harness is the only way to know if the guarantee means anything at your scale.
+- **(I+B)⁻¹ cost — mostly moot.** Supplement B.2 ties the eigenvalue condition to θ̂ efficiency; the BT-gradient MLE is efficient, so for this null it is well-defined near-free — and thinning removes the need for it entirely in the pre-specified case.
+
+## J2 — the identifiability question, opened (the reframe)
+
+The impossibility is airtight along every axis the paper controls: single judge, fixed graph, k→∞. Dead axes: a magnitude bound ‖P_h ε‖ ≤ δ re-imports the floor as an axiom (begs the question); the k-sweep (both survive); graph resampling — subtle — both a genuine cycle and stable misspecification are properties of the underlying comparison function, so both replicate across sparse graphs over the same items; resampling separates stable-anything from session noise, not cycle from ε.
+
+**The escape that survives: replication across judges.** A genuine cycle is a property of the item set under the criterion; misspecification is a property of the judge. With J judges, decompose each judge's harmonic-projected flow into a common component and judge-idiosyncratic components. Under
+
+> **(A) judge-exchangeable misspecification** — the ε_j are independent across judges with mean zero in the harmonic subspace —
+
+the common harmonic component identifies the cycle and the cross-judge variance identifies ε. This is a mixed-model decomposition, it is exactly the structural resource LLM arenas have in abundance (a heterogeneous judge panel is the defining feature), and it composes with the harmonic-zero null: per-judge score statistics in harmonic coordinates, then common-vs-idiosyncratic partitioning.
+
+**Named confound (where (A) can rot):** LLM judges share training distributions, so their misspecifications are correlated — verbosity, position, self-preference are near-universal. (A) fails precisely for the biases most likely to exist. Defensible weakening: condition out everything modelable from logged covariates first (position and criterion are already in the seam — the seam contract paying off), demand architectural diversity in the panel, and name the residual confound explicitly: a universal bias with a harmonic footprint that survives covariate adjustment. Partial test: include human raters as one judge class — a harmonic component shared by humans and models is much harder to attribute to LLM-common bias.
+
+**The whose-cycle fork — criterion-dependent, not binary.** The fork is not the binary "certifies the judge's cycle or the world's." There is a third reading: the certificate certifies whether the items resist ordering under this criterion, as estimated through a judge as measurement instrument, with the judge's idiosyncratic ε as measurement error you are seeing past. That is neither "the judge's intransitivity is the real cycle" nor "the world has a Platonic cycle" — it is the standard structure of a measurement problem, and it is the reading where judge-replication does its natural job (averaging out instrument error to estimate a latent property), so (A) is an assumption, not a redefinition. Whether the third reading is available is criterion-dependent:
+
+- "which summary is more accurate" → plausibly a latent orderability estimated through noisy judges → measurement framing applies, (A) is an assumption.
+- "which is funnier" → possibly no criterion-independent fact → the fork bites, and the object collapses to "the judge's cycle," at which point judge-replication answers a different (also valuable) question than the certificate asks.
+
+So the fork is not one scoping decision — it is per-criterion. That is §13.2's signature a third time: the answer is per-criterion, not universal.
+
+**J2 verdict:** not a clean no. Exactly one defensible structural assumption (judge-exchangeable ε after covariate adjustment), a named residual confound (shared LLM bias), and a criterion-dependent definitional scope. A research direction with its own falsification surface — richer and more defensible than an enshrined impossibility, and considerably more work.
+
+## ACTION — the matcher-conditioning constraint (unchanged, and the one paper-independent decision)
+
+DZW's post-selection framework covers hypotheses selected from x⁽¹⁾ on a fixed design, not data-dependent designs. An adaptive matcher that chooses edge t+1 from the outcomes of 1..t makes the η_i data-dependent, violating the independence structure before the noise-split. You cannot fission out of a sequentially chosen design. So §13.2 bifurcates: choosing which loops to test on a given graph is covered (Algorithm 3); the matcher having chosen which edges exist by looking at wins is outside the framework.
+
+**Determining fact (code-level):** does plant-ledger next-pair selection read wins/losses, or only position / criterion / coverage?
+
+- **Conditions on outcomes** → outside the guarantees. Either make the deployment matcher outcome-independent (batch / position / criterion / coverage-driven) — cheap now, expensive to retrofit — or condition on the realized design and treat that as part of the selection event (Q2', open, for the author).
+- **Already outcome-independent** → inside the framework; preserve deliberately, and don't let the LLM axis drift into outcome-conditioning without re-checking.
+
+A constraint flowing backward from the inference method to the data-collection policy. Settle before the LLM axis hardens around a matcher.
+
+## The buildable path this month (rig-shaped)
+
+Run the harmonic-zero null (a score test in the fixed-graph case), and use the known-answer harness to measure Type-I inflation as a function of harmonic-projected ε on the actual topologies at the actual edge counts. If inflation is small at ε realistic for LLM judges, the null is usable with an empirically characterized size — and the same run doubles as the PP4 coverage check (does the asymptotic guarantee hold at ~27 edges). Use comparison-level thinning if the within-edge exchangeability audit passes. No new theory required.
+
+## Specialist conversation — revised hierarchy
+
+The math is now worked; this is a peer conversation, not a help request (two-thirds of the null is a solved theorem plus a classical score test).
+
+- **Framing question, above all others:** whose cycle does the certificate certify — the judge's, the world's, or the items-through-a-measurement-instrument reading — and is that criterion-dependent? This determines what everything below is for.
+- **Q1' — RESOLVED** (harmonic-zero null via §3.3.2; §3.3.3 assumption-free strength provably out of reach). Carry as a result. Residual check: does her framework offer a better subspace-null estimator than the constrained GLM MLE?
+- **Q2' — OPEN, for her:** does the framework extend to sequentially adaptive designs (outcome-dependent η_i), or is conditioning on the realized design the right move? (The matcher question.)
+
+## Bottom line
+
+The from-summary verdict — "vocabulary and mechanism, not drop-in" — held, and the resolution is cleaner than it hoped and harsher than it feared, then the round-trip made it richer. DZW solves the circularity and the post-selection problem; the pre-specified certificate collapses to a referee-proof score test; thinning likely replaces the fission machinery. What remains for Epic C is one criterion-dependent framing question (whose cycle), one identifiability research direction (judge-exchangeable ε under a named confound), a design constraint on the matcher, and a buildable coverage-and-size experiment this month. That is a materially stronger position than "build a better null": most of the wall is now someone else's solved theorem, the classical fallback is trivial and referee-proof, and the remaining piece is named precisely enough to either close or carry to its author — as a peer.
