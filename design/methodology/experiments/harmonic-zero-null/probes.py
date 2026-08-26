@@ -50,7 +50,11 @@ P_EDGE = 0.45         # ~29-32 edges: the deployment-realistic regime of PP4
 BETA, GAMMA = 0.25, 2.0
 ALPHA = 0.05
 N_GRAPHS = 4          # masks held FIXED across replicates: the pre-specified case
-K_GRID = (8, 32, 128, 512)
+# 64 is here for a specific question, not for grid symmetry: comparison-level
+# thinning splits an edge's k comparisons into two folds of k/2, so a deployment
+# running k=128 and thinning is doing inference on folds of 64. Measuring 64
+# against 128 prices what thinning costs in separation (RAN-29).
+K_GRID = (8, 32, 64, 128, 512)
 
 
 def seed(*parts) -> np.random.Generator:
@@ -316,6 +320,32 @@ def write_results_md():
           "curl term scaled to ||eta||, and on `empty` there are no 2-cells, so that term",
           "is a no-op and those cells carry a smaller ||eta||. The chi2(b1) claim is",
           "per-cell, so this does not touch the verdict.", "",
+          "### What thinning costs (RAN-29)", "",
+          "Comparison-level thinning splits each edge's k comparisons into two folds",
+          "of k/2, so a deployment running k = 128 does its inference on folds of 64.",
+          "That is why 64 is on the grid. Separation loss on `observed`, by k:", "",
+          "| k | graph 0 | graph 1 | graph 2 | graph 3 |", "|---|---|---|---|---|"] + [
+          "| " + str(k) + " | " + " | ".join(
+              f"{100*r['drop_rate']:.1f}%" for r in sorted(
+                  [x for x in cv["rows"] if x["k"] == k and x["filling"] == "observed"],
+                  key=lambda x: x["graph"])) + " |"
+          for k in sorted({r["k"] for r in cv["rows"]})] + [
+          "", "The canonical briefing prices thinning as neutral on PP4 -- it",
+          "\"simplifies the architecture, not the regime\". On separation it is worse",
+          "than neutral. Thinning a k = 128 deployment moves graph 3 from 0.8% to",
+          "9.2% loss and graph 2 from 20.7% to 29.3%. Graphs 0 and 1 are untouched,",
+          "so the cost is topology-dependent, not uniform -- which means it cannot be",
+          "priced once and reused, only measured per deployment graph.", "",
+          "**And the loss is not merely lost power: it biases what survives.** On",
+          "graph 3 (b1 = 1) the drop rate and the conditional mean move together --",
+          "0.8% loss and meanT/df = 1.024 at k = 128, 9.2% and 0.842 at k = 64, 43.0%",
+          "and 0.740 at k = 32 -- with realised size falling 0.045 -> 0.039 -> 0.030.",
+          "Separation preferentially removes draws with extreme scores, so the test",
+          "left behind is CONSERVATIVE. That is the safe direction to fail, but it is",
+          "a power loss invisible to anyone not tracking the drop rate. The effect is",
+          "sharpest at b1 = 1, where truncating the single harmonic coordinate",
+          "truncates the statistic directly; at b1 = 3 (graph 2) meanT/df stays near",
+          "1.0 despite heavier losses.", "",
           "## 2. Does it dominate Bradley-Terry?", "",
           f"At k = {fv['k']}, {fv['reps']} replicates, judging {fv['n_cells_judged']} of "
           f"{fv['n_cells_with_curl']} curl-carrying cells "

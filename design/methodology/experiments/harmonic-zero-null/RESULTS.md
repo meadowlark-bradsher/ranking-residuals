@@ -27,34 +27,42 @@ certificate actually rides on. `drop%` is draws lost to separation.
 |---|---|---|---|---|---|---|---|---|---|
 | observed | 0 | 27 | 4 | 8 | 60.3% | 0.984 | 1.353 | 0.071 | 0.0010 |
 | observed | 0 | 27 | 4 | 32 | 2.6% | 1.051 | 1.196 | 0.054 | 0.0096 |
+| observed | 0 | 27 | 4 | 64 | 0.1% | 1.044 | 1.071 | 0.057 | 0.0055 |
 | observed | 0 | 27 | 4 | 128 | 0.0% | 1.030 | 1.031 | 0.055 | 0.1080 |
 | observed | 0 | 27 | 4 | 512 | 0.0% | 1.019 | 1.075 | 0.053 | 0.5754 |
 | observed | 1 | 24 | 3 | 8 | 65.7% | 1.544 | 3.014 | 0.157 | 0.0000 |
 | observed | 1 | 24 | 3 | 32 | 1.4% | 1.059 | 1.010 | 0.051 | 0.0001 |
+| observed | 1 | 24 | 3 | 64 | 0.0% | 1.055 | 1.019 | 0.053 | 0.0001 |
 | observed | 1 | 24 | 3 | 128 | 0.0% | 1.034 | 1.010 | 0.057 | 0.1457 |
 | observed | 1 | 24 | 3 | 512 | 0.0% | 1.029 | 1.045 | 0.050 | 0.2732 |
 | observed | 2 | 32 | 3 | 8 | 80.8% | 1.158 | 1.533 | 0.091 | 0.0003 |
 | observed | 2 | 32 | 3 | 32 | 43.5% | 0.973 | 1.036 | 0.062 | 0.0046 |
+| observed | 2 | 32 | 3 | 64 | 29.3% | 0.972 | 1.029 | 0.052 | 0.0270 |
 | observed | 2 | 32 | 3 | 128 | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
 | observed | 2 | 32 | 3 | 512 | 5.0% | 0.983 | 0.975 | 0.046 | 0.4808 |
 | observed | 3 | 33 | 1 | 8 | 99.6% | 1.842 | 2.597 | 0.111 | -- |
 | observed | 3 | 33 | 1 | 32 | 43.0% | 0.740 | 0.643 | 0.030 | 0.0000 |
+| observed | 3 | 33 | 1 | 64 | 9.2% | 0.842 | 0.859 | 0.039 | 0.0000 |
 | observed | 3 | 33 | 1 | 128 | 0.8% | 1.024 | 0.974 | 0.045 | 0.0013 |
 | observed | 3 | 33 | 1 | 512 | 0.0% | 1.061 | 1.034 | 0.054 | 0.0157 |
 | empty | 0 | 27 | 16 | 8 | 0.1% | 1.068 | 1.053 | 0.071 | 0.0000 |
 | empty | 0 | 27 | 16 | 32 | 0.0% | 1.012 | 0.982 | 0.049 | 0.1399 |
+| empty | 0 | 27 | 16 | 64 | 0.0% | 1.000 | 0.914 | 0.040 | 0.6870 |
 | empty | 0 | 27 | 16 | 128 | 0.0% | 1.006 | 1.012 | 0.054 | 0.7154 |
 | empty | 0 | 27 | 16 | 512 | 0.0% | 0.991 | 1.031 | 0.055 | 0.0098 |
 | empty | 1 | 24 | 13 | 8 | 3.5% | 1.066 | 0.994 | 0.060 | 0.0000 |
 | empty | 1 | 24 | 13 | 32 | 0.0% | 1.018 | 0.999 | 0.053 | 0.0872 |
+| empty | 1 | 24 | 13 | 64 | 0.0% | 1.006 | 1.029 | 0.051 | 0.3834 |
 | empty | 1 | 24 | 13 | 128 | 0.0% | 1.023 | 0.960 | 0.051 | 0.0097 |
 | empty | 1 | 24 | 13 | 512 | 0.0% | 1.000 | 1.019 | 0.053 | 0.9368 |
 | empty | 2 | 32 | 21 | 8 | 0.1% | 1.066 | 1.025 | 0.070 | 0.0000 |
 | empty | 2 | 32 | 21 | 32 | 0.0% | 1.015 | 1.006 | 0.053 | 0.0290 |
+| empty | 2 | 32 | 21 | 64 | 0.0% | 1.008 | 0.945 | 0.046 | 0.0282 |
 | empty | 2 | 32 | 21 | 128 | 0.0% | 1.005 | 0.980 | 0.053 | 0.1572 |
 | empty | 2 | 32 | 21 | 512 | 0.0% | 1.007 | 1.011 | 0.054 | 0.3506 |
 | empty | 3 | 33 | 22 | 8 | 0.4% | 1.061 | 1.025 | 0.071 | 0.0000 |
 | empty | 3 | 33 | 22 | 32 | 0.0% | 1.022 | 1.005 | 0.060 | 0.0074 |
+| empty | 3 | 33 | 22 | 64 | 0.0% | 1.004 | 1.050 | 0.057 | 0.5061 |
 | empty | 3 | 33 | 22 | 128 | 0.0% | 1.012 | 1.042 | 0.058 | 0.2192 |
 | empty | 3 | 33 | 22 | 512 | 0.0% | 0.996 | 0.988 | 0.053 | 0.6319 |
 
@@ -74,6 +82,38 @@ The `observed` and `empty` drop rates are NOT comparable: `eta_in_S` adds a
 curl term scaled to ||eta||, and on `empty` there are no 2-cells, so that term
 is a no-op and those cells carry a smaller ||eta||. The chi2(b1) claim is
 per-cell, so this does not touch the verdict.
+
+### What thinning costs (RAN-29)
+
+Comparison-level thinning splits each edge's k comparisons into two folds
+of k/2, so a deployment running k = 128 does its inference on folds of 64.
+That is why 64 is on the grid. Separation loss on `observed`, by k:
+
+| k | graph 0 | graph 1 | graph 2 | graph 3 |
+|---|---|---|---|---|
+| 8 | 60.3% | 65.7% | 80.8% | 99.6% |
+| 32 | 2.6% | 1.4% | 43.5% | 43.0% |
+| 64 | 0.1% | 0.0% | 29.3% | 9.2% |
+| 128 | 0.0% | 0.0% | 20.7% | 0.8% |
+| 512 | 0.0% | 0.0% | 5.0% | 0.0% |
+
+The canonical briefing prices thinning as neutral on PP4 -- it
+"simplifies the architecture, not the regime". On separation it is worse
+than neutral. Thinning a k = 128 deployment moves graph 3 from 0.8% to
+9.2% loss and graph 2 from 20.7% to 29.3%. Graphs 0 and 1 are untouched,
+so the cost is topology-dependent, not uniform -- which means it cannot be
+priced once and reused, only measured per deployment graph.
+
+**And the loss is not merely lost power: it biases what survives.** On
+graph 3 (b1 = 1) the drop rate and the conditional mean move together --
+0.8% loss and meanT/df = 1.024 at k = 128, 9.2% and 0.842 at k = 64, 43.0%
+and 0.740 at k = 32 -- with realised size falling 0.045 -> 0.039 -> 0.030.
+Separation preferentially removes draws with extreme scores, so the test
+left behind is CONSERVATIVE. That is the safe direction to fail, but it is
+a power loss invisible to anyone not tracking the drop rate. The effect is
+sharpest at b1 = 1, where truncating the single harmonic coordinate
+truncates the statistic directly; at b1 = 3 (graph 2) meanT/df stays near
+1.0 despite heavier losses.
 
 ## 2. Does it dominate Bradley-Terry?
 
