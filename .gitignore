@@ -221,6 +221,10 @@ __marimo__/
 runs/
 
 # LaTeX build products (regenerate: tectonic -X compile)
+design/reference/*.log
+design/reference/*.aux
+design/reference/*.out
+design/reference/*.xdv
 design/methodology/*.pdf
 design/methodology/*.log
 design/methodology/*.aux
