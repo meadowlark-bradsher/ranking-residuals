@@ -86,7 +86,21 @@ MIN_INFO = 1e-10
 
 
 def _sigmoid(x):
+    """Clipped logistic: the IRLS iterate's numerical guard. NOT for drawing data."""
     return 0.5 * (1.0 + np.tanh(0.5 * np.clip(x, -ETA_CLIP, ETA_CLIP)))
+
+
+def sigmoid(x):
+    """Exact logistic -- the DATA-GENERATING link, deliberately unclipped.
+
+    _sigmoid's clip keeps the fit's working weights representable; reusing it to
+    draw data would silently simulate sigmoid(+-ETA_CLIP) instead of the eta the
+    caller named, so an extreme cell would report on a flow it does not describe.
+    Saturating to exactly 0 or 1 here is the honest answer: that edge really is
+    deterministic under the eta it was handed, and the resulting draw separates
+    and is dropped by the usual accounting.
+    """
+    return 0.5 * (1.0 + np.tanh(0.5 * np.asarray(x, dtype=float)))
 
 
 def harmonic_zero_bases(D0, D1):
@@ -188,7 +202,3 @@ def operators(n, edges, filling):
     """D0, D1 for a graph under a named filling -- via the instrument (RAN-7)."""
     tris = hodge.triangles_for_filling(edges, filling)
     return hodge.build_operators(n, edges, tris)
-
-
-# Alias for the descriptive name used in the module docstring.
-harmonic_and_complement = harmonic_zero_bases

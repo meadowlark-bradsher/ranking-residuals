@@ -20,14 +20,19 @@ routing them through the production config would misrepresent them as settings.
 
 WHAT IS NOT HERE. DZW's own construction (symmetric-noise folds, orthogonalize,
 test residual orthogonality) is NOT implemented, so the second half of RAN-28's
-gating item -- that the two AGREE -- is not tested. The canonical briefing is
-not in the repo. What is tested is the claim that survives without it: that the
+gating item -- that the two AGREE -- is not tested. The blocker is not access:
+the canonical briefing is in the repo, at
+design/reference/dzw2026-vs-harmonic-null-CANONICAL.md. It ASSERTS the identity
+rather than verifying it, and that assertion is a secondhand reading of a paper
+not read firsthand, so the agreement claim is DEFERRED to RAN-31 rather than
+closed here. What is tested is the claim that survives without it: that the
 harmonic-zero score test collapses to a classical Rao test. If that fails, the
 agreement question is moot.
 """
 
 from __future__ import annotations
 
+import collections
 import hashlib
 import json
 import sys
@@ -91,9 +96,14 @@ def run_cell(eta, k, bases, tag, reps):
     are dropped and counted. They are not a small-print detail at k=8: that is
     where the drop rate is largest and where any claim about the null's shape is
     least trustworthy, so the rate travels with every number computed from T.
+
+    `off` is the max score_off_harmonic over the SURVIVING draws, and is None
+    when none survived -- 0.0 there would read as perfect orthogonality on the
+    one cell that measured nothing.
     """
-    p = st._sigmoid(eta)
-    T, off, dropped = [], 0.0, 0
+    p = st.sigmoid(eta)          # exact link, never the fitter's clip: the row
+                                 # must describe the eta it was actually handed
+    T, off, dropped = [], None, 0
     for r in range(reps):
         w = flows.btl_counts(p, k, seed(tag, r))
         s = st.score_statistic(w, k, bases)
@@ -101,7 +111,7 @@ def run_cell(eta, k, bases, tag, reps):
             dropped += 1
             continue
         T.append(s["T"])
-        off = max(off, s["score_off_harmonic"])
+        off = s["score_off_harmonic"] if off is None else max(off, s["score_off_harmonic"])
     return np.array(T), off, dropped
 
 
@@ -127,8 +137,8 @@ def chi2_collapse(reps=2000):
                     # separation rate at k=8 is not comparable to 'empty'. The
                     # chi2(b1) claim is per-cell, so this does not touch it.
                     "eta_absmax": float(np.max(np.abs(eta))),
-                    "p_min": float(min(st._sigmoid(eta).min(),
-                                       1 - st._sigmoid(eta).max())),
+                    "p_min": float(min(st.sigmoid(eta).min(),
+                                       1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
                     "drop_rate": float(dropped / reps),
                     "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": df,
@@ -142,11 +152,19 @@ def chi2_collapse(reps=2000):
                 })
     # The collapse is ASYMPTOTIC in k, so the verdict is about the large-k end
     # and about the trend, not about whether every cell passes at k=8.
-    big = [r for r in rows if r["k"] == max(K_GRID) and r["ks_p"] is not None
-           and r["drop_rate"] < 0.05]
+    at_max_k = [r for r in rows if r["k"] == max(K_GRID)]
+    # `<= 0.05`, not `< 0.05`: the strict form silently dropped a cell sitting at
+    # exactly 5% loss -- the heaviest-separation cell, and so the one most able to
+    # break the claim -- from the gate that everything downstream rests on. The
+    # count of what IS excluded now ships alongside the verdict, as it already
+    # does for the other two probes.
+    big = [r for r in at_max_k if r["ks_p"] is not None and r["drop_rate"] <= 0.05]
     obs_big = [r for r in big if r["filling"] == "observed"]
     frac_ok = sum(r["ks_p"] > 0.01 for r in big) / len(big) if big else 0.0
-    verdict = ("confirmed" if obs_big and all(r["ks_p"] > 0.01 for r in obs_big)
+    # No judged cell is NOT evidence against the claim: say so rather than
+    # reporting the gate as refuted on an empty sample (cf. the sibling probes).
+    verdict = ("inconclusive" if not big
+               else "confirmed" if obs_big and all(r["ks_p"] > 0.01 for r in obs_big)
                else "partial" if frac_ok >= 0.5 else "refuted")
     return {
         "probe": "chi2_collapse",
@@ -156,7 +174,10 @@ def chi2_collapse(reps=2000):
                      "the collapse to a classical Rao test is wrong and the "
                      "referee-proof claim goes with it.",
         "verdict": verdict,
-        "value": {"alpha": ALPHA, "reps": reps, "rows": rows},
+        "value": {"alpha": ALPHA, "reps": reps,
+                  "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
+                  "n_cells_excluded_for_separation": len(at_max_k) - len(big),
+                  "rows": rows},
     }
 
 
@@ -174,13 +195,20 @@ def curl_freedom(reps=1500, k=128):
         edges = graph(g)
         D0, D1 = st.operators(N_ITEMS, edges, "observed")
         hz, bt = st.harmonic_zero_bases(D0, D1), st.bradley_terry_bases(D0)
+        grad = eta_in_S(D0, D1, 0.0, g)      # loop-invariant: the pure-gradient part
         for rho in (0.0, 0.5, 1.0, 2.0, 4.0):
             eta = eta_in_S(D0, D1, rho, g)
             row = {"graph": g, "rho_curl": rho,
-                   "curl_frac": float(np.linalg.norm(eta - eta_in_S(D0, D1, 0.0, g))
+                   # Carried so an extreme cell is visible as extreme: the link is
+                   # exact, so a large |eta| means near-deterministic edges and a
+                   # high separation rate, not a silently truncated flow.
+                   "eta_absmax": float(np.max(np.abs(eta))),
+                   "curl_frac": float(np.linalg.norm(eta - grad)
                                       / np.linalg.norm(eta))}
+            # The tag deliberately omits `name`: both nulls must see the SAME
+            # draws, or the comparison is unpaired and no per-draw claim holds.
             for name, bases in (("harmonic_zero", hz), ("bradley_terry", bt)):
-                T, _, dropped = run_cell(eta, k, bases, f"c2|{name}|{g}|{rho}", reps)
+                T, _, dropped = run_cell(eta, k, bases, f"c2|{g}|{rho}", reps)
                 df = bases[0].shape[1]
                 row[f"{name}_df"] = df
                 row[f"{name}_n_usable"] = int(len(T))
@@ -236,15 +264,32 @@ def harmonic_projected_eps(reps=1500, k=128):
         df = bases[0].shape[1]
         base = eta_in_S(D0, D1, 1.0, g)
         h_unit = flows.harmonic_unit(D0, D1)
+        # eta_in_S guards this case; so must the control, which is built the same
+        # way. Without 2-cells im D1^T = {0}, the norm below is 0, and every
+        # control rate would come back NaN -- silently, since NaN comparisons are
+        # False and json.dumps emits a bare NaN token.
+        if not D1.shape[0]:
+            raise ValueError(
+                f"graph {g} has no 2-cells under filling='observed', so im D1^T "
+                "= {0} and there is no in-S direction to build the control from. "
+                "The control arm is the whole point of this probe.")
         c = seed("ctrl", g).normal(size=D1.shape[0])
         s_unit = D1.T @ c
-        s_unit = s_unit / np.linalg.norm(s_unit)          # unit, inside S
+        s_norm = float(np.linalg.norm(s_unit))
+        if s_norm == 0.0:
+            raise ValueError(
+                f"graph {g}: the control draw landed in ker(D1^T), so it carries "
+                "no in-S direction. Vary the seed rather than normalising by zero.")
+        s_unit = s_unit / s_norm                          # unit, inside S
         for eps in (0.0, 0.05, 0.1, 0.2, 0.4, 0.8):
             row = {"graph": g, "eps": eps, "df": df,
                    "Ph_eps_norm": float(eps)}            # h_unit is unit & harmonic
+            # The tag omits `name` so the two arms share a draw stream: common
+            # random numbers at every eps, and at eps = 0 the arms have identical
+            # eta, so they must agree EXACTLY -- a free check on the injection path.
             for name, direction in (("harmonic", h_unit), ("in_S_control", s_unit)):
                 T, _, dropped = run_cell(base + eps * direction, k, bases,
-                                         f"c3|{name}|{g}|{eps}", reps)
+                                         f"c3|{g}|{eps}", reps)
                 row[f"{name}_n_usable"] = int(len(T))
                 row[f"{name}_drop_rate"] = float(dropped / reps)
                 row[f"{name}_reject"] = (float((T > chi2.ppf(1 - ALPHA, df)).mean())
@@ -278,12 +323,62 @@ def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
 
+def _pc(x):
+    return f"{100 * x:.1f}%"
+
+
 def write_results_md():
-    """Regenerate RESULTS.md from results/*.json so it cannot drift from the data."""
+    """Regenerate RESULTS.md from results/*.json so it cannot drift from the data.
+
+    EVERY measured number below is an expression over the loaded json, never a
+    literal. The prose is the part that drifts silently -- a table with a stale
+    number looks stale, a sentence with one does not -- so the sentences read
+    their numbers from the same rows the tables do. Only structural claims and
+    the k=128/k=64 thinning framing are fixed text; thresholds and comparisons
+    are derived, so a re-run with different constants rewrites them.
+    """
     c = json.loads((RES / "chi2_collapse.json").read_text())
     f = json.loads((RES / "curl_freedom.json").read_text())
     e = json.loads((RES / "harmonic_projected_eps.json").read_text())
     cv, fv, ev = c["value"], f["value"], e["value"]
+
+    ks_grid = sorted({r["k"] for r in cv["rows"]})
+    graphs = sorted({r["graph"] for r in cv["rows"]})
+    fillings = sorted({r["filling"] for r in cv["rows"]})
+    lo_k, hi_k = min(ks_grid), max(ks_grid)
+    # The thinning question: a deployment at DEPLOY does its inference on DEPLOY/2.
+    deploy = 128 if 128 in ks_grid else hi_k
+    fold = deploy // 2 if deploy // 2 in ks_grid else None
+
+    def crow(filling, g, k):
+        return next(r for r in cv["rows"] if r["filling"] == filling
+                    and r["graph"] == g and r["k"] == k)
+
+    def drop(g, k, filling="observed"):
+        return _pc(crow(filling, g, k)["drop_rate"])
+
+    def mratio(g, k, filling="observed"):
+        r = crow(filling, g, k)
+        return r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
+
+    def moments_ok(k, mtol=0.10, vtol=0.15):
+        rs = [crow(fl, g, k) for fl in fillings for g in graphs]
+        rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
+        return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
+                                and abs(r["var_T"] / r["chi2_var"] - 1) <= vtol
+                                for r in rs)
+
+    # Smallest k from which the moments hold at every larger k, and the k below it.
+    k_ok = next((kk for kk in ks_grid if all(moments_ok(x) for x in ks_grid if x >= kk)),
+                None)
+    k_bad = max([x for x in ks_grid if k_ok is not None and x < k_ok], default=None)
+    big_sizes = [r["reject_rate"] for r in cv["rows"]
+                 if k_ok is not None and r["k"] >= k_ok and r["reject_rate"] is not None]
+    size_band = (f"{min(big_sizes):.3f}-{max(big_sizes):.3f}" if big_sizes else "--")
+    e_lo, e_hi = min(r["E"] for r in cv["rows"]), max(r["E"] for r in cv["rows"])
+    lo_drops = [100 * crow("observed", g, lo_k)["drop_rate"] for g in graphs]
+    worst = max(graphs, key=lambda g: crow("observed", g, deploy)["drop_rate"])
+
     L = ["# The harmonic-zero null on the rig", "",
          "Regenerated by `python probes.py`; do not edit by hand.", "",
          "RAN-28 on known-answer synthetic data. Three probes; the first is the gate.",
@@ -293,86 +388,137 @@ def write_results_md():
         L += [f"| `{d['probe']}` | {d['question']} | **{d['verdict']}** |"]
     L += ["", "## 1. Does it collapse to chi2(b1)?  [GATING]", "",
           "The claim: on a pre-specified fixed graph the harmonic-zero score test",
-          "IS a classical Rao score test, chi-squared with b1 degrees of freedom.",
-          "", "**It does -- from k = 128 up. It does not at k <= 32.**", "",
+          "IS a classical Rao score test, chi-squared with b1 degrees of freedom.", "",
+          (f"**It does -- from k = {k_ok} up. It does not at k <= {k_bad}.**"
+           if k_ok is not None and k_bad is not None else
+           f"**The moments do not settle anywhere on the tested grid (k up to {hi_k}).**"),
+          "",
           "`meanT/df` and `varT/2df` are ratios against the chi2(b1) moments, so 1.000",
-          "is exact agreement. `rej` is the realised size at alpha = 0.05: the number a",
-          "certificate actually rides on. `drop%` is draws lost to separation.", "",
-          f"| filling | graph | E | b1 | k | drop% | meanT/df | varT/2df | size | KS p |",
+          f"is exact agreement. `rej` is the realised size at alpha = {cv['alpha']}: the",
+          "number a certificate actually rides on. `drop%` is draws lost to separation.",
+          "",
+          f"The verdict is computed from the k = {hi_k} cells: "
+          f"{cv['n_cells_judged']} of {cv['n_cells_at_max_k']} judged, "
+          f"{cv['n_cells_excluded_for_separation']} excluded for separation.", "",
+          "| filling | graph | E | b1 | k | drop% | meanT/df | varT/2df | size | KS p |",
           "|---|---|---|---|---|---|---|---|---|---|"]
     for r in cv["rows"]:
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['filling']} | {r['graph']} | {r['E']} | {r['df']} | {r['k']} | "
-              f"{100*r['drop_rate']:.1f}% | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
+              f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
               f"{_f(r['reject_rate'],0,3).strip()} | {_f(r['ks_p'],0,4).strip()} |"]
-    L += ["", "Reading it: at k >= 128 the first two moments land within a few percent",
-          "of chi2(b1) and the realised size sits in 0.045-0.060 against a nominal",
-          "0.05. At k = 8 every cell's KS test rejects outright -- the asymptotics are",
-          "simply not in force there, which is PP4's small-n worry showing up exactly",
-          "where it was predicted.", "",
-          "**Separation is the sharper practical limit.** On `observed` at k = 8, 60-99.6%",
-          "of draws have some edge at w=0 or w=k, the constrained MLE diverges, and the",
-          "statistic is undefined. Graph 2 still loses 20.7% at k = 128 and 5.0% at",
-          "k = 512. Those draws are counted and dropped, never averaged in; an earlier",
-          "version of this run silently kept them and reported a mean T of 7.3e11.", "",
+    L += ["", f"Reading it: at k >= {k_ok} the first two moments land within a few percent",
+          f"of chi2(b1) and the realised size sits in {size_band} against a nominal",
+          f"{cv['alpha']}. At k = {lo_k} the KS tests reject outright -- the asymptotics",
+          "are simply not in force there, which is PP4's small-n worry showing up",
+          "exactly where it was predicted.", "",
+          f"**Separation is the sharper practical limit.** On `observed` at k = {lo_k},",
+          f"{min(lo_drops):.1f}-{max(lo_drops):.1f}% of draws have some edge at w=0 or",
+          "w=k, the constrained MLE diverges, and the statistic is undefined. Graph",
+          f"{worst} still loses {drop(worst, deploy)} at k = {deploy} and "
+          f"{drop(worst, hi_k)} at",
+          f"k = {hi_k}. Those draws are counted and dropped, never averaged in; an",
+          "earlier version of this run silently kept them and reported a mean T of",
+          "7.3e11.", "",
           "The `observed` and `empty` drop rates are NOT comparable: `eta_in_S` adds a",
           "curl term scaled to ||eta||, and on `empty` there are no 2-cells, so that term",
           "is a no-op and those cells carry a smaller ||eta||. The chi2(b1) claim is",
-          "per-cell, so this does not touch the verdict.", "",
-          "### What thinning costs (RAN-29)", "",
-          "Comparison-level thinning splits each edge's k comparisons into two folds",
-          "of k/2, so a deployment running k = 128 does its inference on folds of 64.",
-          "That is why 64 is on the grid. Separation loss on `observed`, by k:", "",
-          "| k | graph 0 | graph 1 | graph 2 | graph 3 |", "|---|---|---|---|---|"] + [
-          "| " + str(k) + " | " + " | ".join(
-              f"{100*r['drop_rate']:.1f}%" for r in sorted(
-                  [x for x in cv["rows"] if x["k"] == k and x["filling"] == "observed"],
-                  key=lambda x: x["graph"])) + " |"
-          for k in sorted({r["k"] for r in cv["rows"]})] + [
-          "", "The canonical briefing prices thinning as neutral on PP4 -- it",
-          "\"simplifies the architecture, not the regime\". On separation it is worse",
-          "than neutral. Thinning a k = 128 deployment moves graph 3 from 0.8% to",
-          "9.2% loss and graph 2 from 20.7% to 29.3%. Graphs 0 and 1 are untouched,",
-          "so the cost is topology-dependent, not uniform -- which means it cannot be",
-          "priced once and reused, only measured per deployment graph.", "",
-          "**And the loss is not merely lost power: it biases what survives.** On",
-          "graph 3 (b1 = 1) the drop rate and the conditional mean move together --",
-          "0.8% loss and meanT/df = 1.024 at k = 128, 9.2% and 0.842 at k = 64, 43.0%",
-          "and 0.740 at k = 32 -- with realised size falling 0.045 -> 0.039 -> 0.030.",
-          "Separation preferentially removes draws with extreme scores, so the test",
-          "left behind is CONSERVATIVE. That is the safe direction to fail, but it is",
-          "a power loss invisible to anyone not tracking the drop rate. The effect is",
-          "sharpest at b1 = 1, where truncating the single harmonic coordinate",
-          "truncates the statistic directly; at b1 = 3 (graph 2) meanT/df stays near",
-          "1.0 despite heavier losses.", "",
-          "## 2. Does it dominate Bradley-Terry?", "",
+          "per-cell, so this does not touch the verdict.", ""]
+
+    if fold is not None:
+        moved = [g for g in graphs
+                 if round(100 * crow("observed", g, fold)["drop_rate"], 1)
+                 != round(100 * crow("observed", g, deploy)["drop_rate"], 1)]
+        still = [g for g in graphs if g not in moved]
+        moves = "; ".join(f"graph {g} from {drop(g, deploy)} to {drop(g, fold)}"
+                          for g in moved) or "no graph measurably"
+        stills = (", ".join(f"graph {g}" for g in still) or "no graph")
+        # The b1 = 1 cell is where truncating the single harmonic coordinate
+        # truncates the statistic directly, so it shows the bias most sharply.
+        ones = [g for g in graphs if crow("observed", g, deploy)["df"] == 1]
+        gb = ones[0] if ones else min(graphs,
+                                      key=lambda g: crow("observed", g, deploy)["df"])
+        seq_k = [x for x in (deploy, fold, fold // 2) if x in ks_grid]
+        seq = " -- ".join(f"{drop(gb, x)} loss and meanT/df = {mratio(gb, x):.3f} at k = {x}"
+                          for x in seq_k)
+        sizes = " -> ".join(f"{crow('observed', gb, x)['reject_rate']:.3f}" for x in seq_k)
+        heavy = max(graphs, key=lambda g: crow("observed", g, fold)["drop_rate"])
+        L += [f"### What thinning costs (RAN-29)", "",
+              "Comparison-level thinning splits each edge's k comparisons into two folds",
+              f"of k/2, so a deployment running k = {deploy} does its inference on folds",
+              f"of {fold}. That is why {fold} is on the grid. Separation loss on",
+              "`observed`, by k:", "",
+              "| k | " + " | ".join(f"graph {g}" for g in graphs) + " |",
+              "|---|" + "---|" * len(graphs)]
+        L += ["| " + str(k) + " | " + " | ".join(drop(g, k) for g in graphs) + " |"
+              for k in ks_grid]
+        L += ["", "The canonical briefing prices thinning as neutral on PP4 -- it",
+              "\"simplifies the architecture, not the regime\". On separation it is worse",
+              f"than neutral. Thinning a k = {deploy} deployment moves {moves}.",
+              f"That leaves {stills} unmoved, so the cost is topology-dependent, not",
+              "uniform -- which means it cannot be priced once and reused, only",
+              "measured per deployment graph.", "",
+              "**And the loss is not merely lost power: it biases what survives.** On",
+              f"graph {gb} (b1 = {crow('observed', gb, deploy)['df']}) the drop rate and",
+              f"the conditional mean move together -- {seq} -- with realised size falling",
+              f"{sizes}. Separation preferentially removes draws with extreme scores, so",
+              "the test left behind is CONSERVATIVE. That is the safe direction to fail,",
+              "but it is a power loss invisible to anyone not tracking the drop rate. The",
+              f"effect is sharpest at b1 = 1, where truncating the single harmonic",
+              "coordinate truncates the statistic directly; at b1 = "
+              f"{crow('observed', heavy, fold)['df']} (graph {heavy}) meanT/df stays at "
+              f"{mratio(heavy, fold):.3f}",
+              "despite heavier losses.", ""]
+
+    curl_rows = [r for r in fv["rows"] if r["rho_curl"] > 0]
+    first_curl = min(curl_rows, key=lambda r: r["rho_curl"]) if curl_rows else None
+    top_curl = max(fv["rows"], key=lambda r: r["rho_curl"])
+    L += ["## 2. Does it dominate Bradley-Terry?", "",
           f"At k = {fv['k']}, {fv['reps']} replicates, judging {fv['n_cells_judged']} of "
           f"{fv['n_cells_with_curl']} curl-carrying cells "
           f"({fv['n_cells_excluded_for_separation']} excluded for separation).", "",
+          "Both nulls see the SAME draws in each cell -- the seed stream does not depend",
+          "on which null is being fitted -- so the two columns are a paired comparison.",
+          "",
           "| graph | rho_curl | curl fraction | harmonic-zero df | HZ size | BT df | BT size |",
           "|---|---|---|---|---|---|---|"]
     for r in fv["rows"]:
         L += [f"| {r['graph']} | {r['rho_curl']} | {r['curl_frac']:.3f} | "
               f"{r['harmonic_zero_df']} | {_f(r['harmonic_zero_reject'],0,4).strip()} | "
               f"{r['bradley_terry_df']} | {_f(r['bradley_terry_reject'],0,4).strip()} |"]
-    L += ["", "**Emphatically, yes.** With no curl the two nulls agree at 0.05. With any",
-          "curl at all -- from rho = 0.5, a curl fraction of 0.45 -- Bradley-Terry rejects",
-          "**every single draw**, while harmonic-zero does not move off nominal size.",
-          "Curl-type misspecification destroys BT's size completely and is invisible to",
+    L += ["", "**Emphatically, yes.** With no curl the two nulls agree at nominal size."]
+    if first_curl is not None and fv["bradley_terry_min_reject"] is not None:
+        L += [f"From rho = {first_curl['rho_curl']}, a curl fraction of "
+              f"{first_curl['curl_frac']:.2f}, Bradley-Terry's rejection rate never",
+              f"falls below {fv['bradley_terry_min_reject']:.4f}, while harmonic-zero's",
+              f"never rises above {fv['harmonic_zero_max_reject']:.4f}."]
+    L += ["Curl-type misspecification destroys BT's size completely and is invisible to",
           "the harmonic-zero null, which is the whole reason for preferring it.", "",
-          "The rho_curl = 4 row is a degenerate regime, not evidence: the flow is 97%",
-          "curl, eta is extreme, and separation removes most or all of the sample. It is",
-          "shown rather than hidden, and excluded from the verdict.", "",
+          f"The rho_curl = {top_curl['rho_curl']} row is a degenerate regime, not",
+          f"evidence: the flow is {100*top_curl['curl_frac']:.0f}% curl, eta reaches",
+          f"{top_curl['eta_absmax']:.1f} in absolute value, and separation removes most",
+          "or all of the sample. It is shown rather than hidden, and excluded from the",
+          "verdict.", "",
           "**Caveat with teeth: on `filling='empty'` the two nulls are the SAME TEST.**",
           "With no 2-cells, im D1^T = {0}, so S = im D0 exactly and the harmonic-zero df",
           "equals the BT df. Everything above holds only under a filling that fills",
           "triangles. The domination claim is not filling-independent, and a deployment",
-          "that reaches for `empty` gets no protection from it (cf. RAN-7, RAN-22).", "",
-          "## 3. Is the size governed by ||P_h eps|| alone?", "",
+          "that reaches for `empty` gets no protection from it (cf. RAN-7, RAN-22).", ""]
+
+    by = collections.defaultdict(list)
+    for r in ev["rows"]:
+        if r["harmonic_reject"] is not None:
+            by[r["eps"]].append(r["harmonic_reject"])
+    eps_grid = sorted(by)
+    eps_ok = max([x for x in eps_grid if max(by[x]) <= 2 * ev["alpha"]], default=None)
+    eps_bad = min([x for x in eps_grid if max(by[x]) > 4 * ev["alpha"]], default=None)
+    L += ["## 3. Is the size governed by ||P_h eps|| alone?", "",
           f"At k = {ev['k']}, {ev['reps']} replicates. `harmonic` perturbs along a unit",
           "harmonic direction, so ||P_h eps|| = eps. `control` perturbs by the SAME NORM",
-          "inside S, where the null says it should not matter.", "",
+          "inside S, where the null says it should not matter. Both arms share a draw",
+          "stream, so at eps = 0 -- where their eta is identical -- they must agree",
+          "exactly.", "",
           "| graph | eps = \\|\\|P_h eps\\|\\| | b1 | harmonic size | control size |",
           "|---|---|---|---|---|"]
     for r in ev["rows"]:
@@ -380,45 +526,51 @@ def write_results_md():
               f"{_f(r['harmonic_reject'],0,4).strip()} | "
               f"{_f(r['in_S_control_reject'],0,4).strip()} |"]
     L += ["", f"**Confirmed.** The control never leaves nominal size -- it maxes at "
-          f"{ev['max_control_reject']:.4f} across every graph and every eps up to 0.8 --",
+          f"{ev['max_control_reject']:.4f} across every graph and every eps up to "
+          f"{max(eps_grid)} --",
           "while the harmonic perturbation drives the rejection rate to "
           f"{ev['max_harmonic_reject']:.4f}.",
           "Equal-norm misspecification inside S is genuinely free; only the harmonic",
           "projection costs anything.", "",
           "**The operational number RAN-28 asked for.** Type-I inflation against",
-          "||P_h eps||, at deployment-realistic edge counts (24-33 edges):", "",
+          f"||P_h eps||, at deployment-realistic edge counts ({e_lo}-{e_hi} edges):", "",
           "| \\|\\|P_h eps\\|\\| | size, across graphs |", "|---|---|"]
-    import collections
-    by = collections.defaultdict(list)
-    for r in ev["rows"]:
-        if r["harmonic_reject"] is not None:
-            by[r["eps"]].append(r["harmonic_reject"])
-    for eps in sorted(by):
+    for eps in eps_grid:
         v = by[eps]
         L += [f"| {eps} | {min(v):.3f} - {max(v):.3f} |"]
-    L += ["", "So the null is usable with an empirically characterised size as long as",
-          "||P_h eps|| stays around 0.1 or below, where the worst cell reads 0.072",
-          "against a nominal 0.05. By ||P_h eps|| = 0.4 the size is 0.21-0.45 and the",
-          "test is no longer honest. Whether a real LLM judge sits below 0.1 is not",
-          "something this run can answer -- it is the measurement RAN-30 and the",
-          "comparator work have to supply.", "",
-          "## What this run does NOT establish", "",
+    if eps_ok is not None:
+        L += ["", "So the null is usable with an empirically characterised size as long as",
+              f"||P_h eps|| stays at {eps_ok} or below, where the worst cell reads",
+              f"{max(by[eps_ok]):.3f} against a nominal {ev['alpha']}."]
+        if eps_bad is not None:
+            L += [f"By ||P_h eps|| = {eps_bad} the size is {min(by[eps_bad]):.2f}-"
+                  f"{max(by[eps_bad]):.2f} and the test is no longer honest."]
+        L += ["Whether a real LLM judge sits below that is not something this run can",
+              "answer -- it is the measurement RAN-30 and the comparator work have to",
+              "supply."]
+    se = (cv["alpha"] * (1 - cv["alpha"]) / cv["reps"]) ** 0.5
+    L += ["", "## What this run does NOT establish", "",
           "**DZW agreement is untested.** RAN-28's gating item has two halves: that the",
           "harmonic-zero score test collapses to a Rao test (tested here, confirmed at",
-          "k >= 128), and that it AGREES with DZW's construction (not tested). DZW's",
-          "symmetric-noise fold is not implemented because the canonical briefing",
-          "(`dzw2026-vs-harmonic-null-CANONICAL.md`) is not in the repo. The half tested",
-          "here is the one that stands alone: if the collapse had failed, the agreement",
-          "question would be moot.", "",
+          f"k >= {k_ok}), and that it AGREES with DZW's construction (not tested). The",
+          "blocker is not access -- the canonical briefing is in the repo at",
+          "`design/reference/dzw2026-vs-harmonic-null-CANONICAL.md`. It ASSERTS that",
+          "identity rather than verifying it, and the assertion is a secondhand reading",
+          "of a paper not read firsthand, so the agreement claim is DEFERRED to RAN-31",
+          "rather than closed. The half tested here is the one that stands alone: if the",
+          "collapse had failed, the agreement question would be moot.", "",
           "**One data-generating process.** Everything is gamma-shaped theta at",
-          "beta = 0.25, gamma = 2.0, n = 12, p = 0.45. The four graphs vary the mask, not",
+          f"beta = {BETA}, gamma = {GAMMA}, n = {N_ITEMS}, p = {P_EDGE}. The "
+          f"{len(graphs)} graphs vary the mask, not",
           "the latent. A different theta shape could move the small-k behaviour.", "",
-          "**Power.** 2000 replicates puts a binomial standard error of about 0.005 on a",
-          "size near 0.05, so the 0.045-0.060 band at k >= 128 is roughly +/-1 s.e. of",
-          "nominal and should not be over-read as bias. The KS test at n = 2000 is far",
-          "more sensitive than the size is: cells with KS p below 0.05 but size inside",
-          "0.045-0.060 are shape deviations too small to matter operationally, and the",
-          "two diagnostics are reported separately for that reason."]
+          f"**Power.** {cv['reps']} replicates puts a binomial standard error of about",
+          f"{se:.3f} on a size near {cv['alpha']}, so the {size_band} band at "
+          f"k >= {k_ok} is roughly",
+          "+/-1 s.e. of nominal and should not be over-read as bias. The KS test at",
+          f"n = {cv['reps']} is far more sensitive than the size is: cells with KS p below",
+          f"{cv['alpha']} but size inside {size_band} are shape deviations too small to",
+          "matter operationally, and the two diagnostics are reported separately for",
+          "that reason."]
     (HERE / "RESULTS.md").write_text("\n".join(L) + "\n")
 
 
@@ -427,9 +579,19 @@ PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
-    for name in (sys.argv[1:] or list(PROBES)):
+    names = sys.argv[1:] or list(PROBES)
+    for name in names:
         r = PROBES[name]()
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:24} {r['verdict']:10} -> results/{name}.json")
-    write_results_md()
-    print("  RESULTS.md regenerated")
+    # RESULTS.md is regenerated from ALL THREE json files, so writing it after a
+    # partial run would splice fresh sections onto stale ones under a heading that
+    # says the file cannot drift from the data -- and would crash outright on a
+    # checkout where the other results do not exist yet.
+    if set(names) == set(PROBES):
+        write_results_md()
+        print("  RESULTS.md regenerated")
+    else:
+        missing = ", ".join(sorted(set(PROBES) - set(names)))
+        print(f"  RESULTS.md NOT regenerated -- {missing} did not run in this "
+              f"invocation. Run `python probes.py` with no arguments to rebuild it.")

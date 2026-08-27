@@ -6,6 +6,9 @@
  "value": {
   "alpha": 0.05,
   "reps": 2000,
+  "n_cells_at_max_k": 8,
+  "n_cells_judged": 8,
+  "n_cells_excluded_for_separation": 0,
   "rows": [
    {
     "filling": "observed",

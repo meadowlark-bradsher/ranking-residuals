@@ -17,11 +17,13 @@ RAN-28 on known-answer synthetic data. Three probes; the first is the gate.
 The claim: on a pre-specified fixed graph the harmonic-zero score test
 IS a classical Rao score test, chi-squared with b1 degrees of freedom.
 
-**It does -- from k = 128 up. It does not at k <= 32.**
+**It does -- from k = 128 up. It does not at k <= 64.**
 
 `meanT/df` and `varT/2df` are ratios against the chi2(b1) moments, so 1.000
-is exact agreement. `rej` is the realised size at alpha = 0.05: the number a
-certificate actually rides on. `drop%` is draws lost to separation.
+is exact agreement. `rej` is the realised size at alpha = 0.05: the
+number a certificate actually rides on. `drop%` is draws lost to separation.
+
+The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded for separation.
 
 | filling | graph | E | b1 | k | drop% | meanT/df | varT/2df | size | KS p |
 |---|---|---|---|---|---|---|---|---|---|
@@ -67,16 +69,18 @@ certificate actually rides on. `drop%` is draws lost to separation.
 | empty | 3 | 33 | 22 | 512 | 0.0% | 0.996 | 0.988 | 0.053 | 0.6319 |
 
 Reading it: at k >= 128 the first two moments land within a few percent
-of chi2(b1) and the realised size sits in 0.045-0.060 against a nominal
-0.05. At k = 8 every cell's KS test rejects outright -- the asymptotics are
-simply not in force there, which is PP4's small-n worry showing up exactly
-where it was predicted.
+of chi2(b1) and the realised size sits in 0.045-0.059 against a nominal
+0.05. At k = 8 the KS tests reject outright -- the asymptotics
+are simply not in force there, which is PP4's small-n worry showing up
+exactly where it was predicted.
 
-**Separation is the sharper practical limit.** On `observed` at k = 8, 60-99.6%
-of draws have some edge at w=0 or w=k, the constrained MLE diverges, and the
-statistic is undefined. Graph 2 still loses 20.7% at k = 128 and 5.0% at
-k = 512. Those draws are counted and dropped, never averaged in; an earlier
-version of this run silently kept them and reported a mean T of 7.3e11.
+**Separation is the sharper practical limit.** On `observed` at k = 8,
+60.3-99.6% of draws have some edge at w=0 or
+w=k, the constrained MLE diverges, and the statistic is undefined. Graph
+2 still loses 20.7% at k = 128 and 5.0% at
+k = 512. Those draws are counted and dropped, never averaged in; an
+earlier version of this run silently kept them and reported a mean T of
+7.3e11.
 
 The `observed` and `empty` drop rates are NOT comparable: `eta_in_S` adds a
 curl term scaled to ||eta||, and on `empty` there are no 2-cells, so that term
@@ -86,8 +90,9 @@ per-cell, so this does not touch the verdict.
 ### What thinning costs (RAN-29)
 
 Comparison-level thinning splits each edge's k comparisons into two folds
-of k/2, so a deployment running k = 128 does its inference on folds of 64.
-That is why 64 is on the grid. Separation loss on `observed`, by k:
+of k/2, so a deployment running k = 128 does its inference on folds
+of 64. That is why 64 is on the grid. Separation loss on
+`observed`, by k:
 
 | k | graph 0 | graph 1 | graph 2 | graph 3 |
 |---|---|---|---|---|
@@ -99,58 +104,63 @@ That is why 64 is on the grid. Separation loss on `observed`, by k:
 
 The canonical briefing prices thinning as neutral on PP4 -- it
 "simplifies the architecture, not the regime". On separation it is worse
-than neutral. Thinning a k = 128 deployment moves graph 3 from 0.8% to
-9.2% loss and graph 2 from 20.7% to 29.3%. Graphs 0 and 1 are untouched,
-so the cost is topology-dependent, not uniform -- which means it cannot be
-priced once and reused, only measured per deployment graph.
+than neutral. Thinning a k = 128 deployment moves graph 0 from 0.0% to 0.1%; graph 2 from 20.7% to 29.3%; graph 3 from 0.8% to 9.2%.
+That leaves graph 1 unmoved, so the cost is topology-dependent, not
+uniform -- which means it cannot be priced once and reused, only
+measured per deployment graph.
 
 **And the loss is not merely lost power: it biases what survives.** On
-graph 3 (b1 = 1) the drop rate and the conditional mean move together --
-0.8% loss and meanT/df = 1.024 at k = 128, 9.2% and 0.842 at k = 64, 43.0%
-and 0.740 at k = 32 -- with realised size falling 0.045 -> 0.039 -> 0.030.
-Separation preferentially removes draws with extreme scores, so the test
-left behind is CONSERVATIVE. That is the safe direction to fail, but it is
-a power loss invisible to anyone not tracking the drop rate. The effect is
-sharpest at b1 = 1, where truncating the single harmonic coordinate
-truncates the statistic directly; at b1 = 3 (graph 2) meanT/df stays near
-1.0 despite heavier losses.
+graph 3 (b1 = 1) the drop rate and
+the conditional mean move together -- 0.8% loss and meanT/df = 1.024 at k = 128 -- 9.2% loss and meanT/df = 0.842 at k = 64 -- 43.0% loss and meanT/df = 0.740 at k = 32 -- with realised size falling
+0.045 -> 0.039 -> 0.030. Separation preferentially removes draws with extreme scores, so
+the test left behind is CONSERVATIVE. That is the safe direction to fail,
+but it is a power loss invisible to anyone not tracking the drop rate. The
+effect is sharpest at b1 = 1, where truncating the single harmonic
+coordinate truncates the statistic directly; at b1 = 3 (graph 2) meanT/df stays at 0.972
+despite heavier losses.
 
 ## 2. Does it dominate Bradley-Terry?
 
 At k = 128, 1500 replicates, judging 7 of 16 curl-carrying cells (9 excluded for separation).
 
+Both nulls see the SAME draws in each cell -- the seed stream does not depend
+on which null is being fitted -- so the two columns are a paired comparison.
+
 | graph | rho_curl | curl fraction | harmonic-zero df | HZ size | BT df | BT size |
 |---|---|---|---|---|---|---|
-| 0 | 0.0 | 0.000 | 4 | 0.0600 | 16 | 0.0507 |
-| 0 | 0.5 | 0.447 | 4 | 0.0520 | 16 | 1.0000 |
-| 0 | 1.0 | 0.707 | 4 | 0.0473 | 16 | 1.0000 |
-| 0 | 2.0 | 0.894 | 4 | 0.0563 | 16 | 1.0000 |
-| 0 | 4.0 | 0.970 | 4 | 0.0072 | 16 | 1.0000 |
-| 1 | 0.0 | 0.000 | 3 | 0.0520 | 13 | 0.0467 |
-| 1 | 0.5 | 0.447 | 3 | 0.0627 | 13 | 1.0000 |
-| 1 | 1.0 | 0.707 | 3 | 0.0500 | 13 | 1.0000 |
-| 1 | 2.0 | 0.894 | 3 | 0.0532 | 13 | 1.0000 |
-| 1 | 4.0 | 0.970 | 3 | -- | 13 | 1.0000 |
-| 2 | 0.0 | 0.000 | 3 | 0.0560 | 21 | 0.0433 |
-| 2 | 0.5 | 0.447 | 3 | 0.0634 | 21 | 1.0000 |
-| 2 | 1.0 | 0.707 | 3 | 0.0565 | 21 | 1.0000 |
-| 2 | 2.0 | 0.894 | 3 | 0.0291 | 21 | 1.0000 |
+| 0 | 0.0 | 0.000 | 4 | 0.0467 | 16 | 0.0440 |
+| 0 | 0.5 | 0.447 | 4 | 0.0513 | 16 | 1.0000 |
+| 0 | 1.0 | 0.707 | 4 | 0.0540 | 16 | 1.0000 |
+| 0 | 2.0 | 0.894 | 4 | 0.0570 | 16 | 1.0000 |
+| 0 | 4.0 | 0.970 | 4 | 0.0000 | 16 | 1.0000 |
+| 1 | 0.0 | 0.000 | 3 | 0.0587 | 13 | 0.0440 |
+| 1 | 0.5 | 0.447 | 3 | 0.0580 | 13 | 1.0000 |
+| 1 | 1.0 | 0.707 | 3 | 0.0527 | 13 | 1.0000 |
+| 1 | 2.0 | 0.894 | 3 | 0.0573 | 13 | 1.0000 |
+| 1 | 4.0 | 0.970 | 3 | 0.0435 | 13 | 1.0000 |
+| 2 | 0.0 | 0.000 | 3 | 0.0580 | 21 | 0.0593 |
+| 2 | 0.5 | 0.447 | 3 | 0.0550 | 21 | 1.0000 |
+| 2 | 1.0 | 0.707 | 3 | 0.0477 | 21 | 1.0000 |
+| 2 | 2.0 | 0.894 | 3 | 0.0437 | 21 | 1.0000 |
 | 2 | 4.0 | 0.970 | 3 | -- | 21 | 1.0000 |
-| 3 | 0.0 | 0.000 | 1 | 0.0547 | 22 | 0.0480 |
-| 3 | 0.5 | 0.447 | 1 | 0.0527 | 22 | 1.0000 |
-| 3 | 1.0 | 0.707 | 1 | 0.0469 | 22 | 1.0000 |
+| 3 | 0.0 | 0.000 | 1 | 0.0620 | 22 | 0.0453 |
+| 3 | 0.5 | 0.447 | 1 | 0.0554 | 22 | 1.0000 |
+| 3 | 1.0 | 0.707 | 1 | 0.0388 | 22 | 1.0000 |
 | 3 | 2.0 | 0.894 | 1 | 0.0273 | 22 | 1.0000 |
 | 3 | 4.0 | 0.970 | 1 | -- | 22 | 1.0000 |
 
-**Emphatically, yes.** With no curl the two nulls agree at 0.05. With any
-curl at all -- from rho = 0.5, a curl fraction of 0.45 -- Bradley-Terry rejects
-**every single draw**, while harmonic-zero does not move off nominal size.
+**Emphatically, yes.** With no curl the two nulls agree at nominal size.
+From rho = 0.5, a curl fraction of 0.45, Bradley-Terry's rejection rate never
+falls below 1.0000, while harmonic-zero's
+never rises above 0.0580.
 Curl-type misspecification destroys BT's size completely and is invisible to
 the harmonic-zero null, which is the whole reason for preferring it.
 
-The rho_curl = 4 row is a degenerate regime, not evidence: the flow is 97%
-curl, eta is extreme, and separation removes most or all of the sample. It is
-shown rather than hidden, and excluded from the verdict.
+The rho_curl = 4.0 row is a degenerate regime, not
+evidence: the flow is 97% curl, eta reaches
+11.4 in absolute value, and separation removes most
+or all of the sample. It is shown rather than hidden, and excluded from the
+verdict.
 
 **Caveat with teeth: on `filling='empty'` the two nulls are the SAME TEST.**
 With no 2-cells, im D1^T = {0}, so S = im D0 exactly and the harmonic-zero df
@@ -162,37 +172,39 @@ that reaches for `empty` gets no protection from it (cf. RAN-7, RAN-22).
 
 At k = 128, 1500 replicates. `harmonic` perturbs along a unit
 harmonic direction, so ||P_h eps|| = eps. `control` perturbs by the SAME NORM
-inside S, where the null says it should not matter.
+inside S, where the null says it should not matter. Both arms share a draw
+stream, so at eps = 0 -- where their eta is identical -- they must agree
+exactly.
 
 | graph | eps = \|\|P_h eps\|\| | b1 | harmonic size | control size |
 |---|---|---|---|---|
-| 0 | 0.0 | 4 | 0.0500 | 0.0533 |
-| 0 | 0.05 | 4 | 0.0493 | 0.0493 |
-| 0 | 0.1 | 4 | 0.0660 | 0.0473 |
-| 0 | 0.2 | 4 | 0.1307 | 0.0487 |
-| 0 | 0.4 | 4 | 0.3213 | 0.0540 |
-| 0 | 0.8 | 4 | 0.8993 | 0.0520 |
-| 1 | 0.0 | 3 | 0.0560 | 0.0573 |
-| 1 | 0.05 | 3 | 0.0447 | 0.0467 |
-| 1 | 0.1 | 3 | 0.0600 | 0.0540 |
-| 1 | 0.2 | 3 | 0.0747 | 0.0620 |
-| 1 | 0.4 | 3 | 0.2113 | 0.0580 |
-| 1 | 0.8 | 3 | 0.7360 | 0.0533 |
-| 2 | 0.0 | 3 | 0.0480 | 0.0577 |
-| 2 | 0.05 | 3 | 0.0704 | 0.0392 |
-| 2 | 0.1 | 3 | 0.0718 | 0.0438 |
-| 2 | 0.2 | 3 | 0.1429 | 0.0508 |
-| 2 | 0.4 | 3 | 0.4455 | 0.0581 |
-| 2 | 0.8 | 3 | 0.9617 | 0.0536 |
-| 3 | 0.0 | 1 | 0.0422 | 0.0448 |
-| 3 | 0.05 | 1 | 0.0584 | 0.0416 |
-| 3 | 0.1 | 1 | 0.0717 | 0.0402 |
-| 3 | 0.2 | 1 | 0.1449 | 0.0509 |
-| 3 | 0.4 | 1 | 0.4533 | 0.0349 |
-| 3 | 0.8 | 1 | 0.9637 | 0.0430 |
+| 0 | 0.0 | 4 | 0.0587 | 0.0587 |
+| 0 | 0.05 | 4 | 0.0513 | 0.0493 |
+| 0 | 0.1 | 4 | 0.0627 | 0.0533 |
+| 0 | 0.2 | 4 | 0.1033 | 0.0487 |
+| 0 | 0.4 | 4 | 0.3480 | 0.0553 |
+| 0 | 0.8 | 4 | 0.9140 | 0.0493 |
+| 1 | 0.0 | 3 | 0.0527 | 0.0527 |
+| 1 | 0.05 | 3 | 0.0547 | 0.0547 |
+| 1 | 0.1 | 3 | 0.0593 | 0.0593 |
+| 1 | 0.2 | 3 | 0.0707 | 0.0547 |
+| 1 | 0.4 | 3 | 0.2227 | 0.0487 |
+| 1 | 0.8 | 3 | 0.7567 | 0.0447 |
+| 2 | 0.0 | 3 | 0.0484 | 0.0484 |
+| 2 | 0.05 | 3 | 0.0575 | 0.0497 |
+| 2 | 0.1 | 3 | 0.0796 | 0.0555 |
+| 2 | 0.2 | 3 | 0.1406 | 0.0477 |
+| 2 | 0.4 | 3 | 0.4330 | 0.0605 |
+| 2 | 0.8 | 3 | 0.9814 | 0.0533 |
+| 3 | 0.0 | 1 | 0.0477 | 0.0477 |
+| 3 | 0.05 | 1 | 0.0510 | 0.0442 |
+| 3 | 0.1 | 1 | 0.0696 | 0.0415 |
+| 3 | 0.2 | 1 | 0.1387 | 0.0443 |
+| 3 | 0.4 | 1 | 0.4515 | 0.0475 |
+| 3 | 0.8 | 1 | 0.9672 | 0.0568 |
 
-**Confirmed.** The control never leaves nominal size -- it maxes at 0.0620 across every graph and every eps up to 0.8 --
-while the harmonic perturbation drives the rejection rate to 0.9637.
+**Confirmed.** The control never leaves nominal size -- it maxes at 0.0593 across every graph and every eps up to 0.8 --
+while the harmonic perturbation drives the rejection rate to 0.9672.
 Equal-norm misspecification inside S is genuinely free; only the harmonic
 projection costs anything.
 
@@ -201,37 +213,41 @@ projection costs anything.
 
 | \|\|P_h eps\|\| | size, across graphs |
 |---|---|
-| 0.0 | 0.042 - 0.056 |
-| 0.05 | 0.045 - 0.070 |
-| 0.1 | 0.060 - 0.072 |
-| 0.2 | 0.075 - 0.145 |
-| 0.4 | 0.211 - 0.453 |
-| 0.8 | 0.736 - 0.964 |
+| 0.0 | 0.048 - 0.059 |
+| 0.05 | 0.051 - 0.057 |
+| 0.1 | 0.059 - 0.080 |
+| 0.2 | 0.071 - 0.141 |
+| 0.4 | 0.223 - 0.452 |
+| 0.8 | 0.757 - 0.981 |
 
 So the null is usable with an empirically characterised size as long as
-||P_h eps|| stays around 0.1 or below, where the worst cell reads 0.072
-against a nominal 0.05. By ||P_h eps|| = 0.4 the size is 0.21-0.45 and the
-test is no longer honest. Whether a real LLM judge sits below 0.1 is not
-something this run can answer -- it is the measurement RAN-30 and the
-comparator work have to supply.
+||P_h eps|| stays at 0.1 or below, where the worst cell reads
+0.080 against a nominal 0.05.
+By ||P_h eps|| = 0.4 the size is 0.22-0.45 and the test is no longer honest.
+Whether a real LLM judge sits below that is not something this run can
+answer -- it is the measurement RAN-30 and the comparator work have to
+supply.
 
 ## What this run does NOT establish
 
 **DZW agreement is untested.** RAN-28's gating item has two halves: that the
 harmonic-zero score test collapses to a Rao test (tested here, confirmed at
-k >= 128), and that it AGREES with DZW's construction (not tested). DZW's
-symmetric-noise fold is not implemented because the canonical briefing
-(`dzw2026-vs-harmonic-null-CANONICAL.md`) is not in the repo. The half tested
-here is the one that stands alone: if the collapse had failed, the agreement
-question would be moot.
+k >= 128), and that it AGREES with DZW's construction (not tested). The
+blocker is not access -- the canonical briefing is in the repo at
+`design/reference/dzw2026-vs-harmonic-null-CANONICAL.md`. It ASSERTS that
+identity rather than verifying it, and the assertion is a secondhand reading
+of a paper not read firsthand, so the agreement claim is DEFERRED to RAN-31
+rather than closed. The half tested here is the one that stands alone: if the
+collapse had failed, the agreement question would be moot.
 
 **One data-generating process.** Everything is gamma-shaped theta at
-beta = 0.25, gamma = 2.0, n = 12, p = 0.45. The four graphs vary the mask, not
+beta = 0.25, gamma = 2.0, n = 12, p = 0.45. The 4 graphs vary the mask, not
 the latent. A different theta shape could move the small-k behaviour.
 
-**Power.** 2000 replicates puts a binomial standard error of about 0.005 on a
-size near 0.05, so the 0.045-0.060 band at k >= 128 is roughly +/-1 s.e. of
-nominal and should not be over-read as bias. The KS test at n = 2000 is far
-more sensitive than the size is: cells with KS p below 0.05 but size inside
-0.045-0.060 are shape deviations too small to matter operationally, and the
-two diagnostics are reported separately for that reason.
+**Power.** 2000 replicates puts a binomial standard error of about
+0.005 on a size near 0.05, so the 0.045-0.059 band at k >= 128 is roughly
++/-1 s.e. of nominal and should not be over-read as bias. The KS test at
+n = 2000 is far more sensitive than the size is: cells with KS p below
+0.05 but size inside 0.045-0.059 are shape deviations too small to
+matter operationally, and the two diagnostics are reported separately for
+that reason.

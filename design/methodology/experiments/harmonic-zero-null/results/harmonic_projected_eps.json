@@ -10,8 +10,8 @@
   "n_cells": 24,
   "n_cells_judged": 18,
   "n_cells_excluded_for_separation": 6,
-  "max_control_reject": 0.062,
-  "max_harmonic_reject": 0.9637340496977838,
+  "max_control_reject": 0.059333333333333335,
+  "max_harmonic_reject": 0.9671801741460148,
   "rows": [
    {
     "graph": 0,
@@ -20,10 +20,10 @@
     "Ph_eps_norm": 0.0,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.05,
+    "harmonic_reject": 0.058666666666666666,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.05333333333333334
+    "in_S_control_reject": 0.058666666666666666
    },
    {
     "graph": 0,
@@ -32,7 +32,7 @@
     "Ph_eps_norm": 0.05,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.04933333333333333,
+    "harmonic_reject": 0.051333333333333335,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
     "in_S_control_reject": 0.04933333333333333
@@ -44,10 +44,10 @@
     "Ph_eps_norm": 0.1,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.066,
+    "harmonic_reject": 0.06266666666666666,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.04733333333333333
+    "in_S_control_reject": 0.05333333333333334
    },
    {
     "graph": 0,
@@ -56,7 +56,7 @@
     "Ph_eps_norm": 0.2,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.13066666666666665,
+    "harmonic_reject": 0.10333333333333333,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
     "in_S_control_reject": 0.048666666666666664
@@ -68,10 +68,10 @@
     "Ph_eps_norm": 0.4,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.32133333333333336,
+    "harmonic_reject": 0.348,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.054
+    "in_S_control_reject": 0.05533333333333333
    },
    {
     "graph": 0,
@@ -80,10 +80,10 @@
     "Ph_eps_norm": 0.8,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.8993333333333333,
+    "harmonic_reject": 0.914,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.052
+    "in_S_control_reject": 0.04933333333333333
    },
    {
     "graph": 1,
@@ -92,10 +92,10 @@
     "Ph_eps_norm": 0.0,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.056,
+    "harmonic_reject": 0.05266666666666667,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.05733333333333333
+    "in_S_control_reject": 0.05266666666666667
    },
    {
     "graph": 1,
@@ -104,10 +104,10 @@
     "Ph_eps_norm": 0.05,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.04466666666666667,
+    "harmonic_reject": 0.05466666666666667,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.04666666666666667
+    "in_S_control_reject": 0.05466666666666667
    },
    {
     "graph": 1,
@@ -116,10 +116,10 @@
     "Ph_eps_norm": 0.1,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.06,
+    "harmonic_reject": 0.059333333333333335,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.054
+    "in_S_control_reject": 0.059333333333333335
    },
    {
     "graph": 1,
@@ -128,10 +128,10 @@
     "Ph_eps_norm": 0.2,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.07466666666666667,
+    "harmonic_reject": 0.07066666666666667,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.062
+    "in_S_control_reject": 0.05466666666666667
    },
    {
     "graph": 1,
@@ -140,10 +140,10 @@
     "Ph_eps_norm": 0.4,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.21133333333333335,
+    "harmonic_reject": 0.22266666666666668,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.058
+    "in_S_control_reject": 0.048666666666666664
    },
    {
     "graph": 1,
@@ -152,154 +152,154 @@
     "Ph_eps_norm": 0.8,
     "harmonic_n_usable": 1500,
     "harmonic_drop_rate": 0.0,
-    "harmonic_reject": 0.736,
+    "harmonic_reject": 0.7566666666666667,
     "in_S_control_n_usable": 1500,
     "in_S_control_drop_rate": 0.0,
-    "in_S_control_reject": 0.05333333333333334
+    "in_S_control_reject": 0.04466666666666667
    },
    {
     "graph": 2,
     "eps": 0.0,
     "df": 3,
     "Ph_eps_norm": 0.0,
-    "harmonic_n_usable": 1188,
-    "harmonic_drop_rate": 0.208,
-    "harmonic_reject": 0.047979797979797977,
-    "in_S_control_n_usable": 1162,
-    "in_S_control_drop_rate": 0.22533333333333333,
-    "in_S_control_reject": 0.0576592082616179
+    "harmonic_n_usable": 1177,
+    "harmonic_drop_rate": 0.21533333333333332,
+    "harmonic_reject": 0.048428207306711976,
+    "in_S_control_n_usable": 1177,
+    "in_S_control_drop_rate": 0.21533333333333332,
+    "in_S_control_reject": 0.048428207306711976
    },
    {
     "graph": 2,
     "eps": 0.05,
     "df": 3,
     "Ph_eps_norm": 0.05,
-    "harmonic_n_usable": 1164,
-    "harmonic_drop_rate": 0.224,
-    "harmonic_reject": 0.070446735395189,
-    "in_S_control_n_usable": 1149,
-    "in_S_control_drop_rate": 0.234,
-    "in_S_control_reject": 0.0391644908616188
+    "harmonic_n_usable": 1166,
+    "harmonic_drop_rate": 0.22266666666666668,
+    "harmonic_reject": 0.057461406518010294,
+    "in_S_control_n_usable": 1147,
+    "in_S_control_drop_rate": 0.23533333333333334,
+    "in_S_control_reject": 0.04969485614646905
    },
    {
     "graph": 2,
     "eps": 0.1,
     "df": 3,
     "Ph_eps_norm": 0.1,
-    "harmonic_n_usable": 1156,
-    "harmonic_drop_rate": 0.22933333333333333,
-    "harmonic_reject": 0.07179930795847751,
-    "in_S_control_n_usable": 1164,
-    "in_S_control_drop_rate": 0.224,
-    "in_S_control_reject": 0.04381443298969072
-   },
-   {
-    "graph": 2,
-    "eps": 0.2,
-    "df": 3,
-    "Ph_eps_norm": 0.2,
-    "harmonic_n_usable": 1127,
-    "harmonic_drop_rate": 0.24866666666666667,
-    "harmonic_reject": 0.14285714285714285,
-    "in_S_control_n_usable": 1162,
-    "in_S_control_drop_rate": 0.22533333333333333,
-    "in_S_control_reject": 0.050774526678141134
-   },
-   {
-    "graph": 2,
-    "eps": 0.4,
-    "df": 3,
-    "Ph_eps_norm": 0.4,
-    "harmonic_n_usable": 1073,
-    "harmonic_drop_rate": 0.2846666666666667,
-    "harmonic_reject": 0.44547996272134205,
+    "harmonic_n_usable": 1143,
+    "harmonic_drop_rate": 0.238,
+    "harmonic_reject": 0.07961504811898512,
     "in_S_control_n_usable": 1171,
     "in_S_control_drop_rate": 0.21933333333333332,
-    "in_S_control_reject": 0.05807002561912895
+    "in_S_control_reject": 0.05550811272416738
+   },
+   {
+    "graph": 2,
+    "eps": 0.2,
+    "df": 3,
+    "Ph_eps_norm": 0.2,
+    "harmonic_n_usable": 1145,
+    "harmonic_drop_rate": 0.23666666666666666,
+    "harmonic_reject": 0.1406113537117904,
+    "in_S_control_n_usable": 1175,
+    "in_S_control_drop_rate": 0.21666666666666667,
+    "in_S_control_reject": 0.04765957446808511
+   },
+   {
+    "graph": 2,
+    "eps": 0.4,
+    "df": 3,
+    "Ph_eps_norm": 0.4,
+    "harmonic_n_usable": 1104,
+    "harmonic_drop_rate": 0.264,
+    "harmonic_reject": 0.4329710144927536,
+    "in_S_control_n_usable": 1173,
+    "in_S_control_drop_rate": 0.218,
+    "in_S_control_reject": 0.060528559249786874
    },
    {
     "graph": 2,
     "eps": 0.8,
     "df": 3,
     "Ph_eps_norm": 0.8,
-    "harmonic_n_usable": 1019,
-    "harmonic_drop_rate": 0.32066666666666666,
-    "harmonic_reject": 0.9617271835132483,
-    "in_S_control_n_usable": 1176,
-    "in_S_control_drop_rate": 0.216,
-    "in_S_control_reject": 0.05357142857142857
+    "harmonic_n_usable": 1021,
+    "harmonic_drop_rate": 0.31933333333333336,
+    "harmonic_reject": 0.9813907933398629,
+    "in_S_control_n_usable": 1164,
+    "in_S_control_drop_rate": 0.224,
+    "in_S_control_reject": 0.05326460481099656
    },
    {
     "graph": 3,
     "eps": 0.0,
     "df": 1,
     "Ph_eps_norm": 0.0,
-    "harmonic_n_usable": 1494,
-    "harmonic_drop_rate": 0.004,
-    "harmonic_reject": 0.04216867469879518,
-    "in_S_control_n_usable": 1496,
-    "in_S_control_drop_rate": 0.0026666666666666666,
-    "in_S_control_reject": 0.04478609625668449
+    "harmonic_n_usable": 1490,
+    "harmonic_drop_rate": 0.006666666666666667,
+    "harmonic_reject": 0.0476510067114094,
+    "in_S_control_n_usable": 1490,
+    "in_S_control_drop_rate": 0.006666666666666667,
+    "in_S_control_reject": 0.0476510067114094
    },
    {
     "graph": 3,
     "eps": 0.05,
     "df": 1,
     "Ph_eps_norm": 0.05,
-    "harmonic_n_usable": 1491,
-    "harmonic_drop_rate": 0.006,
-    "harmonic_reject": 0.05835010060362173,
+    "harmonic_n_usable": 1490,
+    "harmonic_drop_rate": 0.006666666666666667,
+    "harmonic_reject": 0.05100671140939597,
     "in_S_control_n_usable": 1492,
     "in_S_control_drop_rate": 0.005333333333333333,
-    "in_S_control_reject": 0.04155495978552279
+    "in_S_control_reject": 0.04423592493297587
    },
    {
     "graph": 3,
     "eps": 0.1,
     "df": 1,
     "Ph_eps_norm": 0.1,
-    "harmonic_n_usable": 1492,
-    "harmonic_drop_rate": 0.005333333333333333,
-    "harmonic_reject": 0.07171581769436998,
+    "harmonic_n_usable": 1494,
+    "harmonic_drop_rate": 0.004,
+    "harmonic_reject": 0.06961178045515395,
     "in_S_control_n_usable": 1493,
     "in_S_control_drop_rate": 0.004666666666666667,
-    "in_S_control_reject": 0.04018754186202277
+    "in_S_control_reject": 0.041527126590756865
    },
    {
     "graph": 3,
     "eps": 0.2,
     "df": 1,
     "Ph_eps_norm": 0.2,
-    "harmonic_n_usable": 1484,
-    "harmonic_drop_rate": 0.010666666666666666,
-    "harmonic_reject": 0.14487870619946092,
-    "in_S_control_n_usable": 1494,
-    "in_S_control_drop_rate": 0.004,
-    "in_S_control_reject": 0.050870147255689425
+    "harmonic_n_usable": 1492,
+    "harmonic_drop_rate": 0.005333333333333333,
+    "harmonic_reject": 0.13873994638069706,
+    "in_S_control_n_usable": 1491,
+    "in_S_control_drop_rate": 0.006,
+    "in_S_control_reject": 0.04426559356136821
    },
    {
     "graph": 3,
     "eps": 0.4,
     "df": 1,
     "Ph_eps_norm": 0.4,
-    "harmonic_n_usable": 1487,
-    "harmonic_drop_rate": 0.008666666666666666,
-    "harmonic_reject": 0.45326160053799597,
-    "in_S_control_n_usable": 1490,
-    "in_S_control_drop_rate": 0.006666666666666667,
-    "in_S_control_reject": 0.0348993288590604
+    "harmonic_n_usable": 1495,
+    "harmonic_drop_rate": 0.0033333333333333335,
+    "harmonic_reject": 0.451505016722408,
+    "in_S_control_n_usable": 1496,
+    "in_S_control_drop_rate": 0.0026666666666666666,
+    "in_S_control_reject": 0.047459893048128345
    },
    {
     "graph": 3,
     "eps": 0.8,
     "df": 1,
     "Ph_eps_norm": 0.8,
-    "harmonic_n_usable": 1489,
-    "harmonic_drop_rate": 0.007333333333333333,
-    "harmonic_reject": 0.9637340496977838,
-    "in_S_control_n_usable": 1489,
-    "in_S_control_drop_rate": 0.007333333333333333,
-    "in_S_control_reject": 0.042981867024848894
+    "harmonic_n_usable": 1493,
+    "harmonic_drop_rate": 0.004666666666666667,
+    "harmonic_reject": 0.9671801741460148,
+    "in_S_control_n_usable": 1496,
+    "in_S_control_drop_rate": 0.0026666666666666666,
+    "in_S_control_reject": 0.056818181818181816
    }
   ]
  }
