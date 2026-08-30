@@ -143,7 +143,7 @@ the rig *measures* -- until they meet on one identity.
 
 - **Role.** Show that acceptance is mechanised rather than asserted.
 - **Claim.** Acceptance is a numbered list of claims, each with a test against the real instrument; negative controls carry equal weight.
-- **Note.** DRIFT: the section says 70 tests in 4.5 seconds. The suite is now 82 -- paper 2's work added a test file for the score-test module. Either restate the count or stop quoting one.
+- **Note.** Rescoped, and my first reading of this was wrong. 70 is still the right count for what the sentence claims -- the instrument's own acceptance suite, measured at exactly 70. The repository now runs 82, because paper 2 added a suite for a module built ON the instrument, which was never part of this acceptance. So the fix was to say which suite is meant, not to bump a number. The timing was dropped rather than restated: it could not be re-measured honestly (load average 169 on 12 cores at the time), and an unverified number is worse than none.
 
 ### 15. Results
 
@@ -188,5 +188,5 @@ the rig *measures* -- until they meet on one identity.
 
 - **Role.** The honest close: name what remains, precisely enough to be picked up.
 - **Claim.** The rig validates the instrument, not the judge. And a narrower second gap: a deployment must estimate its null from data, which forces a choice of which flows the fitted null may contain.
-- **Note.** DEFECT: the second gap is stated as open, and it is not. Paper 2 made that choice and measured it -- a Bradley-Terry null does not merely 'misstate the harmonic band', it rejects every draw once curl is present. This beat needs rewriting to point at the answer.
+- **Note.** FIXED. The second gap was stated as open when it is not, and the paragraph now points at the measurement. Two things it gained: the cost of defaulting to the gradient is destruction rather than the misstatement of degree originally implied, and the choice of subspace is not separable from the choice of filling -- with no 2-cells the two nulls coincide and the distinction the paragraph draws disappears. That collapse is Principle 3 reaching a quantity it was not written for, so the beat now closes on the same note the document opened.
 

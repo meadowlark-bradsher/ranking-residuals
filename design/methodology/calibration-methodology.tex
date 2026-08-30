@@ -500,8 +500,10 @@ reproduce byte-identical output.
 \section{Validation protocol}
 
 Acceptance is defined as a numbered list of claims, each with a test that
-exercises it against the real instrument. The current suite is $70$ tests in
-$4.5$ seconds, fast enough to run on every edit. Three features are deliberate.
+exercises it against the real instrument. The instrument's acceptance suite is $70$
+tests running in seconds, fast enough on every edit; the repository carries
+further suites for work built on the instrument, which are not part of this
+acceptance. Three features are deliberate.
 
 \emph{Negative controls carry equal weight.} $\varepsilon=0$ must yield a floor
 whose interval covers zero; the symmetric latent shape must yield a floor
@@ -700,12 +702,23 @@ edge probabilities, which it knows by construction; a deployment knows only the
 data it is judging and must estimate the null from it. That estimate carries a
 modelling choice the rig never faces --- which flows the fitted null is permitted
 to contain. A null fitted as a pure gradient (a Bradley--Terry fit) assumes the
-criterion is rankable before testing whether it is, and misstates the harmonic
-band wherever the comparator carries genuine local inconsistency on the edges a
-hole runs through; a null fitted to the gradient-and-curl subspace does not.
-Choosing that subspace is part of generating the matched null
-Principle~\ref{prin:nouniversal} already requires, and it has to be stated rather
-than defaulted.
+criterion is rankable before testing whether it is; a null fitted to the
+gradient-and-curl subspace does not. Choosing that subspace is part of generating
+the matched null Principle~\ref{prin:nouniversal} already requires, and it has to
+be stated rather than defaulted.
+
+We have since made that choice and measured its consequences, and report them
+separately. Two findings bear on the scope of this document. First, the cost of
+defaulting to the gradient is not the misstatement of degree this paragraph
+originally implied: fed flows that satisfy a gradient-and-curl null exactly, a
+Bradley--Terry fit rejects \emph{every} draw once the curl fraction reaches
+$0.45$, while the subspace null holds nominal size. Curl-type misspecification
+does not bias such a test, it destroys it. Second, the subspace is not free to
+choose independently of the filling: with no $2$-cells the curl space is trivial
+(\S\ref{sec:problem}), the two nulls coincide, and the distinction this
+paragraph draws disappears. The choice of filling and the choice of null are one
+decision, not two --- which is Principle~\ref{prin:nouniversal} again, reaching a
+quantity we did not anticipate it would reach.
 
 \begin{thebibliography}{9}
 \bibitem{jiang2011}
