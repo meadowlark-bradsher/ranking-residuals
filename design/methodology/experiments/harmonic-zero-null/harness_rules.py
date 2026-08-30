@@ -51,9 +51,37 @@ MIN_BASE_SEEDS = 5
 AUDIT_FOR = {"chi2_collapse": "collapse_spread"}
 
 # Fields that ARE moment ratios, i.e. the quantities whose sampling error scales
-# with 12/df. A row carrying any of these at low df is in scope.
-MOMENT_FIELDS = ("mean_T", "var_T", "mean_ratio", "var_ratio",
-                 "trimmed_mean_ratio")
+# with 12/df. Matched by SHAPE, not by an enumerated list.
+#
+# The first version enumerated exact names and missed collapse_spread entirely:
+# that probe reports ref_var_ratio, var_ratio_med, var_ratio_max and se_var_ratio
+# at row level, and keeps the bare mean_ratio/var_ratio one level down inside each
+# row's "draws" list. None of those matched, so low_df_moment_rows() returned zero
+# for it and the rule contributed nothing. It only LOOKED like it worked because
+# collapse_spread carries n_base = 10 and is discharged as seeded anyway -- a
+# probe of the same shape WITHOUT seeds would have sailed through unflagged, which
+# is precisely the class this rule exists to catch.
+#
+# So: any key whose name contains a moment ratio, or which is a mean_/var_ prefixed
+# measurement. Aggregates (_med, _max, se_, ref_) come along for free.
+MOMENT_SUBSTRINGS = ("mean_ratio", "var_ratio")
+MOMENT_PREFIXES = ("mean_", "var_")
+
+# Reference constants, not measurements: chi2_mean is df and chi2_var is 2*df.
+# They carry no sampling error and must not put a row in scope.
+NOT_MOMENTS = ("chi2_",)
+
+# Rows sometimes nest their per-draw values in a list of dicts (collapse_spread's
+# "draws", seed_spread's "per_seed"). Those inner values are the ones actually
+# carrying the 12/df error, so the scan descends one level to find them.
+NESTED_KEYS_MAX_DEPTH = 1
+
+
+def is_moment_key(key):
+    if key.startswith(NOT_MOMENTS):
+        return False
+    return (any(sub in key for sub in MOMENT_SUBSTRINGS)
+            or key.startswith(MOMENT_PREFIXES))
 
 
 def row_dfs(row):
@@ -66,7 +94,16 @@ def row_dfs(row):
 
 
 def carries_moments(row):
-    return any(row.get(f) is not None for f in MOMENT_FIELDS)
+    """True when this row reports a moment ratio, at its own level or one below."""
+    for key, val in row.items():
+        if is_moment_key(key) and val is not None:
+            return True
+        if isinstance(val, list):
+            for item in val:
+                if isinstance(item, dict) and any(
+                        is_moment_key(k) and v is not None for k, v in item.items()):
+                    return True
+    return False
 
 
 def low_df_moment_rows(result):
