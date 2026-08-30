@@ -274,3 +274,147 @@ def audit_is_current(probe_name, results, current):
     if not audit or audit not in results:
         return False
     return staleness(audit, results[audit], current) is None
+
+
+# ---------------------------------------------------------------------------
+# THIRD RULE: a result may not be read as current if the CODE that produced it
+# has changed meaning, whether or not any named constant moved.
+#
+# Rule 2 watches gate constants. It went silent when closes_at() was changed from
+# testing var_ratio alone to testing both moments -- b1_1_closes_at moved 0.05 ->
+# 0.03, a real change to a shipped number, and nothing mismatched because
+# b1_one_boundary records only alpha. The change travelled through a PREDICATE,
+# which constants cannot see. That is the third blind spot found in this file
+# tonight, and unlike the other two it is not a bug: rule 2 is doing exactly what
+# it says.
+#
+# WHY NOT HASH THE FILE. Any edit then invalidates every result, comments
+# included. That is the permanently-red failure this module already had once, and
+# a guard nobody can satisfy is one that gets switched off -- taking the genuine
+# flags with it. So the fingerprint is per PROBE and blind to anything that does
+# not change meaning.
+#
+# WHAT IT COVERS. The probe's own body, plus the transitive closure of
+# module-level functions it calls and module-level constants it reads. Comments
+# never reach the AST at all; docstrings are stripped explicitly; positions are
+# excluded, so reindenting or rewrapping a line changes nothing.
+#
+# WHAT IT DOES NOT COVER, and these are stated rather than solved. Calls made
+# dynamically (getattr, a name looked up at run time) are invisible to a static
+# walk. Behaviour that depends on an imported module -- hodge, rig.flows, numpy --
+# is out of scope: this answers "did OUR code change", not "did the world". And a
+# semantically neutral refactor, extracting a helper without altering behaviour,
+# WILL change the fingerprint. That direction is the safe one: it costs a re-run
+# nobody needed rather than hiding one that was.
+
+import ast
+import hashlib
+import inspect
+import textwrap
+
+
+def _strip_docstrings(tree):
+    """Docstrings reach the AST as Expr nodes; comments never do. Drop them so
+    documenting a probe does not invalidate its results."""
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                                 ast.ClassDef)):
+            continue
+        body = getattr(node, "body", None)
+        if (body and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            node.body = body[1:] or [ast.Pass()]
+    return tree
+
+
+def _normalised_dump(source):
+    tree = _strip_docstrings(ast.parse(textwrap.dedent(source)))
+    # include_attributes=False drops lineno/col_offset, so moving code or
+    # rewrapping a line is not a change.
+    return ast.dump(tree, annotate_fields=True, include_attributes=False)
+
+
+def _module_level(module):
+    """{name: source} for module-level functions and simple constant bindings."""
+    try:
+        tree = ast.parse(inspect.getsource(module))
+    except (OSError, TypeError):
+        return {}
+    out = {}
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            out[node.name] = ast.dump(_strip_docstrings(node),
+                                      annotate_fields=True, include_attributes=False)
+        elif isinstance(node, ast.Assign):
+            dump = ast.dump(node, annotate_fields=True, include_attributes=False)
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    out[target.id] = dump
+                elif isinstance(target, ast.Tuple):
+                    for elt in target.elts:
+                        if isinstance(elt, ast.Name):
+                            out[elt.id] = dump
+    return out
+
+
+def _referenced(dump_text, known):
+    return {n for n in known if f"id='{n}'" in dump_text or f"name='{n}'" in dump_text}
+
+
+def semantic_fingerprint(module, entry, _max_depth=12):
+    """A hash of `entry` and everything in this module it transitively depends on.
+
+    Stable across comments, docstrings, blank lines and reindentation. Changes
+    when any body or constant in the closure changes meaning.
+    """
+    level = _module_level(module)
+    if entry not in level:
+        return None
+    seen, frontier = set(), {entry}
+    for _ in range(_max_depth):
+        new = set()
+        for name in sorted(frontier):
+            if name in seen:
+                continue
+            seen.add(name)
+            new |= _referenced(level[name], set(level)) - seen
+        if not new:
+            break
+        frontier = new
+    payload = "\n".join(f"{n}::{level[n]}" for n in sorted(seen))
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+# The key a result carries its fingerprint under. Probes record it; this module
+# only reads it. The recording line belongs in probes.py's __main__ writer:
+#
+#     r.setdefault("value", {})["source_fingerprint"] = \
+#         harness_rules.semantic_fingerprint(sys.modules[__name__], name)
+#
+FINGERPRINT_KEY = "source_fingerprint"
+
+
+def fingerprint_mismatch(name, result, module):
+    """A sentence when this result was produced by code that has since changed
+    meaning, None when it agrees, and None when the result predates the field --
+    an absent fingerprint is unverifiable, not agreement, and is reported by
+    unfingerprinted() so it cannot be counted as passing."""
+    recorded = (result.get("value") or {}).get(FINGERPRINT_KEY)
+    if recorded is None:
+        return None
+    current = semantic_fingerprint(module, name)
+    if current is None:
+        return (f"{name}: records a source fingerprint but the module no longer "
+                f"defines a probe by that name.")
+    if recorded != current:
+        return (f"{name}: produced by code that has since changed meaning "
+                f"(fingerprint {recorded} -> {current}). No named constant need "
+                f"have moved -- a predicate is enough. Re-run it.")
+    return None
+
+
+def unfingerprinted(results):
+    """Results carrying no fingerprint: unverifiable by this rule, not agreeing."""
+    return sorted(n for n, r in results.items()
+                  if (r.get("value") or {}).get(FINGERPRINT_KEY) is None)
