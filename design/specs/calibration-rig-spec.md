@@ -1,6 +1,6 @@
 # Synthetic Calibration Rig — Design Specification (v8)
 
-**Revision note (v8):** §13.3 added — a reporting convention for margins — after one shipped rounded outward and the rounding was then inherited verbatim into a second document. `bias-of-bias/README.md` reported a gap of `5.1e-08` pt against a `0.02` pt tolerance as "six orders of magnitude"; the factor is `3.93e+05`, so 5.6, and the overstatement is 2.5× in the linear quantity. The rule is to report the two quantities and not the ratio between them: the registry owns `residual-exact.tolerance` and owns nothing derived from it, so a quoted tolerance fails *loudly* when retuned where a quoted factor goes quietly stale. **No rig behaviour changes** — this is a documentation contract, which is why §§2–12 are untouched. §13's lead-in also said "Two results"; it says three.
+**Revision note (v8):** §13.3 added — a reporting convention for margins — after one shipped rounded outward and the rounding was then inherited verbatim into a second document. `bias-of-bias/README.md` reported a gap of `5.1e-08` pt against a `0.02` pt tolerance as "six orders of magnitude"; the factor is `3.93e+05`, so 5.6, and the overstatement is 2.5× in the linear quantity. The rule is to report the two quantities and not the ratio between them: the registry owns `residual-exact.tolerance` and owns nothing derived from it, so a quoted tolerance fails *loudly* when retuned where a quoted factor goes quietly stale. **No rig behaviour changes** — this is a documentation contract, which is why §§2–12 are untouched. §13's lead-in also said "Two results"; it says three. <!-- margin-exempt: v8 revision note reporting the defect that produced 13.3 -->
 
 **Revision note (v7):** ρ is **optimised, no longer merely justified** — v6's last open item is closed as far as these levers reach. Scanned over ρ ∈ {1.5, 2, 3, 4.5, 6, 9} × 8 base seeds: the residual falls monotonically as ρ falls, because a smaller ρ demands a longer, cleaner tail. Lower ρ costs grid reach, so ρ and the `k` grid had to move together.
 
@@ -578,9 +578,9 @@ make, one level up.
 ### 13.3 Quote the inputs, not the comparison
 
 A margin is reported as the two quantities being compared, each in its own units. Not as
-a ratio between them, and not as a count of orders of magnitude derived from that ratio.
-**"The gap is ~5.1e-08 pt against the 0.02 pt trigger"** — never "inside tolerance by a
-factor of 3.9e+05", and never "by six orders of magnitude".
+a ratio between them, and not as a count of orders of magnitude derived from that ratio. <!-- margin-exempt: 13.3 stating the rule it defines -->
+**"The gap is ~5.1e-08 pt against the 0.02 pt trigger"** — never "inside tolerance by a <!-- margin-exempt: 13.3 quoting the forbidden form to forbid it -->
+factor of 3.9e+05", and never "by six orders of magnitude". <!-- margin-exempt: 13.3 quoting the forbidden form to forbid it -->
 
 Three things go wrong with the derived form; the second is the one that actually bites.
 
