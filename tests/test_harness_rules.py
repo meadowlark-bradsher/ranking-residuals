@@ -115,13 +115,17 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
 # suite under the committed window clears them, and the equality assertion then
 # fails until they are struck -- same ratchet as KNOWN_GAPS.
 #
-# It did exactly that. b1_ladder and chi2_collapse were struck once the key-type
-# normalisation landed: both were written by the module they are compared against,
-# and had only ever read stale because JSON turns SATURATION_WINDOW's int keys
-# into strings. collapse_spread remains, and its flag is the real one -- it still
-# records saturation_max, which the module dropped, and clearing it needs its own
-# ~20 minute invocation since AUDITS sit outside the default run.
-KNOWN_STALE = {"collapse_spread"}
+# It did exactly that, twice. b1_ladder and chi2_collapse were struck when the
+# key-type normalisation landed -- both were written by the module they are
+# compared against and had only ever read stale because JSON turns
+# SATURATION_WINDOW's int keys into strings. collapse_spread was struck when it
+# was finally re-run under the refusal, which is what the whole sequencing was
+# for: it was the one genuinely stale artifact and it is now current.
+#
+# Empty is the right resting state. A stale entry appearing here again means a
+# result has fallen behind the code, which is a thing to fix rather than to
+# record.
+KNOWN_STALE = set()
 
 # Results recording no gate constant at all cannot be checked either way. That is
 # a defect in the probe, not in the checker: a result nobody can date is one that
@@ -167,16 +171,25 @@ def test_uncheckable_results_are_exactly_the_known_ones(results):
         "current forever; give it its constants or add it here deliberately.")
 
 
-def test_a_stale_audit_does_not_discharge_its_probe(results, current):
-    """The hole this rule was written to close.
+def test_an_audit_discharges_exactly_when_it_is_present_and_current(results, current):
+    """The hole this rule closed, stated as a property rather than a snapshot.
 
-    AUDIT_FOR excuses chi2_collapse because collapse_spread exists. It should stop
-    excusing it the moment that audit is out of step with the code -- which is the
-    tree's state right now, so this asserts the guard actually fires.
+    AUDIT_FOR excuses chi2_collapse because collapse_spread exists. It must stop
+    excusing it the moment that audit falls out of step with the code. This was
+    first written as "the discharge must be OFF", which was true of the tree that
+    day and false the moment collapse_spread was re-run -- the same snapshot
+    mistake as naming probes in the stale test. Both directions are asserted now.
     """
-    assert not hr.audit_is_current("chi2_collapse", results, current), (
-        "collapse_spread now agrees with the code; if the suite was re-run, strike "
-        "it from KNOWN_STALE and invert this assertion")
+    for probe, audit in hr.AUDIT_FOR.items():
+        if probe not in results:
+            continue
+        present_and_current = (audit in results
+                               and hr.staleness(audit, results[audit], current) is None)
+        assert hr.audit_is_current(probe, results, current) is present_and_current, (
+            f"{probe}'s discharge disagrees with whether {audit} is present and "
+            "current")
+        # a missing audit never discharges, whatever its state
+        assert not hr.audit_is_current(probe, {probe: results[probe]}, current)
 
 
 def test_staleness_fires_on_a_dropped_constant():

@@ -62,6 +62,7 @@ from scipy.stats import binom, chi2, kstest, norm
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import harness_rules                                             # noqa: E402
 import score_test as st                                          # noqa: E402
 import hodge                                                     # noqa: E402
 from rig import flows                                            # noqa: E402
@@ -1806,6 +1807,18 @@ if __name__ == "__main__":
     names = sys.argv[1:] or list(PROBES)
     for name in names:
         r = runnable[name]()
+        # Stamp the result with a fingerprint of the code that produced it: this
+        # probe's body plus the transitive closure of module-level functions it
+        # calls and constants it reads, with comments, docstrings and formatting
+        # excluded. Gate constants are already compared by harness_rules' second
+        # rule; this catches the changes that move NO constant -- closes_at
+        # testing var_ratio alone and exporting the answer as b1_1_closes_at moved
+        # a shipped number 0.05 -> 0.03 with every recorded constant identical,
+        # and nothing noticed. Recorded here rather than computed at read time
+        # because the question is what produced THIS file, which only the writer
+        # knows.
+        r.setdefault("value", {})[harness_rules.FINGERPRINT_KEY] = (
+            harness_rules.semantic_fingerprint(sys.modules[__name__], name))
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:24} {r['verdict']:10} -> results/{name}.json")
     # RESULTS.md is regenerated from ALL THREE json files, so writing it after a
