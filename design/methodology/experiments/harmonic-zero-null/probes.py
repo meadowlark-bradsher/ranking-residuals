@@ -206,6 +206,20 @@ def moment_ratios_ok(mean_ratio, var_ratio, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
     return (mean_ratio is not None and var_ratio is not None
             and abs(mean_ratio - 1) <= mtol and abs(var_ratio - 1) <= vtol)
 
+
+def row_moments_ok(row, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """moment_ratios_ok for the raw-moment row shape.
+
+    chi2_collapse and b1_ladder rows carry mean_T beside chi2_mean rather than a
+    ratio. Three callers were each decoding that shape and re-testing the pair
+    inline, which is the duplication that let closes_at drift to testing one half
+    without anything noticing. One decoder, one predicate.
+    """
+    if row["mean_T"] is None or row["var_T"] is None:
+        return False
+    return moment_ratios_ok(row["mean_T"] / row["chi2_mean"],
+                            row["var_T"] / row["chi2_var"], mtol, vtol)
+
 # Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
 # strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
@@ -722,11 +736,6 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
     # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
     # the filling is a dial on the data requirement rather than a fork.
-    def ok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
     probe_k = 64 if 64 in ks else ks[0]
     # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
     # window (0.010) shows no b1 effect at 0.010; it does not show the window
@@ -737,9 +746,11 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
             and r["saturation_target"] == probe_target]
     lo = [r for r in at_k if r["df"] <= 2]
     hi = [r for r in at_k if r["df"] >= 3]
-    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
+    rescued = bool(lo and hi
+                   and not all(row_moments_ok(r) for r in lo)
+                   and all(row_moments_ok(r) for r in hi))
     verdict = ("confirmed" if rescued
-               else "refuted" if lo and hi and all(ok(r) for r in lo)
+               else "refuted" if lo and hi and all(row_moments_ok(r) for r in lo)
                else "inconclusive")
     return {
         "probe": "b1_ladder",
@@ -815,8 +826,7 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                 b = float(T.var(ddof=1) / (2 * b1))
                 mr.append(a)
                 vr.append(b)
-                if (abs(a - 1) <= MOMENT_MTOL
-                        and abs(b - 1) <= MOMENT_VTOL):
+                if moment_ratios_ok(a, b):
                     passes += 1
 
             def agg(v):
@@ -927,9 +937,7 @@ def write_results_md():
     def moments_ok(k, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
         rs = [crow(fl, g, k) for fl in fillings for g in graphs]
         rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
-        return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
-                                and abs(r["var_T"] / r["chi2_var"] - 1) <= vtol
-                                for r in rs)
+        return bool(rs) and all(row_moments_ok(r, mtol, vtol) for r in rs)
 
     # Smallest k from which the moments hold at every larger k, and the k below it.
     k_ok = next((kk for kk in ks_grid if all(moments_ok(x) for x in ks_grid if x >= kk)),
@@ -1131,12 +1139,6 @@ def write_results_md():
     lrows = [r for r in lv["rows"] if r["k"] == pk and r["in_window"]]
     lgraphs = sorted({r["graph"] for r in lv["rows"]})
 
-    def lok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
-
     L += ["## 4. Is the chi2 floor a b1 floor?", "",
           "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
           "choice: filling a triangle adds a row to D1, so S grows and b1 shrinks,",
@@ -1162,11 +1164,11 @@ def write_results_md():
               f"{r['df']} | {r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
-              f"{'yes' if lok(r) else 'NO'} |"]
+              f"{'yes' if row_moments_ok(r) else 'NO'} |"]
     lo = [r for r in lrows if r["df"] <= 2]
     hi = [r for r in lrows if r["df"] >= 3]
-    lo_bad = [r for r in lo if not lok(r)]
-    hi_bad = [r for r in hi if not lok(r)]
+    lo_bad = [r for r in lo if not row_moments_ok(r)]
+    hi_bad = [r for r in hi if not row_moments_ok(r)]
     L += ["", f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;",
           f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail.",
           ("**The floor is a b1 floor, not a k floor.** On the same graph at the same k,"
@@ -1270,8 +1272,7 @@ def collapse_spread(reps=2000, n_base=10,
                         "base": base, "mean_ratio": mr, "var_ratio": vr,
                         "max_T": float(T.max()),
                         "drop_rate": float(dropped / reps),
-                        "passes": bool(abs(mr - 1) <= mtol
-                                       and abs(vr - 1) <= vtol),
+                        "passes": moment_ratios_ok(mr, vr, mtol, vtol),
                     })
                 ref = next((d for d in draws if d["base"] is None), None)
                 spread = [d for d in draws if d["base"] is not None]
