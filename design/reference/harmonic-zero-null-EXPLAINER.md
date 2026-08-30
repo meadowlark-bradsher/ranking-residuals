@@ -140,8 +140,8 @@ effectively decided before you look. The condition is on the *cell*, not the
 draw, and it has a closed form the instrument already ships:
 
 > **saturation** = E[ p^k + (1−p)^k ] — the expected fraction of edges landing at
-> 0 or k wins. Judge it against a **b₁-indexed** window: the moments close at
-> **0.03 for b₁ = 1** and **0.18 for b₁ = 22**.
+> 0 or k wins. Judge it against a **b₁-indexed** window, interpolated between two
+> anchors: **0.0017 at b₁ = 1** and **0.120 at b₁ = 22**.
 
 No simulation. Computable from the design alone, before a single comparison is
 collected, so a deployment can know in advance whether the χ² reference is
@@ -170,9 +170,22 @@ no threshold on this axis separates them.
 
 The mechanism is the reason: at low b₁ the binding constraint is separation loss,
 which depends on k and on the flow — not on saturation. So saturation is not a
-sufficient description of a cell at low b₁, and the right shape of fix is for the
-gate to **refuse** there rather than to carry a smaller number. At high b₁ the
-axis behaves: df 16, 21 and 22 were stable across every cell reseeded.
+sufficient description of a cell at low b₁. At high b₁ the axis behaves: df 16, 21
+and 22 were stable across every cell reseeded.
+
+**So read the low anchor as a floor, not as a threshold.** The gate does apply a
+limit at b₁ = 1 — 0.0017 — but that number does not claim to locate the edge. It
+is the largest saturation at b₁ = 1 with no measured counterexample above it, and
+it earns its place by excluding every cell the audit flagged, including the 0.0161
+one above. The true edge remains unlocated, somewhere above it. If a later
+measurement finds a failure beneath the anchor, the answer is to lower it again or
+to refuse at low b₁ outright — **not** to interpolate more finely, because finer
+interpolation on an axis that does not order the outcomes buys nothing.
+
+The tightening is not free, and the cost is worth seeing: it also excludes a cell
+that was passing — b₁ = 3 at saturation 0.0270 — because the interpolated window
+at b₁ = 3 is now 0.0130. Erring toward refusal is the right direction for a
+precondition, and it is still a refusal you pay for.
 
 **Scope, and it is narrow.** All five of those cells are one graph. The bracket
 describes that topology at b₁ = 1, not b₁ = 1 in general.
