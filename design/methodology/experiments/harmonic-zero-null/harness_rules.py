@@ -116,3 +116,101 @@ def violations(results):
         if v:
             out[name] = v
     return out
+
+
+# ---------------------------------------------------------------------------
+# SECOND RULE: a result may not be read as current if the gate constants it was
+# computed under no longer match the code.
+#
+# The harness already refuses to regenerate RESULTS.md from a PARTIAL run. It has
+# nothing to say about a COMPLETE run against stale code, and that is the failure
+# that actually happened: a full sweep started at 21:16:32, probes.py was edited
+# 18 seconds later, and RESULTS.md was written from source that no longer exists.
+# Every probe reported success. The only reason anyone noticed is that a second
+# session hashed the file before and after by hand.
+#
+# It is the same hole as the audit discharge above -- AUDIT_FOR asks whether
+# collapse_spread EXISTS, never whether it was computed under the same gate -- so
+# one check closes both.
+#
+# WHAT IT CANNOT DO. Gate constants are recorded unevenly: chi2_collapse,
+# b1_ladder and collapse_spread carry saturation_max; b1_one_boundary,
+# curl_freedom and harmonic_projected_eps carry only alpha; seed_spread records
+# none at all. So absence is not agreement, and the two cases are reported
+# separately -- a mismatch is a stale result, an absence is a result that cannot
+# be checked at all, which is its own defect and should not be silently counted
+# as passing.
+
+# recorded json key -> the module attribute that produced it
+GATE_CONSTANTS = {
+    "saturation_max": "SATURATION_MAX",
+    "saturation_window": "SATURATION_WINDOW",
+    "saturation_target": "SATURATION_TARGET",
+    "mtol": "MOMENT_MTOL",
+    "vtol": "MOMENT_VTOL",
+    "binom_alpha": "BINOM_ALPHA",
+    "alpha": "ALPHA",
+}
+
+
+def current_constants(probes_module):
+    """{recorded_key: value} for every gate constant the module still defines.
+
+    A constant the module has DROPPED is absent here, which is what makes a
+    result recording it detectable as stale rather than merely different.
+    """
+    return {key: getattr(probes_module, attr)
+            for key, attr in GATE_CONSTANTS.items()
+            if hasattr(probes_module, attr)}
+
+
+def recorded_constants(result):
+    value = result.get("value") or {}
+    return {k: value[k] for k in GATE_CONSTANTS if k in value}
+
+
+def staleness(name, result, current):
+    """A sentence when this result was computed under constants the code no
+    longer has, or holds a value the code has changed. None when it agrees."""
+    recorded = recorded_constants(result)
+    if not recorded:
+        return None
+    gone = [k for k in recorded if k not in current]
+    if gone:
+        return (f"{name}: records {gone} which the module no longer defines, so it "
+                f"was computed under a gate that has since been replaced. Re-run it.")
+    differs = {k: (recorded[k], current[k])
+               for k in recorded if recorded[k] != current[k]}
+    if differs:
+        pairs = ", ".join(f"{k}: result {r!r} vs code {c!r}"
+                          for k, (r, c) in sorted(differs.items()))
+        return f"{name}: computed under different gate constants -- {pairs}. Re-run it."
+    return None
+
+
+def uncheckable(results):
+    """Results recording no gate constant at all. Not stale -- unverifiable."""
+    return sorted(n for n, r in results.items() if not recorded_constants(r))
+
+
+def stale(results, current):
+    """{name: sentence} for every result out of step with the running code."""
+    out = {}
+    for name, result in sorted(results.items()):
+        v = staleness(name, result, current)
+        if v:
+            out[name] = v
+    return out
+
+
+def audit_is_current(probe_name, results, current):
+    """An audit discharges its probe only while it agrees with the code.
+
+    Without this, AUDIT_FOR excuses chi2_collapse on the strength of a
+    collapse_spread computed under a gate nobody uses any more -- which is the
+    state the tree is in as this is written.
+    """
+    audit = AUDIT_FOR.get(probe_name)
+    if not audit or audit not in results:
+        return False
+    return staleness(audit, results[audit], current) is None

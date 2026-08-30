@@ -102,3 +102,82 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
     no_moments = {"verdict": "confirmed",
                   "value": {"rows": [{"df": 1, "reject_rate": 0.05}]}}
     assert hr.violation("made_up", no_moments) is None
+
+
+# ---------------------------------------------------------------------------
+# The staleness rule. Live state as this is written: a full sweep ran at
+# 21:16:32 against source that was edited 18 seconds later, so every result
+# recording saturation_max was computed under a flat window the module has since
+# replaced with a b1-dependent one. Every probe reported success; nothing in the
+# output said otherwise.
+#
+# These names are here to make that visible, not to excuse it. Re-running the
+# suite under the committed window clears them, and the equality assertion then
+# fails until they are struck -- same ratchet as KNOWN_GAPS.
+KNOWN_STALE = {"b1_ladder", "chi2_collapse", "collapse_spread"}
+
+# Results recording no gate constant at all cannot be checked either way. That is
+# a defect in the probe, not in the checker: a result nobody can date is one that
+# will be read as current forever.
+KNOWN_UNCHECKABLE = {"seed_spread"}
+
+
+def _probes_module():
+    """Load probes.py by path, tolerating a session mid-edit."""
+    spec = importlib.util.spec_from_file_location("probes_mod", _EXP / "probes.py")
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        return None
+    return mod
+
+
+@pytest.fixture(scope="module")
+def current():
+    mod = _probes_module()
+    if mod is None:
+        pytest.skip("probes.py not importable right now (another session editing?)")
+    return hr.current_constants(mod)
+
+
+def test_stale_result_set_is_exactly_the_known_stale(results, current):
+    found = set(hr.stale(results, current))
+    new = found - KNOWN_STALE
+    fixed = KNOWN_STALE - found
+    assert not new, (
+        "a result is now out of step with the gate constants in probes.py:\n  "
+        + "\n  ".join(hr.stale(results, current)[n] for n in sorted(new)))
+    assert not fixed, (
+        f"{sorted(fixed)} now agrees with the code -- strike it from KNOWN_STALE")
+
+
+def test_uncheckable_results_are_exactly_the_known_ones(results):
+    found = set(hr.uncheckable(results))
+    assert found == KNOWN_UNCHECKABLE, (
+        f"results recording no gate constants changed: {sorted(found)}. A probe "
+        "that records none cannot be dated against the code and will be read as "
+        "current forever; give it its constants or add it here deliberately.")
+
+
+def test_a_stale_audit_does_not_discharge_its_probe(results, current):
+    """The hole this rule was written to close.
+
+    AUDIT_FOR excuses chi2_collapse because collapse_spread exists. It should stop
+    excusing it the moment that audit is out of step with the code -- which is the
+    tree's state right now, so this asserts the guard actually fires.
+    """
+    assert not hr.audit_is_current("chi2_collapse", results, current), (
+        "collapse_spread now agrees with the code; if the suite was re-run, strike "
+        "it from KNOWN_STALE and invert this assertion")
+
+
+def test_staleness_fires_on_a_dropped_constant():
+    """Direct exercise, independent of what is on disk."""
+    old = {"verdict": "confirmed", "value": {"saturation_max": 0.02, "rows": []}}
+    assert hr.staleness("x", old, {"saturation_window": {1: 0.019}}) is not None
+    assert hr.staleness("x", old, {"saturation_max": 0.02}) is None
+    changed = {"verdict": "c", "value": {"saturation_max": 0.02, "rows": []}}
+    assert hr.staleness("x", changed, {"saturation_max": 0.05}) is not None
+    bare = {"verdict": "c", "value": {"rows": []}}
+    assert hr.staleness("x", bare, {"saturation_max": 0.02}) is None
