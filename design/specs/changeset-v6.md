@@ -1,6 +1,6 @@
 # calibration-rig-spec.md — v5 → v6 change-set
 
-**Status:** draft for review. Apply as a single v6 revision on the **canonical (Code-side) file**. The claude.ai side does not maintain a parallel spec (see the superseded-v3 incident); this is a patch spec, not a replacement document.
+**Status:** **APPLIED** at `48cb223`, which created this file and made the v6 revision in the same commit — so "draft for review" was never accurate, and the spec has since moved to v8. Retained as the record of what v6 changed and why, not as a live proposal. It was applied as a single v6 revision on the **canonical (Code-side) file**. The claude.ai side does not maintain a parallel spec (see the superseded-v3 incident); this is a patch spec, not a replacement document.
 
 **Why v6 exists, in two lines:** the build overtook the v5 spec. The fit window and the emitter both became *more correct in code than in spec* during the build, and the ~10% residual the v5 note parked was mostly closed. v6 reconciles the spec to the as-built instrument and records what genuinely remains open.
 
