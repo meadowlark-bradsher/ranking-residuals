@@ -148,18 +148,38 @@ collected, so a deployment can know in advance whether the χ² reference is
 trustworthy at its own sample size.
 
 Under matched saturation the moments hold everywhere tested — **48 of 48 cells at
-every k, across b₁ = 1 to 22.** So saturation, not b₁, is what the failures track.
+every k, across b₁ = 1 to 22.** So at fixed extremity, b₁ is not what breaks the
+approximation.
 
-**There is no established flat bound, and the low-b₁ edge is not pinned.** A
-universal 0.02 was proposed and withdrawn: its calibration rested on one draw per
-cell, and reseeded ten ways an in-window cell at saturation 0.0161 with b₁ = 1
-passes only 6 of 10. Treat that region as demonstrated-marginal, and expect the
-true b₁ = 1 bound to be tighter than 0.03.
+**But at b₁ = 1, saturation does not order the failures either — so the low edge
+of that window is not a number we have.** Reseeding the whole grid ten ways, the
+five b₁ = 1 cells read:
 
-**And saturation is not a complete summary of a cell.** Two cells at the same
-saturation but different flows behave differently — which is a real limit on any
-single-number gate, and the reason the two figures above are a window rather than
-a threshold.
+| k | saturation | seeds passing |
+|---|---|---|
+| 512 | 0.0017 | 10 / 10 |
+| **128** | **0.0161** | **6 / 10** |
+| 64 | 0.0309 | 0 / 10 |
+| 32 | 0.0618 | 0 / 10 |
+| 8 | 0.2588 | 0 / 10 |
+
+The k = 128 cell fails 4 of 10 seeds at saturation **0.0161** — while the matched
+sweep, which rescales the flow, puts the b₁ = 1 boundary at **0.03** and passes
+there. The failing cell has the *lower* saturation. Two designs, two answers, and
+no threshold on this axis separates them.
+
+The mechanism is the reason: at low b₁ the binding constraint is separation loss,
+which depends on k and on the flow — not on saturation. So saturation is not a
+sufficient description of a cell at low b₁, and the right shape of fix is for the
+gate to **refuse** there rather than to carry a smaller number. At high b₁ the
+axis behaves: df 16, 21 and 22 were stable across every cell reseeded.
+
+**Scope, and it is narrow.** All five of those cells are one graph. The bracket
+describes that topology at b₁ = 1, not b₁ = 1 in general.
+
+**A universal 0.02 was proposed and withdrawn** on the way here: its calibration
+rested on one draw per cell — the threshold every other probe gated on never
+shipped with a spread of its own.
 
 *An earlier version of this document claimed the floor was a **b₁ floor** — that
 χ² held only for b₁ ≥ 3 and broke at b₁ = 1. That was wrong, and the way it was
