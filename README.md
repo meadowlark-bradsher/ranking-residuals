@@ -92,7 +92,6 @@ tests/
 design/
   specs/              the spec (v7) and the v6 changeset that reconciled it to the build
   reference/          hodge.py, the explainers, the canonical comparison note
-  reports/            the build report
   methodology/        papers, evidence registry, experiments — see below
 ```
 
@@ -110,6 +109,9 @@ design/methodology/
   make_figures.py     figures are built FROM evidence.json, never from a fresh run
   *.tex               the methodology and bridge-invariance papers
   *-PAPER-BEATS.md    paper 2's working outline (paper 1's lives in combined/)
+  calibration-rig-BUILD-HISTORY.md
+                      the build's decision record: Delta A-F, the six defects,
+                      and why figures are stated as distributions
 ```
 
 Every quantity the papers cite is one record in
@@ -131,22 +133,31 @@ does not.**
 
 The recovered floor carries a small, stable systematic **under**-estimate. It is not
 noise, and at high seed counts the CI is tight enough that it can sit just below the
-oracle — so §8.5 documents the failing cells rather than widening its tolerance.
+oracle — so §8.5 documents the residual rather than widening its tolerance. At the
+shipped config all four cells cover; it is at higher seed budgets, where the CI
+tightens, that some still exclude the oracle.
 
-**The figure is not quoted here.** It moves with the seed, and this section got it wrong
-by quoting a single draw — first `~10%`, then `3–6%`, both since retracted as
-over-precise rather than wrong. Its owner is the **`residual-exact`** claim in the
-registry, measured over 20 base seeds with Monte Carlo removed and reported there with
-its standard error and range. Read it from
+**The figure is not quoted here.** It moves with the seed, and this section has been
+wrong about it three times over — `~10%`, then `3–6%`, then `~2.0–2.4%`, with coverage
+as `16/20` (spec §13.1 lists them). Not all of that drift was sampling: the first two
+straddle the fit window becoming derived, so the estimator moved underneath them. The
+rest was single draws quoted as settled. Its owner is the **`residual-exact`** claim
+in the registry, measured over 20 base seeds with Monte Carlo removed and reported
+there with its standard error and range. Read it from
 [`evidence.json`](design/methodology/evidence/evidence.json) or
 [`PROVENANCE.md`](design/methodology/evidence/PROVENANCE.md); the convention it follows
-is §13.1 of the spec, "Seed-varying quantities ship with their spread, never as a point."
+is §13.1 of the spec, "Seed-varying quantities ship with their spread, never as a
+point", which restates "Why figures are stated as distributions" in
+[`calibration-rig-BUILD-HISTORY.md`](design/methodology/calibration-rig-BUILD-HISTORY.md).
 
-**Both levers were tried, and neither removes it.** Lengthening the `k` grid clears the
-`grid_insufficient` flag but not the coverage failure (build report, *Delta D*). Lowering
-`rho` reduces the residual monotonically but costs grid reach, so the two have to move
-together — the spec's v7 revision note, and the `rho-tradeoff` claim. What replaced the
-open question is a mechanism: the residual tracks `c2` (`residual-tracks-c2`), and
+**Both levers were tried, and neither removes it.** Lengthening the `k` grid cleared the
+`grid_insufficient` flag and closed the two cells Delta D recorded, but a tighter CI at a
+higher seed budget still excludes the oracle in some — *Delta D* in
+[`calibration-rig-BUILD-HISTORY.md`](design/methodology/calibration-rig-BUILD-HISTORY.md).
+Lowering `rho` reduces the residual monotonically but costs grid reach, so the two have
+to move together — the spec's v7 revision note, and the `rho-tradeoff` claim. What
+replaced the open question is a mechanism: the residual tracks `c2`
+(`residual-tracks-c2`), and
 subtracting or fitting `c2` removes most or essentially all of it on exact energies
 (`residual-fit-variants`).
 

@@ -5,9 +5,12 @@
 > The exact-energy residual computed here (`report_exact.py` ->
 > `results/exact_energy_residual.json`) and the registered claim `residual-exact`
 > in `../../evidence/` are the same quantity measured twice over the same 20 base
-> seeds, and they agree to every digit either side reports. The value is
-> deliberately not restated here: read it from `residual-exact`, which is what the
-> paper quotes and **the only one of the two that should ever travel**.
+> seeds. They agree to **six significant figures** and differ at the seventh
+> (1.4e-07 relative, 2.6e-05 of one standard error) -- comfortably inside
+> `residual-exact`'s own 0.02 pt tolerance, and far inside either standard error.
+> The value is deliberately not restated here: read it from `residual-exact`,
+> which is what the paper quotes and **the only one of the two that should ever
+> travel**.
 >
 > They did not always agree, and why they did not is the part worth keeping. An
 > earlier revision of this note recorded a fourth-decimal disagreement and
@@ -19,9 +22,17 @@
 > now run the floor path at `n_cplx=0`, matching `rig/sweep.py`.
 >
 > That is the stronger result rather than the weaker one: two independently
-> written implementations of the same identity, on the same graphs, to the last
-> digit. Treat any future disagreement as drift in one of them -- and check the
-> config fingerprint before the arithmetic.
+> written implementations of the same identity, on the same graphs, agreeing to
+> every digit either one reports. The residual 1e-07 is summation order over
+> 20 seeds x 16 cells, not a difference in what is computed.
+>
+> **The rule, with a trigger you can evaluate.** Treat a disagreement beyond
+> `residual-exact`'s tolerance -- `{kind: abs, value: 0.02}` percentage points --
+> as a signal that one implementation has drifted, and reconcile before
+> publishing either. The current 5e-08 pt gap passes that by six orders of
+> magnitude. When it does fire, check the config fingerprint before the
+> arithmetic: that is where it hid last time, and a mask-ensemble mismatch reads
+> exactly like a numerical one.
 
 Hunting the mechanism behind the residual in the floor estimator.
 
