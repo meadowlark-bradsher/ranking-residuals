@@ -38,7 +38,7 @@ Hunting the mechanism behind the residual in the floor estimator.
 
 The name is literal. The floor the rig recovers *is* a bias term —
 `‖P_h·bias‖²`, the harmonic energy that survives infinite data. Our estimator of
-it carries a bias of its own: a stable under-read of about half a percentage
+it carries a bias of its own: a stable under-read of under half a percentage
 point that survived both levers we had (tuning ρ and lengthening the `k` grid).
 The registry owns both figures — `residual-across-draws` sampled, `residual-exact`
 with Monte Carlo removed. These probes ask what that second bias is made of.
