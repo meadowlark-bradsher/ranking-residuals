@@ -712,7 +712,14 @@ def seed_spread(reps=2000, n_base=10):
                      "satisfied by accident. If trimming does not shrink the spread, "
                      "the instability is not the tail.",
         "verdict": verdict,
-        "value": {"reps": reps, "n_base": n_base, "rows": rows},
+        # SATURATION_TARGET is the one gate constant this probe reads: every cell
+        # is matched to it through scale_to_saturation before any seed is drawn,
+        # so a result computed under a different target is a different experiment.
+        # Recording it moves seed_spread out of uncheckable() -- a result that
+        # names no constant cannot be dated against the code and is read as
+        # current forever, which its own entry there calls a defect in the probe.
+        "value": {"reps": reps, "n_base": n_base,
+                  "saturation_target": SATURATION_TARGET, "rows": rows},
     }
 
 
