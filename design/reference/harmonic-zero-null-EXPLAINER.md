@@ -3,12 +3,18 @@
 *A self-contained explainer for a reader who has not been following the work —
 written to be handed over whole, not to be the record.*
 
-**Provenance, and a warning.** Every figure here is **transcribed by hand** from
-`design/methodology/experiments/harmonic-zero-null/RESULTS.md` as of commit
-`e80a549`. That file is generated from `results/*.json` by `probes.py` and is the
-authoritative record; this one is a snapshot and **will go stale silently the
-next time the probes are re-run**. If a number here disagrees with RESULTS.md,
-RESULTS.md is right. Re-check before quoting any figure onward.
+**Provenance, and a warning.** Every figure here is **transcribed by hand**.
+Most come from `design/methodology/experiments/harmonic-zero-null/RESULTS.md`,
+which is generated from `results/*.json` by `probes.py` and is the authoritative
+record. This document is a snapshot and **will go stale silently the next time
+the probes are re-run**. If a number here disagrees with RESULTS.md, RESULTS.md
+is right. Re-check before quoting any figure onward.
+
+**One section is ahead of this branch.** The saturation window in "Where the test
+is valid" comes from branch `seed-spread`, which is **not yet merged** — it
+retracts a claim this document previously made, so it is stated here rather than
+left to be discovered. Its figures cannot be checked against this branch's
+RESULTS.md until that merge lands.
 
 All measurements are on the known-answer rig: four pre-specified fixed graphs, 12
 items, 24–33 edges — the deployment-realistic regime.
@@ -128,16 +134,33 @@ drop rate.
 > detected" may be reading a *truncated* statistic rather than an innocent graph.
 > The drop rate must be reported alongside any verdict.
 
-**2. The χ² approximation has a floor, and it is a b₁ floor — not a k floor.**
-The moments track χ²(b₁) wherever **b₁ ≥ 3**, and fail only at b₁ = 1, at every k
-tested. The mechanism: at b₁ = 1 the statistic has a single harmonic coordinate,
-so truncating draws truncates the statistic directly; at b₁ ≥ 3 the remaining
-coordinates absorb it.
+**2. The χ² approximation fails when edges get near-deterministic — and that is
+checkable in closed form.** The reference distribution needs edges that are not
+effectively decided before you look. The condition is on the *cell*, not the
+draw, and it has a closed form the instrument already ships:
 
-This is a genuinely useful result, because **b₁ depends only on the graph and its
-filled triangles — not on any data.** So it is computable before a single
-comparison is collected. A deployment can know in advance whether the χ²
-reference is trustworthy at its own sample size.
+> **saturation** = E[ p^k + (1−p)^k ] — the expected fraction of edges landing at
+> 0 or k wins. Window: **≤ 0.02**.
+
+No simulation. Computable from the design alone, before a single comparison is
+collected, so a deployment can know in advance whether the χ² reference is
+trustworthy at its own sample size.
+
+Under matched saturation the moments hold everywhere tested — **48 of 48 cells at
+every k, across b₁ = 1 to 22.**
+
+*An earlier version of this document claimed the floor was a **b₁ floor** — that
+χ² held only for b₁ ≥ 3 and broke at b₁ = 1. That was wrong, and the way it was
+wrong is worth recording. The sweep that produced it varied the filling, which
+changes the curl direction as well as b₁, so the injected flow's extremity
+drifted along with it — saturation wandered from 0.0056 to 0.0436 and was not
+monotone in b₁. Every low-b₁ cell carrying the finding was out of window. Rescale
+each cell to matched saturation and the effect disappears entirely. The sweep was
+measuring how extreme the flow was, not how many harmonic coordinates it had.*
+
+*The window does interact with b₁ at its far edges — closing at 0.03 for b₁ = 1
+and 0.18 for b₁ = 22, by two different mechanisms — but 0.02 is conservative for
+every b₁ measured.*
 
 ## The filling is not a tuning knob
 
@@ -153,10 +176,9 @@ become the *same test* — identical degrees of freedom (16, 13, 21, 22 on the f
 graphs) and identical rejections on identical draws. Everything the wider null
 buys evaporates there.
 
-**And you cannot tune the filling to buy statistical convenience.** Since b₁ rises
-as you fill fewer triangles, it looked like there was a free way to satisfy the
-χ² floor: just fill less. There isn't. Hold a misspecification fixed and move the
-test's filling underneath it, and the flow leaks into the harmonic subspace —
+**And you cannot move the filling to buy statistical convenience.** Hold a
+misspecification fixed and move the test's filling underneath it, and the flow
+leaks into the harmonic subspace —
 zero leakage at the filling where it was defined, 0.196 to 0.707 at every other
 rung. Rejection goes to 1.000 against a nominal 0.05. The move that buys χ²
 validity is exactly the move that reclassifies innocent curl as genuine
@@ -180,9 +202,10 @@ certificate is *for* — not selected after the fact.
   χ²(b₁) reference — referee-proof, no new theory.
 - It dominates Bradley–Terry completely, and its size is governed by the harmonic
   projection of the error alone, usable while ‖P_h ε‖ ≲ 0.1.
-- Its validity is bounded by **two topology-dependent failures**: MLE separation
-  (report the drop rate) and a **b₁ ≥ 3 floor** for the χ² reference (checkable
-  before collecting data).
+- Its validity is bounded by **two failures**: MLE separation (report the drop
+  rate, and it is topology-dependent) and near-deterministic edges breaking the
+  χ² reference — the latter checkable in closed form, before collecting data,
+  via saturation ≤ 0.02.
 - The filling that sets b₁ is a modelling declaration, not a knob.
 
 ## What this does not establish
