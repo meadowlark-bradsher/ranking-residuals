@@ -10,11 +10,29 @@ record. This document is a snapshot and **will go stale silently the next time
 the probes are re-run**. If a number here disagrees with RESULTS.md, RESULTS.md
 is right. Re-check before quoting any figure onward.
 
-**One section is ahead of this branch.** The saturation window in "Where the test
-is valid" comes from branch `seed-spread`, which is **not yet merged** — it
-retracts a claim this document previously made, so it is stated here rather than
-left to be discovered. Its figures cannot be checked against this branch's
-RESULTS.md until that merge lands.
+**⚠ The saturation section describes a gate THIS BRANCH DOES NOT HAVE.** Read it
+as a description of where the work has got to, not of what the code here does.
+
+`harmonic-zero-null` ships `SATURATION_MAX = 0.02` — a flat bound that has since
+been **withdrawn** on branch `seed-spread`, because its calibration rested on one
+draw per cell. The b₁-indexed anchors quoted below (0.0017 and 0.120) live only on
+`seed-spread`, which is not merged here: they arrived in `0d54cab`, after the
+commit this branch merged. So on this branch the prose is ahead of the code, which
+is the mirror of the split the merge is being held to avoid, and it is my error
+rather than a timing artifact — I wrote the section against `seed-spread`'s tip
+while this branch sat five commits behind it.
+
+**And the shape is under review.** The 0.0017 anchor is likely to be replaced by a
+refusal — `saturation_window()` returning None below the lowest measured anchor,
+with those cells recorded as *unclassifiable* rather than out-of-window. It
+excludes the same cells; what changes is that the artifact says a judgement was
+made instead of quoting a number whose provenance is the single cell it was chosen
+to keep. Four sessions reached that independently.
+
+Until that lands and merges, treat every specific figure in "Where the test is
+valid" as provisional, and treat this branch's own `0.02` as superseded rather
+than current. The five-cell table, the ordering argument and the graph-3 caveat do
+not depend on which shape wins.
 
 All measurements are on the known-answer rig: four pre-specified fixed graphs, 12
 items, 24–33 edges — the deployment-realistic regime.
