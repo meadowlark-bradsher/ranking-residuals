@@ -120,22 +120,34 @@ invisible in the statistic.
 **Work done.** The paper's most transferable warning, and the one a practitioner
 will remember.
 
-### §8 Second failure: χ² validity — and it is really a b₁ gate
-**Beat.** The technical heart. A second, independent failure that looks like the
-first and is not.
-**Claim.** The first two moments track χ²(b₁) from k = 128 up and fail at
-k ≤ 64 — and the failure is driven by b₁, not by the drop rate.
-**Evidence.** The contrast is the proof: graph 2 loses **29.3%** of draws at
-k = 64 with meanT/df = 0.972 (intact); graph 3 loses only **9.2%** with
-meanT/df = 0.842 (broken). Mechanism: at b₁ = 1, truncating the single harmonic
-coordinate truncates the statistic directly; at b₁ ≥ 3 the remaining coordinates
-absorb it.
-**The sharp consequence.** b₁ is set by the filling (§6). So a modelling choice
-determines how much data the test needs. Under `empty`, where b₁ runs 13–22,
-every cell sits at meanT/df ≈ 1.00 at k = 64 — the χ² gate is free there. Under
-`observed` with low b₁, it is not.
-**Work done.** Ties Act II's catch to Act III's envelope. This is the result
-that is genuinely new rather than measured-confirmation of something expected.
+### §8 Second failure: the χ² approximation has a closed-form precondition
+**Beat.** The technical heart, and the place to be most careful — an earlier
+draft of this section claimed something that did not survive its own experiment.
+**Claim.** The moment failures are governed by **saturation**, E[pᵏ + (1−p)ᵏ],
+the expected fraction of edges landing at w = 0 or w = k. It is computable in
+closed form with no sampling, and on the measured grid a window of 0.02 admits
+no cell that fails either moment check.
+**Mechanism, and it explains the asymmetry.** An edge with expected count c
+contributes ~c when w = 0 and ~1/c on the probability-c event that w = 1 — so ~1
+in expectation, exactly what a χ² coordinate should contribute, but ~1/c in
+second moment, which diverges. Near-deterministic edges therefore preserve the
+mean and destroy the variance, which is why meanT/df tracks well nearly
+everywhere while varT/2df is unstable and one draw in 1984 can carry T = 661.7
+against a 99.95th percentile of 31.4.
+**Why the classical form does not apply.** The textbook "expected count ≥ 5"
+rule refuses 100% of draws here, and even 0.5 refuses 74–90%: the median draw
+already carries an edge with kp ≈ 0.1, because the design injects extreme flows
+deliberately. The condition has to be per cell, not per draw.
+**A withdrawn claim, kept visible.** An earlier pass held that the failure was a
+b₁ floor — that low b₁ truncates the statistic and the filling therefore sets the
+data requirement. It came from a confounded sweep: filling a triangle changes the
+curl direction as well as b₁, so the injected flow grew more extreme as b₁ fell.
+Holding extremity fixed and sweeping b₁ alone, every level passes, b₁ = 1 through
+22. There is no b₁ floor. The paper should say so, because the confound is a
+trap the next person will walk into.
+**Work done.** Replaces a measurement-shaped result with a precondition that can
+be checked before any data is collected — which is more useful, and is the same
+discipline paper 1 applies to its own estimator.
 
 ### §9 Both failures are topology-bound
 **Beat.** Zoom out; connect to paper 1's Principle 3.
@@ -160,8 +172,10 @@ the noise-fission machinery — but it halves k, so it must clear both envelope
 gates at the fold size, plus an exchangeability precondition. Three gates, and
 for the configuration thinning was proposed for, the third currently fails.
 **Evidence.** A k = 128 deployment does its inference at k = 64. Separation:
-graph 3 0.8% → 9.2%, graph 2 20.7% → 29.3%, graphs 0 and 1 unmoved. χ² validity:
-fails at 64 on the b₁ = 1 graph. Remedies differ per gate — raise k, or calibrate
+graph 3 0.8% → 9.2%, graph 2 20.7% → 29.3%, graphs 0 and 1 unmoved. Saturation:
+graph 3 crosses out of the window, 0.0161 → 0.0309, and graph 2 was already
+outside at full k. The second gate needs a rig run; the third does not — it is
+E[pᵏ + (1−p)ᵏ] evaluated at k/2. Remedies differ per gate: raise k, or calibrate
 the reference distribution at the fold size (which costs the referee-proofness
 §4 bought).
 **Work done.** Demonstrates the envelope is not bookkeeping. Also the honest
