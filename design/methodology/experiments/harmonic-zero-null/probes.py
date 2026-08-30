@@ -453,26 +453,32 @@ def seed_spread(reps=2000, n_base=10):
     # Cells chosen to answer the discrepancy, not to survey: both b1 = 1 fillings
     # at both k, the b1 = 5 level that the ladder says is rescued, and the cell
     # whose varT/2df read 11.7.
-    specs = []
-    for g, want in ((3, "b1=1@m=26"), (3, "b1=1@m=24"), (3, "b1=5"), (2, "b1=10")):
-        specs.append((g, want))
+    # The decisive cells are the MATCHED low-b1 ones, because the retraction now
+    # rests on them: at b1 = 1 the reference is chi2(1), excess kurtosis 12, so
+    # the relative sampling s.e. on varT/2df is sqrt((12+2)/reps) ~ 8.4% at
+    # reps = 2000 -- and the single-draw value cleared the 15% gate by 0.0002.
+    # Ten base seeds put s.e. ~2.7% on it, which resolves inside-or-outside.
+    # b1 = 22 is the control: chi2(22) has kurtosis 0.55, so it should be quiet.
+    specs = [(3, "b1=1"), (3, "b1=5"), (3, "b1=22"), (2, "b1=10")]
 
     rows = []
     for g, want in specs:
         edges = graph(g)
         tris, curve = _fill_curve(edges)
-        if want.startswith("b1=1@m="):
-            m = int(want.split("m=")[1])
-        else:
-            m = curve.index(int(want.split("=")[1]))
+        m = curve.index(int(want.split("=")[1]))
         D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
         bases = st.harmonic_zero_bases(D0, D1)
         b1 = bases[0].shape[1]
-        eta = eta_in_S(D0, D1, 1.0, g)
+        eta_raw = eta_in_S(D0, D1, 1.0, g)
         for k in (64, 128):
+            # Matched, like the ladder: an unmatched cell confounds b1 with how
+            # extreme the flow is, which is the error this whole pass corrects.
+            scale = scale_to_saturation(eta_raw, k)
+            eta = eta_raw if scale is None else scale * eta_raw
             per = []
             for base in range(n_base):
-                T, _, dropped = run_cell(eta, k, bases, f"c5|{base}|{g}|{m}|{k}", reps)
+                T, _, dropped = run_cell(eta, k, bases,
+                                         f"c5m|{base}|{g}|{m}|{k}", reps)
                 if not len(T):
                     continue
                 cut = np.quantile(T, 0.995)
@@ -497,6 +503,7 @@ def seed_spread(reps=2000, n_base=10):
             rows.append({
                 "graph": g, "level": want, "n_triangles_filled": m,
                 "n_triangles_total": len(tris), "df": b1, "k": k,
+                "eta_scale": scale, "saturation": cell_saturation(eta, k),
                 "n_base_seeds": len(per),
                 "mean_ratio": agg("mean_ratio"),
                 "trimmed_mean_ratio": agg("trimmed_mean_ratio"),
@@ -526,7 +533,7 @@ def seed_spread(reps=2000, n_base=10):
 
 
 # ---------------------------------------------------------------- probe 4
-def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
+def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     """Is the chi2 validity floor a function of b1, or of k?
 
     `observed` and `empty` are the two ENDPOINTS of a lattice, not a binary
@@ -572,22 +579,24 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
             D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
             bases = st.harmonic_zero_bases(D0, D1)
             eta_raw = eta_in_S(D0, D1, 1.0, g)
-            for k in ks:
+            for target in targets:
+              for k in ks:
                 # Match saturation ACROSS LEVELS at this k, so the only thing
                 # varying along the ladder is b1 and the subspace it names.
                 # Saturation depends on k, so the scale does too: comparisons
                 # are valid across b1 at fixed k, NOT across k.
-                scale = scale_to_saturation(eta_raw, k)
+                scale = scale_to_saturation(eta_raw, k, target)
                 eta = eta_raw if scale is None else scale * eta_raw
                 sat = cell_saturation(eta, k)
-                T, off, dropped = run_cell(eta, k, bases, f"c4m|{g}|{b1}|{k}", reps)
+                T, off, dropped = run_cell(eta, k, bases,
+                                           f"c4m|{g}|{b1}|{k}|{target}", reps)
                 ksres = kstest(T, "chi2", args=(b1,)) if len(T) > 20 else None
                 rows.append({
                     "graph": g, "E": len(edges), "n_triangles_total": len(tris),
                     "n_triangles_filled": m, "df": b1, "k": k,
                     "is_empty_end": m == 0, "is_observed_end": m == len(tris),
                     "eta_scale": scale, "saturation_matched": bool(scale is not None),
-                    "saturation_target": SATURATION_TARGET,
+                    "saturation_target": target,
                     # Saturation is now matched across levels, so the empty end
                     # is comparable to the rest -- previously it carried no curl
                     # term at all and sat at a much smaller ||eta||.
@@ -612,7 +621,13 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
                 and r["var_T"] is not None
                 and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
     probe_k = 64 if 64 in ks else ks[0]
-    at_k = [r for r in rows if r["k"] == probe_k and r["in_window"]]
+    # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
+    # window (0.010) shows no b1 effect at 0.010; it does not show the window
+    # boundary is b1-independent, which is what the thinning gate assumes.
+    # Interaction, if any, lives at the edge.
+    probe_target = max(targets)
+    at_k = [r for r in rows if r["k"] == probe_k and r["in_window"]
+            and r["saturation_target"] == probe_target]
     lo = [r for r in at_k if r["df"] <= 2]
     hi = [r for r in at_k if r["df"] >= 3]
     rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
@@ -628,6 +643,7 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
                      "filling is not a dial on the data requirement.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
+                  "targets": list(targets), "probe_target": probe_target,
                   "saturation_max": SATURATION_MAX,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
                   "n_cells_total": len(rows),

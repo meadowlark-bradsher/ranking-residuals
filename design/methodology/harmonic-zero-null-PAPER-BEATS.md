@@ -124,9 +124,12 @@ will remember.
 **Beat.** The technical heart, and the place to be most careful — an earlier
 draft of this section claimed something that did not survive its own experiment.
 **Claim.** The moment failures are governed by **saturation**, E[pᵏ + (1−p)ᵏ],
-the expected fraction of edges landing at w = 0 or w = k. It is computable in
-closed form with no sampling, and on the measured grid a window of 0.02 admits
-no cell that fails either moment check.
+the expected fraction of edges landing at w = 0 or w = k — computable in closed
+form with no sampling. But the tolerable level is b₁-dependent, so the paper
+must state a window per b₁ rather than one number: pinned at 0.010 every b₁ from
+1 to 22 passes, while pinned at 0.019 the b₁ = 1 cell reaches varT/2df = 3.44
+and b₁ = 22 is unmoved at 0.965. b₁ does not decide whether χ² holds at a given
+extremity; it decides how much extremity is affordable.
 **Mechanism, and it explains the asymmetry.** An edge with expected count c
 contributes ~c when w = 0 and ~1/c on the probability-c event that w = 1 — so ~1
 in expectation, exactly what a χ² coordinate should contribute, but ~1/c in
