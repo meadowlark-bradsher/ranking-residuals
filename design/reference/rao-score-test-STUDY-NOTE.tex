@@ -35,11 +35,15 @@ and why our harmonic-zero test is one}
 \maketitle
 
 \begin{mdframed}[style=callout]
-\noindent\textbf{What this is.} An on-ramp. Before reading DZW \S3.3.2 you need
-the Rao score test to be a thing you \emph{recognize}, not decode --- because the
-whole point of the DZW reading is to confirm their machinery reduces to this
-test, and you cannot check a reduction if the target is a black box. Read this
-first; it makes DZW smaller.
+\noindent\textbf{What this is.} An on-ramp. Before working RAN-31 you need the
+Rao score test to be a thing you \emph{recognize}, not decode --- because the job
+is to \emph{derive} the relationship between DZW's fold and this test (expecting
+them to differ at the statistic), and you cannot derive a relationship to a black
+box. \textbf{There is no identity to verify:} the 2026-08-30 provenance audit
+(RAN-27) found the ``fold $\equiv$ score test'' claim was never stated in the
+paper or derived in the briefing. The reading is smaller and better-posed than it
+was --- an afternoon of algebra with a known target, not a search for a
+confirmation. Read this first; it makes DZW smaller.
 
 \smallskip
 \noindent\textbf{How to use it.} Work the three rungs in order, then internalize
@@ -318,15 +322,16 @@ Fisher-information metric, $\chi^2$ with $b_1$ degrees of freedom.
 \end{mdframed}
 
 \noindent When that sentence is yours without notes, RAN-31's score-test side is
-owned, and DZW \S3.3.2 becomes a matter of checking whether their fold arrives at
-the same statistic.
+owned, and DZW \S3.3.2 becomes a matter of \emph{deriving how their fold's
+statistic differs from this one} --- and why that difference, not an identity, is
+what justifies never implementing the fold in the pre-specified case.
 
 \section{Then, and only then: DZW \S3.3.2}
 
-You are checking \textbf{one identity}: that DZW \S3.3.2, instantiated with
-$H_0$ = the subspace constraint $\eta\in S$, the estimator = the $S$-constrained
-MLE, and the test function $g$ = the harmonic directions, produces this same
-score test. Line up four things as you read:
+You are deriving \textbf{one relationship}, and you already know how three of its
+four checks come out. Instantiate DZW \S3.3.2 with $H_0$ = the subspace
+constraint $\eta\in S$, the estimator = the $S$-constrained MLE, and the test
+function $g$ = the harmonic directions, then line up four things as you read:
 
 \begin{enumerate}[leftmargin=1.6em,itemsep=0.3em]
 \item \textbf{their moment condition} --- should be ``residual $\perp g$''; with
@@ -338,11 +343,45 @@ score test. Line up four things as you read:
 \item \textbf{the df} --- should come out $b_1$.
 \end{enumerate}
 
-If those align, DZW in the fixed-graph case \emph{is} the test above ---
-``checking a thing against itself'' --- and you can say so in your own words:
-both roads fit under ``no harmonic'' and test the leftover harmonic signal
-against noise; the score test does it in-sample via stationarity, DZW does it
-cross-fit via folds, and in the fixed-graph case they are the same statistic.
+The provenance audit (RAN-27, 2026-08-30) and RAN-31's rewrite say checks 1,~2
+and~4 \emph{pass as written} --- same null, same constrained fit, same df ($b_1$,
+from $g=\Pharm$: $p=1$ per comparison, $q=b_1$). The entire question lives at
+\textbf{check 3}, and the expectation to test there is \emph{divergence}:
+
+\begin{mdframed}[style=callout]
+\noindent\textbf{[RELAYED --- NOT OWNED, pending RAN-31.]} The three bullets
+below are a session's derivation sketch, not a result of yours. They are what to
+\emph{expect and re-derive}, not what to cite. Treating them as established would
+repeat the exact error this retarget exists to correct: a paraphrase promoted to
+a fact.
+
+\begin{itemize}[leftmargin=1.4em,itemsep=0.35em,topsep=0.5em]
+\item \textbf{The fold's residual is conditional.} From Algorithm~1,
+  $x^{(1)}+x^{(2)}=2x$, and Proposition~2 gives the fold's moment statistic built
+  on $2\bigl(x-\hat{E}_{H_0}[X\mid X^{(1)}]\bigr)$ --- the null residual
+  \emph{given the noised fold}. The score residual $x-k\,\sigma(\hat\eta)$ is
+  \emph{marginal}. At every finite $\Sigma$ these differ: the conditional mean
+  tracks the realized data through the fold and absorbs signal (Remark~5's trap,
+  deliberately dosed).
+\item \textbf{The fold statistic is a function of the realized noise $W$},
+  which the score test does not contain.
+\item \textbf{As $\Sigma\to0$ the fold residual degenerates to zero} (the \S3.4
+  power collapse) --- \emph{not} to the score residual.
+\end{itemize}
+\end{mdframed}
+
+\begin{sloppypar}
+If the derivation lands there, the target sentence to own cold is: \textbf{same
+null, same constrained-MLE fit under $H_0$, same df under $g=\Pharm$ ---
+different statistic.} In the pre-specified fixed-graph regime the classical score
+test runs on full data and pays no randomization tax, so it (weakly)
+\textbf{dominates} the fold; the fold's price is exactly what buys post-selection
+validity. ``Skip the fold'' is justified by \textbf{dominance, not identity}.
+\end{sloppypar}
+
+\smallskip
+\noindent And if the derivation lands somewhere else, \textbf{that is a finding}
+--- file it on RAN-31 rather than forcing the expected answer.
 
 \paragraph{Where to stop --- this is permission, not a limit.}
 There is a further piece in DZW \S4: the debiasing correction, the
@@ -352,10 +391,10 @@ post-selection), where the score test is invalid and the fold is what restores
 validity. That is the genuinely hard part, it is the reason DZW matters beyond
 the fixed case, and it is the right question to bring the specialist.
 
-So if you follow \S3.3.2 to the fixed-case identity, then hit the $(I+B)^{-1}$
-debiasing and lose the thread --- \textbf{that is a finished, successful
-reading.} You will have confirmed what RAN-31 needs for the fixed-graph claim and
-located the exact boundary:
+So if you follow \S3.3.2 to the fixed-case \emph{relationship}, then hit the
+$(I+B)^{-1}$ debiasing and lose the thread --- \textbf{that is a finished,
+successful reading.} You will have derived what RAN-31 needs for the fixed-graph
+claim and located the exact boundary:
 
 \begin{quote}
 \emph{``I follow it up to the debiasing correction for the selected case, and
@@ -388,8 +427,10 @@ notes, you are ready for DZW.}
   floating-point residue, not a modelling choice.)}
 \item \textbf{Why is $T$ not just the squared norm of the harmonic score?}
   \emph{($I^{-1}$ does not preserve $\Hh$; the metric carries $k_e$ and $p_e$.)}
-\item \textbf{What are you checking in DZW \S3.3.2, and where do you stop?}
-  \emph{(Whether their fold gives the same statistic; stop at the \S4
+\item \textbf{What are you \emph{deriving} in DZW \S3.3.2, and where do you
+  stop?} \emph{(How the fold's conditional residual relates to the score test's
+  marginal one --- expecting different statistics, same null/fit/df --- and why
+  dominance justifies skipping the fold pre-specified; stop at the \S4
   selected-case debiasing.)}
 \end{enumerate}
 

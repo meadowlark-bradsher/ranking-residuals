@@ -659,12 +659,12 @@ def residual_exact(cfg):
     the shipped sweep's protocol so the two are comparable; the corrected-estimator
     arm uses 5, which is ample given its s.e. is ~0.001 pt.
     """
-    # n_cplx=0, matching floor_sweep (rig/sweep.py:234) and the residual-across-
-    # draws arm in sweeps() below. It was 5, which fingerprints differently and
-    # therefore seeds a different mask for every (gamma, eps, s) -- so the
-    # pairing against residual-across-draws that this claim's note relies on was
-    # comparing disjoint topology ensembles, and the +-0.09 pt band could not be
-    # attributed to reps=16 sampling noise on that evidence.
+    # n_cplx=0, matching floor_sweep (rig/sweep.py:234) and the
+    # residual-across-draws arm in sweeps() below. It was 5, which fingerprints
+    # differently and therefore seeds a different mask for every (gamma, eps,
+    # s) -- so the pairing against residual-across-draws that this claim's note
+    # relies on was comparing disjoint topology ensembles, and the +-0.09 pt
+    # band could not be attributed to reps=16 sampling noise on that evidence.
     base = RigConfig().validate().with_(n_int=12, n_cplx=0)
     raw = [_exact_residual(base.with_(seed=b), models=("2param", "3param", "c2sub"))
            for b in range(20)]

@@ -3,26 +3,47 @@
 > **Status: independent replication, not the cited source.**
 >
 > The exact-energy residual computed here (`report_exact.py` ->
-> `results/exact_energy_residual.json`, **+0.36349% +- 0.00199%** over 20 base
-> seeds) replicates the registered claim `residual-exact` in
-> `../../evidence/`, which reports **+0.36238% +- 0.00238%** and is the value
-> the paper quotes.
+> `results/exact_energy_residual.json`) and the registered claim `residual-exact`
+> in `../../evidence/` are the same quantity measured twice over the same 20 base
+> seeds. They agree to **six significant figures** and differ at the seventh
+> (1.4e-07 relative, 2.6e-05 of one standard error) -- comfortably inside
+> `residual-exact`'s own 0.02 pt tolerance, and far inside either standard error.
+> The value is deliberately not restated here: read it from `residual-exact`,
+> which is what the paper quotes and **the only one of the two that should ever
+> travel**.
 >
-> The two agree well inside either standard error. They are not bit-identical:
-> the implementations were written separately, and small differences in cell
-> handling are enough to move the fourth decimal. That is what makes this a
-> useful replication rather than a second opinion from the same code -- but it
-> also means **only one of them should ever be cited**. Cite `residual-exact`.
-> Treat a disagreement between the two beyond a few standard errors as a signal
-> that one implementation has drifted, and reconcile before publishing either.
+> They did not always agree, and why they did not is the part worth keeping. An
+> earlier revision of this note recorded a fourth-decimal disagreement and
+> explained it as two separately written implementations differing in cell
+> handling. That explanation was wrong. The registry side was building its configs
+> at `n_cplx=5` while this replication used `n_cplx=0` -- and `n_cplx` enters the
+> config fingerprint, hence every mask seed, so the two were averaging over
+> **disjoint topology ensembles** rather than disagreeing on a shared one. Both
+> now run the floor path at `n_cplx=0`, matching `rig/sweep.py`.
+>
+> That is the stronger result rather than the weaker one: two independently
+> written implementations of the same identity, on the same graphs, agreeing to
+> the six significant figures above. The seventh-digit gap is summation order
+> over 20 seeds x 16 cells, not a difference in what is computed.
+>
+> **The rule, with a trigger you can evaluate.** Treat a disagreement beyond
+> `residual-exact`'s tolerance -- `{kind: abs, value: 0.02}` percentage points --
+> as a signal that one implementation has drifted, and reconcile before
+> publishing either. The current 5.1e-08 pt gap clears that by a factor of
+> 3.9e+05 -- five and a half orders of magnitude, not the six an earlier
+> revision of this line rounded it to. When it does fire, check the config
+> fingerprint before the arithmetic: that is where it hid last time, and a
+> mask-ensemble mismatch reads exactly like a numerical one.
 
 Hunting the mechanism behind the residual in the floor estimator.
 
 The name is literal. The floor the rig recovers *is* a bias term —
 `‖P_h·bias‖²`, the harmonic energy that survives infinite data. Our estimator of
-it carries a bias of its own: a stable **~0.43% ± 0.09%** under-read that
-survived both levers we had (tuning ρ and lengthening the `k` grid). These probes
-ask what that second bias is made of.
+it carries a bias of its own: a small, stable under-read that survived both levers
+we had (tuning ρ and lengthening the `k` grid). The registry owns the figure twice
+over, and the two arms differ by about 20% — `residual-across-draws` sampled,
+`residual-exact` with Monte Carlo removed — which is why no single gloss for it
+belongs in this sentence. These probes ask what that second bias is made of.
 
 ## The five prongs
 
