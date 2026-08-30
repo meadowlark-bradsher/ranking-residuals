@@ -32,12 +32,23 @@ class BTLConfig:
     k: tuple[int, ...] = (8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)
     # SAMPLING grid. Extended past 1024 because the DERIVED window (§2.6) needs
     # c_oracle/(rho*floor), which at eps=0.1 is ~516 -- only one grid point reached it,
-    # so the fit fell back and flagged grid_insufficient. Measured over 48 seeds x 4 gamma:
+    # so the fit fell back and flagged grid_insufficient. How far past 1024 is set by
+    # rho rather than chosen freely: at the shipped rho=1.5 a k->4096 grid still leaves
+    # 4.00 unfittable cells and reaching 16384 takes that to zero (claim `rho-tradeoff`;
+    # v7 note, "grid short" column). That is the other half of the trade documented at
+    # `rho` below -- the two move together.
+    #
+    # v6 provenance, kept because v7's comparison is against it. At k->4096, 48 seeds
+    # x 4 gamma, extending FROM 1024:
     #   grid_insufficient  4/20 -> 0/20
     #   worst gamma-drift  38.0% -> 11.8%   (eps=0.4: 5.8% -> 0.7%)
-    #   residual bias      3-6% low -> ~2.0-2.4% low
-    # It does NOT fix CI coverage (16/20 either way) -- that is the residual, still open.
-    # Cost is negligible: 1.7s vs 1.6s for a 20-cell sweep.
+    #   cost               1.7s vs 1.6s for a 20-cell sweep
+    # The residual and coverage figures that sat here are superseded and registry-owned:
+    # at the shipped defaults it is +0.435% +- 0.088 with coverage median 15/16, range
+    # 13-16 (claim `residual-across-draws`, 20 base seeds). The "(16/20 either way)"
+    # this replaces was one draw on a 20-cell sweep -- a denominator the defaults no
+    # longer use (4 eps x 4 gamma = 16 cells), and one of the quotes the boxed rule
+    # beside the v7 note retires by name.
     fit_k_min: int = MIN_FIT_K        # FITTING window: floor fitted on k >= this only
     theta_shape: str = "gamma"        # gamma | random  (gamma is the primary probe)
     gamma: tuple[float, ...] = (1.0, 1.5, 2.0, 3.0)             # 1.0 == symmetric
@@ -97,12 +108,27 @@ class RigConfig:
                                         # A budget knob, logged like any other (§9).
     rho: float = 1.5                    # §2.6 resolvability margin in the DERIVED fit
                                         # window, required_fit_k_min = c_oracle/(rho*floor).
-                                        # OPTIMISED, no longer merely justified. Scanned over
-                                        # {1.5,2,3,4.5,6,9} x 8 base seeds: the residual falls
-                                        # monotonically as rho falls, because a smaller rho
-                                        # demands a longer, cleaner tail. 3.0 -> +1.55%,
-                                        # 1.5 -> +0.48% (with the k grid below). Lower rho
-                                        # costs grid reach, which is why the two move together.
+                                        # OPTIMISED, no longer merely justified. Both figures
+                                        # below are owned by the evidence registry and are
+                                        # quoted with their spread and their claim name: a
+                                        # seed-varying number restated as a bare point here
+                                        # goes stale silently when the registry is re-measured
+                                        # (§13.3, and the boxed rule beside the v7 note).
+                                        #
+                                        # Holding the grid at k->4096 -- claim `rho-tradeoff`,
+                                        # {1.5,2,3,4.5,6,9} x 8 base seeds:
+                                        #   rho=3.0   +1.55% +- 0.31   0.17 unfittable cells
+                                        #   rho=1.5   -0.05% +- 0.46   4.00 unfittable cells
+                                        # Lower rho does NOT buy accuracy on its own: it trades
+                                        # residual against grid reach, which is why rho and the
+                                        # k grid below had to move together. Comparing 3.0 and
+                                        # 1.5 across DIFFERENT grids would read as a rho effect
+                                        # and is really an effect of both.
+                                        #
+                                        # At the shipped defaults, rho=1.5 with the k grid below
+                                        # -- claim `residual-across-draws`, 20 base seeds:
+                                        #   +0.435% +- 0.088, per-draw -0.52% .. +1.16%,
+                                        #   coverage median 15/16 (range 13-16).
     seeds: int = 64                     # replicates for the §8.5 floor CI
     seed: int = 0                       # base seed
 
