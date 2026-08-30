@@ -187,6 +187,25 @@ def saturation_window(b1):
 # are a different 0.10 with a different meaning.
 MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
 
+
+def moment_ratios_ok(mean_ratio, var_ratio, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """Do a cell's two moment ratios both sit inside the gate?
+
+    The gate is a PAIR and testing half of it silently narrows what a result
+    means. closes_at() tested the variance alone and exported the answer as
+    `b1_1_closes_at`, a name that promises moment closure: it read 0.05 while the
+    write-up said 0.03, and both were right about different gates. At b1 = 1 the
+    MEAN fails first -- at saturation 0.030 the median mean ratio is 0.838
+    against mtol 0.10 while the variance is still 0.873 against vtol 0.15. At
+    b1 = 22 neither fails until 0.180, which is why the control never showed it.
+
+    Callers pass ratios rather than raw moments because the two row shapes in this
+    file disagree: chi2_collapse and b1_ladder carry mean_T with chi2_mean beside
+    it, b1_one_boundary carries pre-divided medians.
+    """
+    return (mean_ratio is not None and var_ratio is not None
+            and abs(mean_ratio - 1) <= mtol and abs(var_ratio - 1) <= vtol)
+
 # Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
 # strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
@@ -823,9 +842,12 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     # on the median seed. Median, not mean, because one heavy-tailed seed should
     # not move a threshold.
     def closes_at(df):
+        # BOTH moments, via the shared predicate. Testing var_ratio alone made
+        # this export a variance boundary under a moment-closure name.
         bad = [r["saturation_target"] for r in rows
-               if r["df"] == df and r["var_ratio"]
-               and abs(r["var_ratio"]["median"] - 1) > MOMENT_VTOL]
+               if r["df"] == df and r["var_ratio"] and r["mean_ratio"]
+               and not moment_ratios_ok(r["mean_ratio"]["median"],
+                                        r["var_ratio"]["median"])]
         return min(bad) if bad else None
 
     b1_one, b1_ctrl = closes_at(1), closes_at(22)
