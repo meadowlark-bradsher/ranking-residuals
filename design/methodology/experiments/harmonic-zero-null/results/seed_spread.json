@@ -7,6 +7,7 @@
   "reps": 2000,
   "n_base": 10,
   "saturation_target": 0.01,
+  "tail_shrink_factor": 0.5,
   "rows": [
    {
     "graph": 3,
@@ -1033,6 +1034,6 @@
     ]
    }
   ],
-  "source_fingerprint": "04520901c083f978"
+  "source_fingerprint": "441c56a532743e5f"
  }
 }

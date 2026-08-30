@@ -269,6 +269,18 @@ def row_moments_ok(row, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
 BINOM_ALPHA = 0.01
 
+# seed_spread calls a cell's instability TAIL-DRIVEN when trimming the top 0.5% of
+# draws shrinks its range to less than this fraction of the untrimmed range. It
+# decides that probe's verdict outright, so it is a gate constant and belongs with
+# the others rather than inline.
+#
+# It sat as a bare 0.5 in the verdict expression until f4 found it. Nothing was
+# wrong with the value; what was wrong is that GATE_CONSTANTS could not see it, so
+# rule 2 could not tell whether a stored seed_spread verdict had been computed
+# under the same threshold as the code now uses. An unnamed number in a verdict is
+# a gate nobody can check. Mine, and mine to have named when I wrote the probe.
+TAIL_SHRINK_FACTOR = 0.5
+
 
 # Where a b1 sweep should sit. Inside the window at EVERY b1 -- including the
 # b1 = 1 anchor, the tightest -- so every level of the ladder is in window and the
@@ -701,7 +713,8 @@ def seed_spread(reps=2000, n_base=10):
     # the two location estimates on the same cells.
     shrunk = [r for r in rows
               if r["mean_ratio"] and r["trimmed_mean_ratio"]
-              and r["trimmed_mean_ratio"]["range"] < 0.5 * r["mean_ratio"]["range"]]
+              and r["trimmed_mean_ratio"]["range"]
+              < TAIL_SHRINK_FACTOR * r["mean_ratio"]["range"]]
     verdict = ("tail-driven" if len(shrunk) >= max(1, len(rows) // 2)
                else "not-tail-driven" if rows else "inconclusive")
     return {
@@ -720,7 +733,8 @@ def seed_spread(reps=2000, n_base=10):
         # names no constant cannot be dated against the code and is read as
         # current forever, which its own entry there calls a defect in the probe.
         "value": {"reps": reps, "n_base": n_base,
-                  "saturation_target": SATURATION_TARGET, "rows": rows},
+                  "saturation_target": SATURATION_TARGET,
+                  "tail_shrink_factor": TAIL_SHRINK_FACTOR, "rows": rows},
     }
 
 

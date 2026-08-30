@@ -133,10 +133,15 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
 # with the reason attached, rather than leaving an empty one lying around for
 # someone to append to.
 
-# Results recording no gate constant at all cannot be checked either way. That is
-# a defect in the probe, not in the checker: a result nobody can date is one that
-# will be read as current forever.
-KNOWN_UNCHECKABLE = {"seed_spread"}
+# KNOWN_UNCHECKABLE is gone, the third and last of the migration lists.
+#
+# It held seed_spread, which recorded no gate constant at all and so could not be
+# dated against the code either way -- unverifiable rather than agreeing. f4's
+# f30800f gave it saturation_target and this pass names its tail-shrink threshold,
+# so every probe now records the constants its verdict turns on.
+#
+# The property, which needs no list: EVERY RESULT RECORDS AT LEAST ONE GATE
+# CONSTANT. A probe recording none is not passing the check, it is escaping it.
 
 
 def _probes_module():
@@ -167,12 +172,16 @@ def test_no_result_is_stale_against_the_code(results, current):
         + "\n  ".join(flagged[n] for n in sorted(flagged)))
 
 
-def test_uncheckable_results_are_exactly_the_known_ones(results):
-    found = set(hr.uncheckable(results))
-    assert found == KNOWN_UNCHECKABLE, (
-        f"results recording no gate constants changed: {sorted(found)}. A probe "
-        "that records none cannot be dated against the code and will be read as "
-        "current forever; give it its constants or add it here deliberately.")
+def test_every_result_records_at_least_one_gate_constant(results):
+    """The property the third migration list stood in for.
+
+    A result recording nothing is not agreeing with the code -- it is escaping the
+    comparison, and will read as current forever.
+    """
+    bare = hr.uncheckable(results)
+    assert not bare, (
+        f"{bare} record no gate constant, so nothing can date them against the "
+        "code. Give the probe its constants rather than tolerating the gap.")
 
 
 def test_an_audit_discharges_exactly_when_it_is_present_and_current(results, current):

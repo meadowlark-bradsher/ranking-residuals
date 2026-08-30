@@ -187,6 +187,7 @@ GATE_CONSTANTS = {
     "vtol": "MOMENT_VTOL",
     "binom_alpha": "BINOM_ALPHA",
     "alpha": "ALPHA",
+    "tail_shrink_factor": "TAIL_SHRINK_FACTOR",
 }
 
 
