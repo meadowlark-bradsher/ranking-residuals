@@ -717,7 +717,7 @@ def main():
     else:
         print(f"4.3 SKIPPED: {trend_detail}")
 
-    payload = {
+    payload = provenance.stamp({
         "topology_test_suite": "2026_operating_envelope",
         "metrics_contract": ["drop_rate", "mean_T_ratio", "realized_size"],
         "config": {
@@ -732,13 +732,6 @@ def main():
                 "saturated": "drop the draw when any edge has w = 0 or w = k",
             }[args.separation_rule],
         },
-        # What produced this file. `main` is the entry, so the fingerprint is
-        # its closure -- which reaches the operators, the tail, the separation
-        # rule and REFERENCE. boundary_report.json shipped with no fingerprint
-        # and no gate constant, so the two numbers that actually select the
-        # draws (the clip and the cut) were not recorded anywhere in it.
-        "source_fingerprint": provenance.semantic_fingerprint(
-            sys.modules[__name__], "main"),
         "assertions": {
             # Was the literal "pass" for a check that could not fail. Now says
             # what it is: no assertion runs here.
@@ -750,7 +743,15 @@ def main():
             "truncation_trend_detail": trend_detail,
         },
         "results": results,
-    }
+    # What produced this file. `main` is the entry, so the fingerprint is its
+    # closure -- which reaches the operators, the tail, the separation rule and
+    # REFERENCE. boundary_report.json shipped with no fingerprint and no gate
+    # constant, so the two numbers that actually select the draws (the clip and
+    # the cut) were not recorded anywhere in it. Placed by stamp() rather than
+    # written here, so writer and reader share _SHAPES instead of agreeing by
+    # coincidence -- this payload has no `value` and no `meta`, so stamp()
+    # falls to top level, which is where the inline version happened to land.
+    }, sys.modules[__name__], "main")
     Path(args.out).write_text(json.dumps(payload, indent=2) + "\n")
     print(f"\nwrote {args.out}")
     return 1 if trend_status == "fail" else 0

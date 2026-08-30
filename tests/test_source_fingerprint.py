@@ -10,13 +10,16 @@ These tests pin the three properties that make the fingerprint worth having:
   sensitive to meaning       a predicate or constant in the closure changes it
   blind to presentation      comments, docstrings, wrapping, blank lines do not
   scoped to the probe        an unrelated function in the same file does not
+  placed by stamp()          no writer puts the key somewhere by hand
 
 The third is what keeps it from becoming the permanently-red guard this module
 already had once. A check nobody can satisfy is a check someone switches off.
 """
 
+import ast
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -390,3 +393,112 @@ def test_each_writers_artifact_round_trips_against_its_live_module(artifact):
                                    entry) is None, (
         f"{artifact} was written by {rel} but reads as stale -- re-run it, or the "
         "writer and this registry disagree about which entry point produced it")
+
+
+# ---------------------------------------------------------------- placed by stamp()
+#
+# The two guards above answer "is a fingerprint present" and "is it the right
+# one". Neither can see a writer that computes a CORRECT hash and puts it
+# somewhere by hand, because the artifact then passes both -- which is exactly
+# how two bypasses shipped: harmonic-zero-null/probes.py assigned through
+# FINGERPRINT_KEY, and envelope_evaluator.py wrote the literal key into a dict
+# literal. Both agreed with the reader by coincidence: _SHAPES happened to look
+# where they happened to write.
+#
+# That coincidence is the whole problem. `stamp` and `recorded_fingerprint`
+# share _SHAPES so a fingerprint cannot be written somewhere the reader does not
+# look; a writer that places the key itself opts out of that guarantee while
+# still looking green.
+
+_EXEMPT = "provenance-exempt:"
+
+# The implementation, and fixtures that build artifact-shaped dicts on purpose.
+_PLACEMENT_SKIP = ("rig/provenance.py", "tests/")
+
+
+def _tracked_py():
+    """Tracked .py files, from git rather than a glob.
+
+    git ls-files excludes .claude/worktrees/ and any untracked scratch by
+    construction, so a sibling session's checkout cannot enter this scan and a
+    new writer cannot avoid it by not being listed anywhere.
+    """
+    out = subprocess.run(["git", "ls-files", "*.py"], cwd=_ROOT,
+                         capture_output=True, text=True, check=True)
+    return [f for f in out.stdout.split()
+            if not f.startswith(_PLACEMENT_SKIP)]
+
+
+def _placements(path):
+    """(line, form) for every hand-placement of the fingerprint key.
+
+    Catches both shapes seen in the wild: the key as a dict-literal entry, and
+    a subscript assignment through it. Spelled as the literal or through
+    FINGERPRINT_KEY -- the constant is not a defence, since probes.py's bypass
+    used it.
+    """
+    def is_key(n):
+        if isinstance(n, ast.Constant) and n.value == hr.FINGERPRINT_KEY:
+            return "literal"
+        if isinstance(n, ast.Attribute) and n.attr == "FINGERPRINT_KEY":
+            return "constant"
+        if isinstance(n, ast.Name) and n.id == "FINGERPRINT_KEY":
+            return "constant"
+        return None
+
+    found = []
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.Dict):
+            for k in node.keys:
+                if k is not None and is_key(k):
+                    found.append((k.lineno, "dict-key"))
+        elif isinstance(node, ast.Assign):
+            for t in node.targets:
+                if isinstance(t, ast.Subscript) and is_key(t.slice):
+                    found.append((t.lineno, "subscript-assign"))
+    return found
+
+
+def _unexempted(rel):
+    """Placements not annotated `provenance-exempt:` on their line or the one above.
+
+    A two-line window on purpose. Widening it to accommodate a comment block
+    further up would let one site's exemption silently cover a neighbouring
+    placement, which is the failure this check exists to prevent, relocated.
+    """
+    path = _ROOT / rel
+    lines = path.read_text().splitlines()
+    out = []
+    for lineno, form in _placements(path):
+        window = lines[max(0, lineno - 2):lineno]
+        if not any(_EXEMPT in ln for ln in window):
+            out.append(f"{rel}:{lineno} ({form})")
+    return out
+
+
+def test_the_placement_scan_matches_real_code():
+    """Guards against the vacuous pass, which is how both bypasses survived review.
+
+    A scan that silently matches nothing asserts nothing and reports green --
+    the failure this whole module exists to make impossible. So the detector
+    must demonstrably fire on the tree as it stands: exempt placements count,
+    because they prove the AST shapes are still the ones being written.
+    """
+    files = _tracked_py()
+    assert files, "git ls-files matched no .py files -- the scan is broken, not the tree"
+    total = sum(len(_placements(_ROOT / f)) for f in files)
+    assert total, (
+        "the placement scan found no fingerprint placements anywhere, including "
+        "exempted ones. Either provenance moved off FINGERPRINT_KEY or this "
+        "detector has stopped matching; it is not evidence that nothing bypasses.")
+
+
+def test_no_writer_places_the_fingerprint_by_hand():
+    """Every fingerprint reaches an artifact through stamp(), or says why not."""
+    offenders = [o for f in _tracked_py() for o in _unexempted(f)]
+    assert not offenders, (
+        "these place the fingerprint key directly instead of calling "
+        "rig.provenance.stamp():\n  " + "\n  ".join(offenders)
+        + f"\nstamp() returns the artifact, so it wraps a dict literal as well as "
+          f"following one. If a site genuinely is not an artifact, annotate it "
+          f"`# {_EXEMPT} <reason>` on that line or the one directly above.")
