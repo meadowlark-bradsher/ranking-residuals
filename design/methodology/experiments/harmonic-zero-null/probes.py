@@ -622,7 +622,19 @@ def _ladder_rungs(edges, levels=6):
     if len(reach) > levels:
         idx = [round(i * (len(reach) - 1) / (levels - 1)) for i in range(levels)]
         reach = [reach[i] for i in sorted(set(idx))]
-    return tris, [(b1, curve.index(b1)) for b1 in reach]
+    rungs = [(b1, curve.index(b1)) for b1 in reach]
+    # curve.index() takes the SMALLEST m reaching each b1. That is right for
+    # every intermediate rung and wrong at the bottom: whenever a cheaper
+    # filling already reaches the observed b1, it silently substituted that
+    # filling for the `observed` endpoint. On 3 of the 4 benchmark graphs the
+    # bottom rung was 14/15, 11/12 and 24/26 rather than the full 2-skeleton, so
+    # the ladder did NOT bracket the two cells chi2_collapse reports and
+    # is_observed_end was False on 23 of 24 cells. Pin the bottom rung to the
+    # full fill; b1 is unchanged there by construction (b1 is monotone
+    # non-increasing in m and this is its minimum), only m moves.
+    if rungs:
+        rungs[-1] = (curve[len(tris)], len(tris))
+    return tris, rungs
 
 
 # ---------------------------------------------------------------- probe 5
@@ -815,10 +827,21 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     # boundary is b1-independent, which is what the thinning gate assumes.
     # Interaction, if any, lives at the edge.
     probe_target = max(targets)
-    at_k = [r for r in rows if r["k"] == probe_k and r["in_window"]
+    at_k = [r for r in rows if r["k"] == probe_k
             and r["saturation_target"] == probe_target]
-    lo = [r for r in at_k if r["df"] <= 2]
-    hi = [r for r in at_k if r["df"] >= 3]
+    # hi: cells the saturation criterion vouches for.
+    hi = [r for r in at_k if r["df"] >= 3 and r["in_window"]]
+    # lo: the low-b1 arm. saturation_window() REFUSES below b1 = 3, so
+    # _in_window returns None there -- "we decline to say", not "out of window".
+    # The filter used to read `r["in_window"]` for truthiness BEFORE selecting
+    # df <= 2, so it discarded exactly the rows it then looked for: `lo` was
+    # empty on every run, `rescued` was always False, the "refuted" branch also
+    # needs `lo`, and the verdict was pinned to "inconclusive" whatever the data
+    # said. That is the coercion _in_window's own docstring exists to prevent.
+    # Select the low arm on df alone -- but keep out anything measured to be out
+    # of window (in_window is False), which is a judgement, not a refusal.
+    lo = [r for r in at_k if r["df"] <= 2 and r["in_window"] is not False]
+    lo_refused = [r for r in lo if r["in_window"] is None]
     rescued = bool(lo and hi
                    and not all(row_moments_ok(r) for r in lo)
                    and all(row_moments_ok(r) for r in hi))
@@ -840,6 +863,10 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
                   "n_cells_unclassifiable": len(unclassifiable(rows)),
                   "n_cells_total": len(rows),
                   "probe_k": probe_k, "n_low_b1_cells": len(lo),
+                  # How much of the low arm the saturation criterion declines to
+                  # classify. A verdict resting on these rests on cells no
+                  # window vouches for, and the reader is owed that.
+                  "n_low_b1_saturation_unclassifiable": len(lo_refused),
                   "n_high_b1_cells": len(hi), "rows": rows},
     }
 
@@ -1146,7 +1173,22 @@ def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     # Usable = chi2-valid (b1 >= 3) AND safe. Dominance is the third gate and
     # dominance_ladder found it open everywhere with a filled triangle.
     usable = {g: [b for b in safe_b1[g] if b >= 3] for g in graphs}
-    worst = max((r["leak_frac"] for r in at_fold), default=0.0)
+    # THE EMPTY RUNG IS EXCLUDED FROM THE VERDICT, and this is the whole of it.
+    # With no 2-cells, H spans all of ker(D0^T), which contains the entire curl
+    # component of eta = grad + rho*||grad||/||curl||*curl and is orthogonal to
+    # grad. So leak_frac there is exactly rho/sqrt(1+rho^2) -- a closed form in
+    # rho alone, carrying no information about the graph, the seed, k or reps.
+    # Measured across the eight empty rungs at rho = 1 it read
+    # 0.70710678118654{72,74,76,78}: identical to the last ulp on all four
+    # graphs. Taking the max over the WHOLE ladder therefore made
+    # `worst > 1e-8` a tautology, pinned the verdict to "confirmed", and left
+    # the probe's stated falsifier naming an outcome its own construction
+    # forbids. The question actually being asked is whether leakage appears at
+    # the rungs BETWEEN the endpoints, where it is a property of the topology.
+    interior = [r for r in at_fold if not r["is_empty_end"]]
+    worst = max((r["leak_frac"] for r in interior), default=0.0)
+    empty_end = max((r["leak_frac"] for r in at_fold if r["is_empty_end"]),
+                    default=None)
     leaks = bool(worst > 1e-8)
     verdict = ("confirmed" if leaks else "refuted")
     return {
@@ -1159,7 +1201,13 @@ def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps, "base_seeds": base_seeds,
                   "ks": list(ks), "rho_curl": rho, "fold_k": fold_k,
+                  # Interior rungs only -- see the comment above the verdict.
                   "max_leak_frac": worst,
+                  "n_interior_rungs_at_fold": len(interior),
+                  # Reported so the constant stays visible rather than hiding
+                  # inside a max: it is rho/sqrt(1+rho^2) and nothing else.
+                  "empty_end_leak_frac": empty_end,
+                  "empty_end_leak_frac_closed_form": rho / (1 + rho ** 2) ** 0.5,
                   "safe_b1_by_graph": {str(g): safe_b1[g] for g in graphs},
                   "usable_b1_by_graph": {str(g): usable[g] for g in graphs},
                   "n_graphs_with_usable_rung": sum(1 for g in graphs if usable[g]),
@@ -1536,7 +1584,7 @@ def write_results_md():
           "\"b1 >= 3 AND dominance holds\", and its b1 half is the withdrawn claim -- so read",
           f"the rows below as WHERE DOMINANCE HOLDS, which is what they measure, and not as",
           f"a gate. On that reading: dominance is present at every rung with a filled",
-          f"triangle, on {dv['n_graphs']} of {dv['n_graphs']} graphs.", ""]
+          f"triangle, on {dv['n_graphs_with_window']} of {dv['n_graphs']} graphs.", ""]
     for g in dgraphs:
         w = wins.get(str(g), [])
         L += [f"- graph {g}: " + (f"dominance at b1 in {w} (the probe's b1 >= 3 filter; "

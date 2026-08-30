@@ -329,7 +329,7 @@ c_1 \;=\; \tr(\Ph V) \;+\; 2\varepsilon\,\langle h, b\rangle,
 Computed on exact binomial energies rather than sampled ones,
 \eqref{eq:c1} reproduces the measured $O(k^{-1})$ coefficient to eight decimal
 places on both calibration topologies, while \eqref{eq:coracle} alone is short by
-$4.5\%$ and $0.2\%$. The cross term therefore \emph{completes} the delta-method
+$2.7\%$ and $5.0\%$. The cross term therefore \emph{completes} the delta-method
 oracle rather than refining it, and there is no further $O(k^{-1})$
 contribution: an earlier reading of this gap as one was an artefact of estimating
 $c$ with a two-parameter fit on sampled energies, which absorbs part of the
@@ -596,13 +596,13 @@ nearer the region where $c_2/k^2$ is largest.
 
 Three computations confirm the attribution, all exact on both sides. Subtracting
 the closed-form $c_2$ before the two-parameter fit moves the residual to
-$+0.0791\% \pm 0.0010\%$; fitting $c_2$ as a third parameter moves it to
-$-0.0088\% \pm 0.0004\%$; and changing the edge estimator moves the residual in
+$+0.0786\% \pm 0.0008\%$; fitting $c_2$ as a third parameter moves it to
+$-0.0084\% \pm 0.0004\%$; and changing the edge estimator moves the residual in
 the proportion its $c_2$ moves. A per-edge continuity-corrected estimator
 $\mathrm{logit}\big((w+\tfrac12)/(k+1)\big)$ has $v_2^F = \tfrac12
 (2p-1)^2/(pq)^2$ --- it annihilates the $2/(pq)$ boundary term of \eqref{eq:v2}
-outright --- giving $21.19\%$ of the raw $c_2$ on this topology and $22.75\%$ of
-the raw residual, agreement to under $2$ pp. That estimator is used here only as
+outright --- giving $22.75\%$ of the raw $c_2$ on this topology and $22.88\%$ of
+the raw residual, agreement to under $0.2$ pp. That estimator is used here only as
 a diagnostic probe, and only per edge; it is not Firth-penalised Bradley--Terry
 on the joint design, whose penalty does not factorise over edges and which we
 have not tested.
@@ -610,8 +610,8 @@ have not tested.
 No universal reduction factor exists, which is itself the point:
 $v_2^F/v_2$ runs from $0$ at $p=\tfrac12$ to $\tfrac13$ as $p\to 0$, so the
 corrected-to-raw $c_2$ ratio is bounded in $(0,\tfrac13)$ and set by the
-$\Ph$-weighted edge-probability mix --- $5.2\%$ on a mid-range topology against
-$21.2\%$ on one whose edges reach $p\approx0.08$. The mechanism is universal; its
+$\Ph$-weighted edge-probability mix --- $13.5\%$ on a mid-range topology against
+$22.7\%$ on one whose edges reach $p\approx0.07$. The mechanism is universal; its
 magnitude is topological, as \S\ref{sec:scope} would predict.
 
 The direction is unchanged and remains the conservative one: the floor is

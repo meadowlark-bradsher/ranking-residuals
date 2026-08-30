@@ -192,10 +192,12 @@ def test_a_recorded_fingerprint_round_trips_against_the_live_module():
     synthetic controls passed."""
     spec = importlib.util.spec_from_file_location("probes_live", _EXP / "probes.py")
     live = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(live)
-    except Exception:
-        pytest.skip("probes.py not importable right now")
+    # Deliberately unguarded. Swallowing the import error here turned the ONLY
+    # non-synthetic exercise of rule 3 into a skip on exactly the tree states
+    # where it matters most -- and this is the test whose docstring says it
+    # exists because rule 1 "sat as a no-op while its synthetic controls
+    # passed". A skip is that same no-op wearing a different colour.
+    spec.loader.exec_module(live)
     checked = 0
     for path in sorted(RESULTS.glob("*.json")):
         result = json.loads(path.read_text())

@@ -7,8 +7,8 @@
   }
  },
  "meta": {
-  "generated": "2026-08-24",
-  "commit": "db62542",
+  "generated": "2026-08-30",
+  "commit": "ceead11",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 30
@@ -38,7 +38,7 @@
    ],
    "value": {
     "empty": 3.19268006221441e-31,
-    "observed": 1.1487834281759506e-30
+    "observed": 1.1646219386719962e-30
    },
    "tolerance": {
     "kind": "abs",
@@ -154,22 +154,22 @@
     "0.25": {
      "bridge_rms": 3.2371540999258386,
      "empty": 10.000000000000052,
-     "observed": 2.3433319662229728e-14
+     "observed": 2.3635374231401032e-14
     },
     "1.0": {
      "bridge_rms": 3.8944404818493075,
      "empty": 10.00000000000004,
-     "observed": 2.3618206476463558e-14
+     "observed": 2.3935319573930697e-14
     },
     "25.0": {
      "bridge_rms": 27.552979270247103,
      "empty": 9.999999999999808,
-     "observed": -9.209329713243948e-13
+     "observed": -7.368876582834896e-13
     },
     "500.0": {
      "bridge_rms": 502.5029021475067,
      "empty": 9.999999999828916,
-     "observed": -3.988821319795238e-10
+     "observed": -3.232175558301867e-10
     }
    },
    "tolerance": {
@@ -389,27 +389,27 @@
    "note": null
   },
   "c1-cross-term-completes": {
-   "claim": "The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 4.5% and 0.2%.",
+   "claim": "The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 2.7% and 5.0%.",
    "cited_in": [
     "methodology sec 5.1",
     "methodology sec 9"
    ],
    "value": {
     "nZ6": {
-     "measured": 4.393506881295747,
-     "tr_Ph_V": 4.205506721102253,
-     "cross": 0.18800016022346278,
-     "closed": 4.393506881325716,
-     "ratio_to_closed": 0.9999999999931788,
-     "ratio_to_var_only": 1.0447033312894622
+     "measured": 4.952955835085422,
+     "tr_Ph_V": 4.820704713738469,
+     "cross": 0.13225112157287877,
+     "closed": 4.952955835311348,
+     "ratio_to_closed": 0.9999999999543856,
+     "ratio_to_var_only": 1.0274339809634165
     },
     "nZ12": {
-     "measured": 36.761258893769195,
-     "tr_Ph_V": 36.6868917091739,
-     "cross": 0.07436725039036605,
-     "closed": 36.761258959564266,
-     "ratio_to_closed": 0.9999999982102062,
-     "ratio_to_var_only": 1.0020270778234586
+     "measured": 13.10710587031877,
+     "tr_Ph_V": 12.451550706172595,
+     "cross": 0.6555551957716516,
+     "closed": 13.107105901944246,
+     "ratio_to_closed": 0.9999999975871504,
+     "ratio_to_var_only": 1.0526484756489967
     }
    },
    "tolerance": {
@@ -421,7 +421,7 @@
    "note": null
   },
   "c2-variance-dominated": {
-   "claim": "The 1/k^2 coefficient is 95-99% the SECOND-ORDER VARIANCE of the logit and only ~1% the mean-bias term b'P_h b. The natural expectation that the vector driving the 1/k correction also drives the 1/k^2 one is wrong by two orders of magnitude.",
+   "claim": "The 1/k^2 coefficient is 88-95% the SECOND-ORDER VARIANCE of the logit and only 0.6-2.5% the mean-bias term b'P_h b. The natural expectation that the vector driving the 1/k correction also drives the 1/k^2 one is wrong by two orders of magnitude.",
    "cited_in": [
     "methodology sec 5.3",
     "methodology sec 9"
@@ -429,26 +429,26 @@
    "value": {
     "c2": {
      "nZ6": {
-      "measured": 10.401285336847653,
-      "reconstructed": 10.401285314071917,
-      "ratio": 0.9999999978102959
+      "measured": 17.1765208163362,
+      "reconstructed": 17.176517917994673,
+      "ratio": 0.9999998312614319
      },
      "nZ12": {
-      "measured": 207.6015938147723,
-      "reconstructed": 207.60043090084798,
-      "ratio": 0.9999943983381682
+      "measured": 109.23153384826723,
+      "reconstructed": 109.23097512023796,
+      "ratio": 0.9999948849200447
      }
     },
     "composition": {
      "nZ6": {
-      "b_Ph_b": 0.009439020482356281,
-      "cross_2nd": 0.044805471559806846,
-      "variance": 0.9457555079578368
+      "b_Ph_b": 0.006364197054078198,
+      "cross_2nd": 0.040708112364097195,
+      "variance": 0.9529276905818246
      },
      "nZ12": {
-      "b_Ph_b": 0.014619519829234595,
-      "cross_2nd": -0.00514285398852339,
-      "variance": 0.9905233341592888
+      "b_Ph_b": 0.025134773851704418,
+      "cross_2nd": 0.09467575068424981,
+      "variance": 0.8801894754640458
      }
     }
    },
@@ -503,30 +503,30 @@
    "note": "Tolerance is extraction-limited, not form-limited: the polynomial fit resolves v2 to ~1e-3 absolute at the extreme p, well inside the gap between these two forms. Independently derived by third-order delta method."
   },
   "firth-localises-boundary": {
-   "claim": "A per-edge continuity-corrected estimator removes the c1 cross term exactly (c1_F = tr(P_h V)) and annihilates the 2/(pq) near-boundary term of v2, cutting the asymmetry term 3/2 -> 1/2. The resulting c2 ratio is bounded in (0, 1/3) and is set by the P_h-weighted edge-probability mix -- 5.2% on a mid-range topology, 21.2% on one whose edges reach p ~ 0.08. No universal reduction factor exists.",
+   "claim": "A per-edge continuity-corrected estimator removes the c1 cross term exactly (c1_F = tr(P_h V)) and annihilates the 2/(pq) near-boundary term of v2, cutting the asymmetry term 3/2 -> 1/2. The resulting c2 ratio is bounded in (0, 1/3) and is set by the P_h-weighted edge-probability mix -- 13.5% on a mid-range topology, 22.7% on one whose edges reach p ~ 0.07. No universal reduction factor exists.",
    "cited_in": [
     "methodology sec 9"
    ],
    "value": {
     "nZ6": {
-     "c1_raw": 4.393506881295747,
-     "c1_firth": 4.205506721103552,
-     "c1_firth_minus_trPhV": 1.298516849601583e-12,
-     "c2_raw": 10.401285336847653,
-     "c2_firth": 0.5407566226823424,
-     "c2_ratio": 0.05198940372942706,
-     "p_edge_min": 0.2502859718315365,
-     "p_edge_max": 0.4657526085558434
+     "c1_raw": 4.952955835085422,
+     "c1_firth": 4.820704713689859,
+     "c1_firth_minus_trPhV": -4.8610004910187854e-11,
+     "c2_raw": 17.1765208163362,
+     "c2_firth": 2.325337670860587,
+     "c2_ratio": 0.1353788520809762,
+     "p_edge_min": 0.21344210594097088,
+     "p_edge_max": 0.46406643346886284
     },
     "nZ12": {
-     "c1_raw": 36.761258893769195,
-     "c1_firth": 36.68689169869875,
-     "c1_firth_minus_trPhV": -1.0475147860233847e-08,
-     "c2_raw": 207.6015938147723,
-     "c2_firth": 43.98725649912183,
-     "c2_ratio": 0.21188303852025547,
-     "p_edge_min": 0.07905004439291399,
-     "p_edge_max": 0.48308545024687644
+     "c1_raw": 13.10710587031877,
+     "c1_firth": 12.45155070152521,
+     "c1_firth_minus_trPhV": -4.647384699296708e-09,
+     "c2_raw": 109.23153384826723,
+     "c2_firth": 24.846730110880912,
+     "c2_ratio": 0.2274684721116828,
+     "p_edge_min": 0.06645499932438581,
+     "p_edge_max": 0.4788777098929543
     }
    },
    "tolerance": {
@@ -546,26 +546,26 @@
    ],
    "value": {
     "ratios": [
-     0.9962283483854136,
+     0.9962283483854134,
      0.9922583220052307,
      0.9969456660782542,
      1.0001325788250746,
      0.9942387167026495,
      0.9912071693323306,
-     0.9928254479807056,
+     0.9928254479807054,
      0.9945132724295963,
-     0.9963235137744094,
+     0.9963235137744091,
      0.9985905554367962,
      0.9926971232529972,
      1.0052482506487104,
      0.9944045426533106,
      0.9971580952433311,
      0.9884014643940692,
-     0.998986442843592,
+     0.9989864428435921,
      0.9947249147663917,
      0.9918762610448293,
      0.9948165566191443,
-     1.001495316557622
+     1.0014953165576221
     ],
     "coverage": [
      16,
@@ -590,7 +590,7 @@
      14
     ],
     "mean": 0.9956536279487229,
-    "se": 0.0008766187064261056,
+    "se": 0.0008766187064261116,
     "residual_pct": 0.4346372051277081,
     "per_draw_min_pct": -0.5248250648710373,
     "per_draw_max_pct": 1.1598535605930826,
@@ -620,14 +620,14 @@
     },
     {
      "rho": 1.5,
-     "bias_pct": -0.05128107150544903,
-     "se_pct": 0.4562214830929817,
+     "bias_pct": -0.05128107150542682,
+     "se_pct": 0.45622148309298155,
      "unfittable": 4.0
     },
     {
      "rho": 2.0,
-     "bias_pct": -0.1900321337469757,
-     "se_pct": 0.3897873465975803,
+     "bias_pct": -0.1900321337469979,
+     "se_pct": 0.3897873465975814,
      "unfittable": 3.0
     },
     {
@@ -639,19 +639,19 @@
     {
      "rho": 4.5,
      "bias_pct": 2.5359779240881064,
-     "se_pct": 0.27006977761077794,
+     "se_pct": 0.2700697776107777,
      "unfittable": 0.0
     },
     {
      "rho": 6.0,
      "bias_pct": 3.1974566713050323,
-     "se_pct": 0.2853990988684765,
+     "se_pct": 0.2853990988684757,
      "unfittable": 0.0
     },
     {
      "rho": 9.0,
      "bias_pct": 4.941324642896294,
-     "se_pct": 0.5111400724616214,
+     "se_pct": 0.5111400724616199,
      "unfittable": 0.0
     }
    ],
@@ -1231,11 +1231,11 @@
     "methodology v8 note"
    ],
    "value": {
-    "mean_pct": 0.3623765529022555,
-    "se_pct": 0.0023790006519456134,
-    "min_pct": 0.3408968355410047,
-    "max_pct": 0.38664161682345766,
-    "range_pct": 0.04574478128245296,
+    "mean_pct": 0.3634902434746484,
+    "se_pct": 0.0019894566773664465,
+    "min_pct": 0.34680792413043227,
+    "max_pct": 0.38106591342798035,
+    "range_pct": 0.034257989297548086,
     "n_base_seeds": 20
    },
    "tolerance": {
@@ -1244,7 +1244,7 @@
    },
    "kind": "stochastic",
    "test": null,
-   "note": "CANONICAL value for the exact residual; the paper quotes this one. Deterministic given the mask, so it reproduces bit-for-bit on fixed numpy; the residual stochasticity is topology draw only. Compare residual-across-draws, the same quantity measured at reps=16. An INDEPENDENT REPLICATION lives at design/methodology/experiments/bias-of-bias (report_exact.py -> results/exact_energy_residual.json) and reports +0.36349% +- 0.00199%. It agrees well inside either standard error but is not bit-identical, the two implementations having been written separately; cite this claim rather than that file so a single number travels."
+   "note": "CANONICAL value for the exact residual; the paper quotes this one. Deterministic given the mask, so it reproduces bit-for-bit on fixed numpy; the residual stochasticity is topology draw only. Compare residual-across-draws, the same quantity measured at reps=16. An INDEPENDENT REPLICATION lives at design/methodology/experiments/bias-of-bias (report_exact.py -> results/exact_energy_residual.json) and reports +0.36349% +- 0.00199%, which this arm now MATCHES to every digit reported. The earlier disagreement was read as the two implementations having been written separately; it was not. This side was building its configs at n_cplx=5 while the replication used n_cplx=0, and n_cplx enters the config fingerprint and hence every mask seed -- so the two were averaging over disjoint topology ensembles. With both on the floor path they agree exactly, which is the stronger result: two separately written implementations of the same identity, on the same graphs, to the last digit. Cite this claim rather than that file so a single number travels."
   },
   "residual-fit-variants": {
    "claim": "Because c2 is a closed form it can be subtracted rather than fitted. Subtracting it removes most of the residual; fitting it as a free third parameter removes essentially all of it on exact energies. Both are reported across base seeds -- these are topology-dependent, not single draws.",
@@ -1254,27 +1254,27 @@
    ],
    "value": {
     "two_param": {
-     "mean_pct": 0.3623765529022555,
-     "se_pct": 0.0023790006519456134,
-     "min_pct": 0.3408968355410047,
-     "max_pct": 0.38664161682345766,
-     "range_pct": 0.04574478128245296,
+     "mean_pct": 0.3634902434746484,
+     "se_pct": 0.0019894566773664465,
+     "min_pct": 0.34680792413043227,
+     "max_pct": 0.38106591342798035,
+     "range_pct": 0.034257989297548086,
      "n_base_seeds": 20
     },
     "three_param": {
-     "mean_pct": -0.008753909845944374,
-     "se_pct": 0.0003926766708830553,
-     "min_pct": -0.011322574161964916,
-     "max_pct": -0.005099872092717561,
-     "range_pct": 0.0062227020692473545,
+     "mean_pct": -0.008398519038638197,
+     "se_pct": 0.00035421661503256174,
+     "min_pct": -0.011874331111760839,
+     "max_pct": -0.005337868400068224,
+     "range_pct": 0.006536462711692614,
      "n_base_seeds": 20
     },
     "c2_subtracted": {
-     "mean_pct": 0.07912952319759192,
-     "se_pct": 0.000991688961920563,
-     "min_pct": 0.06994917980072124,
-     "max_pct": 0.08821636677899258,
-     "range_pct": 0.018267186978271344,
+     "mean_pct": 0.07862566619487976,
+     "se_pct": 0.0007751075679996135,
+     "min_pct": 0.07274659990788024,
+     "max_pct": 0.0845652202478675,
+     "range_pct": 0.011818620339987262,
      "n_base_seeds": 20
     }
    },
@@ -1287,29 +1287,29 @@
    "note": "EVIDENCE for the mechanism, not a recommended remedy. The three-parameter figure is measured on EXACT energies; its behaviour at reps=16, where a third parameter may cost more variance than the bias it removes, is not measured here and is the original sec 5.3 objection."
   },
   "residual-tracks-c2": {
-   "claim": "Changing the edge estimator moves the residual in the proportion its c2 moves. A per-edge continuity-corrected estimator has 21.19% of the raw c2 on this topology and yields 22.7% of the raw residual -- agreement to under 2 pp, with no Monte Carlo on either side. Residual is proportional to c2.",
+   "claim": "Changing the edge estimator moves the residual in the proportion its c2 moves. A per-edge continuity-corrected estimator has 22.75% of the raw c2 on this topology and yields 22.88% of the raw residual -- agreement to under 0.2 pp, with no Monte Carlo on either side. Residual is proportional to c2.",
    "cited_in": [
     "methodology sec 9"
    ],
    "value": {
     "firth": {
-     "mean_pct": 0.08242969126386557,
-     "se_pct": 0.0011228008181006785,
-     "min_pct": 0.07964777143535384,
-     "max_pct": 0.08476691285835836,
-     "range_pct": 0.005119141423004514,
+     "mean_pct": 0.08315021276247503,
+     "se_pct": 0.0006692957071266165,
+     "min_pct": 0.08189843059053237,
+     "max_pct": 0.0853437776378363,
+     "range_pct": 0.003445347047303926,
      "n_base_seeds": 5
     },
     "raw": {
-     "mean_pct": 0.3623765529022555,
-     "se_pct": 0.0023790006519456134,
-     "min_pct": 0.3408968355410047,
-     "max_pct": 0.38664161682345766,
-     "range_pct": 0.04574478128245296,
+     "mean_pct": 0.3634902434746484,
+     "se_pct": 0.0019894566773664465,
+     "min_pct": 0.34680792413043227,
+     "max_pct": 0.38106591342798035,
+     "range_pct": 0.034257989297548086,
      "n_base_seeds": 20
     },
-    "residual_ratio": 0.22746971514489647,
-    "c2_ratio_nZ12": 0.2119
+    "residual_ratio": 0.2287550058225272,
+    "c2_ratio_nZ12": 0.2274684721116828
    },
    "tolerance": {
     "kind": "rel",

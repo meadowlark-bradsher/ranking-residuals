@@ -124,11 +124,23 @@ def is_seeded(result, min_seeds=MIN_BASE_SEEDS):
     return bool(counts) and min(counts) >= min_seeds
 
 
-def violation(name, result, available=()):
+def violation(name, result, available=(), results=None, current=None):
     """The rule, as a sentence or None.
 
     `available` is the set of result names present, so an audit that has not been
-    run cannot silently discharge the probe it covers.
+    run cannot silently discharge the probe it covers. `results` and `current`
+    are what let the discharge also require the audit to be CURRENT.
+
+    Presence alone was not enough and this function knew it: audit_is_current
+    was written to close exactly this hole -- "AUDIT_FOR excuses chi2_collapse
+    on the strength of a collapse_spread computed under a gate nobody uses any
+    more" -- and then was never called from here, so it sat dead outside its own
+    test while rule 1 quietly leaned on rule 2 being enforced somewhere else.
+
+    FAILS CLOSED. Without `results` and `current` the currency of the audit
+    cannot be established, and an audit that cannot be checked discharges
+    nothing -- the same reading this module already applies to a result carrying
+    no gate constant at all.
     """
     offenders = low_df_moment_rows(result)
     if not offenders:
@@ -137,7 +149,15 @@ def violation(name, result, available=()):
         return None
     audit = AUDIT_FOR.get(name)
     if audit and audit in available:
-        return None
+        if results is not None and current is not None:
+            if audit_is_current(name, results, current):
+                return None
+            return (f"{name}: discharged by {audit}, but {audit} was computed under "
+                    f"gate constants the module no longer has. Re-run {audit} "
+                    f"before it can excuse anything.")
+        return (f"{name}: {audit} is present but its currency was not checked, so "
+                f"it cannot discharge this probe. Pass results= and current= to "
+                f"violation(), or call violations(results, current).")
     dfs = sorted({d for r in offenders for d in row_dfs(r) if d <= DF_NEEDS_SEEDS})
     return (f"{name}: verdict {result.get('verdict')!r} rests on {len(offenders)} "
             f"moment-carrying cells at df {dfs} with no base seeds and no audit. "
@@ -145,11 +165,17 @@ def violation(name, result, available=()):
             f"that reseeds this grid.")
 
 
-def violations(results):
-    """{name: sentence} over a {name: result} mapping."""
+def violations(results, current):
+    """{name: sentence} over a {name: result} mapping.
+
+    `current` is current_constants(probes_module); it is required rather than
+    optional because without it an audit's discharge cannot be checked, and a
+    convenient default here is how the guard went quiet in the first place.
+    """
     out = {}
     for name, result in sorted(results.items()):
-        v = violation(name, result, available=set(results))
+        v = violation(name, result, available=set(results),
+                      results=results, current=current)
         if v:
             out[name] = v
     return out
@@ -302,8 +328,10 @@ def audit_is_current(probe_name, results, current):
 #
 # WHAT IT DOES NOT COVER, and these are stated rather than solved. Calls made
 # dynamically (getattr, a name looked up at run time) are invisible to a static
-# walk. Behaviour that depends on an imported module -- hodge, rig.flows, numpy --
-# is out of scope: this answers "did OUR code change", not "did the world". And a
+# walk. Behaviour that depends on a THIRD-PARTY or cross-tree module -- hodge,
+# rig.flows, numpy -- is out of scope: this answers "did OUR code change", not
+# "did the world". Modules in THIS DIRECTORY are ours and are covered whole; see
+# _sibling_modules for why score_test.py had to stop counting as the world. And a
 # semantically neutral refactor, extracting a helper without altering behaviour,
 # WILL change the fingerprint. That direction is the safe one: it costs a re-run
 # nobody needed rather than hiding one that was.
@@ -311,7 +339,9 @@ def audit_is_current(probe_name, results, current):
 import ast
 import hashlib
 import inspect
+import os
 import textwrap
+import types
 
 
 def _strip_docstrings(tree):
@@ -363,6 +393,42 @@ def _referenced(dump_text, known):
     return {n for n in known if f"id='{n}'" in dump_text or f"name='{n}'" in dump_text}
 
 
+def _sibling_modules(module):
+    """Modules `module` imports that live BESIDE it -- ours, not the world.
+
+    numpy, scipy and hodge are the world: out of scope by design, and hashing
+    them would turn the fingerprint into a version stamp that any upgrade
+    invalidates. score_test.py is NOT the world. It sits in this directory, it
+    is written and edited here, and its ETA_CLIP, SEPARATED and fit_constrained
+    decide `usable` for every draw in every probe -- so editing it invalidates
+    all nine results while moving no gate constant and no probe body, leaving
+    stale(), fingerprint_mismatch() and uncheckable() all reporting clean. That
+    was rule 3's own blind spot, one file over from the one it was written to
+    close: _module_level walks tree.body for FunctionDef and Assign and has no
+    branch for Import, so an imported name could never enter the closure.
+
+    Siblings enter WHOLE rather than per-probe. There is no closure to narrow
+    them to: a constant like SEPARATED is read inside score_test's own functions,
+    not from the probe body, so reference-following from the probe would never
+    reach it. The cost is that a change anywhere in a sibling re-stamps every
+    probe -- the same conservative direction the module already accepts for a
+    neutral refactor, costing a re-run nobody needed rather than hiding one that
+    was.
+    """
+    f0 = getattr(module, "__file__", "") or ""
+    if not f0:
+        return {}
+    here = os.path.dirname(os.path.abspath(f0))
+    out = {}
+    for obj in vars(module).values():
+        if not isinstance(obj, types.ModuleType) or obj is module:
+            continue
+        f = getattr(obj, "__file__", None)
+        if f and os.path.dirname(os.path.abspath(f)) == here:
+            out[obj.__name__] = obj
+    return out
+
+
 def semantic_fingerprint(module, entry, _max_depth=12):
     """A hash of `entry` and everything in this module it transitively depends on.
 
@@ -383,7 +449,11 @@ def semantic_fingerprint(module, entry, _max_depth=12):
         if not new:
             break
         frontier = new
-    payload = "\n".join(f"{n}::{level[n]}" for n in sorted(seen))
+    parts = [f"{n}::{level[n]}" for n in sorted(seen)]
+    for mname, sib in sorted(_sibling_modules(module).items()):
+        lv = _module_level(sib)
+        parts += [f"{mname}.{n}::{lv[n]}" for n in sorted(lv)]
+    payload = "\n".join(parts)
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 

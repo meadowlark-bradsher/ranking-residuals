@@ -280,14 +280,28 @@ def estimator(cfg):
 
 
 # ---------------------------------------------------------------- residual mechanism
-def _calibration_topology(n_int, gamma=2.0, eps=0.3, n_cplx=5, filling="observed"):
+def _calibration_topology(n_int, gamma=2.0, eps=0.2, n_cplx=0, filling="observed"):
     """The first fittable mask of the floor path, reproduced exactly.
 
     Mirrors rig.sweep.floor_measurement's seed derivation rather than drawing a
     fresh mask: the coefficients below are properties of THAT graph, and a mask
     drawn any other way would give different -- equally correct -- numbers for a
-    different topology. n_cplx never enters the graph but does enter the config
-    fingerprint, hence derive_seed, so it must be carried.
+    different topology.
+
+    THE DEFAULTS ARE PART OF THAT CLAIM, and they were both wrong. n_cplx never
+    enters the graph but DOES enter the config fingerprint, hence derive_seed --
+    the previous docstring said exactly this and then carried n_cplx=5, while
+    every floor measurement in the repo runs at n_cplx=0 (rig/sweep.py:234,
+    sweeps() below, bias-of-bias/exact_energy.py). eps is hashed into the mask
+    seed too, and 0.3 is not on the floor grid (0.0, 0.1, 0.2, 0.4) at all. The
+    two together selected a mask no floor measurement ever draws: at n_int=12,
+    seed 0 the floor path draws 34 edges with b1 = 4, this drew 25 edges with
+    b1 = 7, and the cross-term shortfall these coefficients feed reads 0.202%
+    on the off-path mask against 2.435% on the real one.
+
+    Every claim built on this is topology-bound -- firth-localises-boundary says
+    so in its own text -- so an off-path topology does not make the numbers
+    wrong, it makes them answer a question nobody asked. Now on-path.
     """
     cfg = RigConfig().validate().with_(n_int=n_int, n_cplx=n_cplx)
     for s in range(cfg.seeds):
@@ -347,13 +361,13 @@ def residual_mechanism(cfg):
     claim("c1-cross-term-completes", asserts="The 1/k coefficient of the harmonic energy is "
           "tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the "
           "delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on "
-          "both calibration topologies, while variance-only is off by 4.5% and 0.2%.",
+          "both calibration topologies, while variance-only is off by 2.7% and 5.0%.",
           cited_in=["methodology sec 5.1", "methodology sec 9"], value=c1,
           tol={"kind": "rel", "value": 1e-6},
           test="tests/test_invariants.py::test_7_c1_equals_variance_plus_cross")
 
-    claim("c2-variance-dominated", asserts="The 1/k^2 coefficient is 95-99% the SECOND-ORDER "
-          "VARIANCE of the logit and only ~1% the mean-bias term b'P_h b. The natural "
+    claim("c2-variance-dominated", asserts="The 1/k^2 coefficient is 88-95% the SECOND-ORDER "
+          "VARIANCE of the logit and only 0.6-2.5% the mean-bias term b'P_h b. The natural "
           "expectation that the vector driving the 1/k correction also drives the 1/k^2 one "
           "is wrong by two orders of magnitude.",
           cited_in=["methodology sec 5.3", "methodology sec 9"],
@@ -397,7 +411,7 @@ def residual_mechanism(cfg):
           "removes the c1 cross term exactly (c1_F = tr(P_h V)) and annihilates the 2/(pq) "
           "near-boundary term of v2, cutting the asymmetry term 3/2 -> 1/2. The resulting "
           "c2 ratio is bounded in (0, 1/3) and is set by the P_h-weighted edge-probability "
-          "mix -- 5.2% on a mid-range topology, 21.2% on one whose edges reach p ~ 0.08. "
+          "mix -- 13.5% on a mid-range topology, 22.7% on one whose edges reach p ~ 0.07. "
           "No universal reduction factor exists.",
           cited_in=["methodology sec 9"], value=fir, tol={"kind": "rel", "value": 1e-4},
           note="DIAGNOSTIC PROBE, not a recommended fix, and PER-EDGE only: this is the "
@@ -645,7 +659,13 @@ def residual_exact(cfg):
     the shipped sweep's protocol so the two are comparable; the corrected-estimator
     arm uses 5, which is ample given its s.e. is ~0.001 pt.
     """
-    base = RigConfig().validate().with_(n_int=12, n_cplx=5)
+    # n_cplx=0, matching floor_sweep (rig/sweep.py:234) and the residual-across-
+    # draws arm in sweeps() below. It was 5, which fingerprints differently and
+    # therefore seeds a different mask for every (gamma, eps, s) -- so the
+    # pairing against residual-across-draws that this claim's note relies on was
+    # comparing disjoint topology ensembles, and the +-0.09 pt band could not be
+    # attributed to reps=16 sampling noise on that evidence.
+    base = RigConfig().validate().with_(n_int=12, n_cplx=0)
     raw = [_exact_residual(base.with_(seed=b), models=("2param", "3param", "c2sub"))
            for b in range(20)]
     fth = [_exact_residual(base.with_(seed=b), estimator="firth")["2param"]
@@ -665,10 +685,16 @@ def residual_exact(cfg):
                "residual-across-draws, the same quantity measured at reps=16. "
                "An INDEPENDENT REPLICATION lives at design/methodology/experiments/"
                "bias-of-bias (report_exact.py -> results/exact_energy_residual.json) "
-               "and reports +0.36349% +- 0.00199%. It agrees well inside either "
-               "standard error but is not bit-identical, the two implementations "
-               "having been written separately; cite this claim rather than that file "
-               "so a single number travels.")
+               "and reports +0.36349% +- 0.00199%, which this arm now MATCHES to "
+               "every digit reported. The earlier disagreement was read as the two "
+               "implementations having been written separately; it was not. This "
+               "side was building its configs at n_cplx=5 while the replication "
+               "used n_cplx=0, and n_cplx enters the config fingerprint and hence "
+               "every mask seed -- so the two were averaging over disjoint topology "
+               "ensembles. With both on the floor path they agree exactly, which is "
+               "the stronger result: two separately written implementations of the "
+               "same identity, on the same graphs, to the last digit. Cite this "
+               "claim rather than that file so a single number travels.")
 
     claim("residual-fit-variants", asserts="Because c2 is a closed form it can be subtracted "
           "rather than fitted. Subtracting it removes most of the residual; fitting it as a "
@@ -687,13 +713,21 @@ def residual_exact(cfg):
     f = _spread(fth)
     claim("residual-tracks-c2", asserts="Changing the edge estimator moves the residual in "
           "the proportion its c2 moves. A per-edge continuity-corrected estimator has "
-          "21.19% of the raw c2 on this topology and yields 22.7% of the raw residual -- "
-          "agreement to under 2 pp, with no Monte Carlo on either side. Residual is "
+          "22.75% of the raw c2 on this topology and yields 22.88% of the raw residual -- "
+          "agreement to under 0.2 pp, with no Monte Carlo on either side. Residual is "
           "proportional to c2.",
           cited_in=["methodology sec 9"],
+          # Read from the claim that MEASURES it, not typed in beside it. As a
+          # literal, c2_ratio_nZ12 regenerated as 0.2119 against 0.2119 forever:
+          # verify.py compares stored to fresh leaf by leaf, so its drift was
+          # exactly zero under any tolerance and the coupling this claim exists
+          # to test -- residual moves in proportion to c2 -- was not wired to
+          # anything. If the topology, the estimator or moments.v2 moved, the
+          # firth-localises-boundary claim would fail while this one went on
+          # asserting the superseded number and reporting ok.
           value={"firth": f, "raw": two,
                  "residual_ratio": f["mean_pct"] / two["mean_pct"],
-                 "c2_ratio_nZ12": 0.2119},
+                 "c2_ratio_nZ12": CLAIMS["firth-localises-boundary"]["value"]["nZ12"]["c2_ratio"]},
           tol={"kind": "rel", "value": 0.05}, kind="stochastic",
           note="Ratio is taken against the 20-base-seed raw mean, so both arms are the "
                "quantity the paper quotes. Taking it against the 5-seed raw mean instead "

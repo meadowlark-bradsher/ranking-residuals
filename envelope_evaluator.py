@@ -32,10 +32,24 @@ repository is built to refuse.
 
  2. `T = U^T pinv(I) U` with `U = Ph z` is not chi2(b1). Writing z = I^(1/2) Z
     with Z standard, the form becomes Z^T (I^(1/2) Ph I^-1 Ph I^(1/2)) Z, whose
-    matrix is idempotent only when I is constant across edges. The correct
-    weighting inverts the information RESTRICTED to the harmonic coordinates,
-    (H^T I H)^{-1}, which is what the branch's own derivation uses. The two
-    agree only when every edge carries the same p, which no real topology does.
+    matrix is idempotent only when I is constant across edges. The weighting
+    used here inverts the information RESTRICTED to the harmonic coordinates,
+    (H^T I H)^{-1}, which is the right normalisation FOR THIS SCORE POINT: at
+    the true eta, Cov(z) = I exactly, so Cov(H^T z) = H^T I H and
+    s^T (H^T I H)^{-1} s is chi2(b1).
+
+    THIS IS A DIFFERENT QUADRATIC FORM FROM THE INSTRUMENT'S, and the earlier
+    wording here -- "which is what the branch's own derivation uses" -- was
+    wrong. score_test.py derives and computes T = U^T I^{-1} U at the
+    CONSTRAINED MLE, where U lies in col(H), i.e. s'^T (H^T I^{-1} H) s'.
+    (H^T I H)^{-1} and H^T I^{-1} H coincide only when M^T I H = 0, i.e. when I
+    preserves the harmonic subspace -- which no real cell satisfies. Measured
+    ||M^T I H||_F: 47.49 (graph 0, k=512), 5.77 (graph 2, k=128), 2.70
+    (graph 3, k=64), and the two matrices differ by up to 29% relative.
+
+    Both are valid score tests; they are simply not the same statistic, so the
+    oracle-minus-instrument gap is NOT attributable to the refit alone. See the
+    decomposition under VERIFICATION AGAINST THE PUBLISHED RUN below.
 
  3. The df >= 5 branch of `survival_function` returns a Wilson-Hilferty QUANTILE
     where a survival probability is required. Its value does not depend on x, so
@@ -65,12 +79,24 @@ branch harmonic-zero-null exactly (eta_absmax and p_min agree to 6 dp on all
 four graphs), so the two runs see the SAME draws. With separation_rule='mle'
 all sixteen observed-filling drop rates reproduce that run's exactly, and the
 two rules agree DRAW BY DRAW: zero disagreements over all 32,000 draws of the
-grid. mean_T_ratio then differs only by what the two statistics actually
-are: this one is the oracle score at the true eta, whose mean is exactly b1 by
-construction; that one refits the constrained MLE per draw. The gap is largest
-where the drop rate is largest (graph 3, k = 32: 0.888 here against 0.740
-there), which locates 57% of the published conservative drift in the
-REFIT rather than in the truncation of draws.
+grid. mean_T_ratio then differs for TWO reasons, not one: this one is the
+oracle score at the true eta weighted by (H^T I H)^{-1}, whose mean is exactly
+b1 by construction; that one refits the constrained MLE per draw AND weights by
+I^{-1} (deviation 2). The gap is largest where the drop rate is largest.
+
+DO NOT READ THE GAP AS "THE REFIT". Decomposed on graph 3 at k = 64 over 600
+draws (540 retained), meanT/df is
+
+    0.9257   oracle:      score at true eta,   (H^T I H)^{-1}
+    0.5474   intermediate: score at the refit, (H^T I H)^{-1}
+    0.7869   instrument:  score at the refit,  I^{-1}       (score_test.py)
+
+so the refit point contributes +0.378 and the change of quadratic form -0.240:
+two large opposite-signed effects whose partial cancellation leaves a net
++0.139. An earlier version of this note read that net as "57% of the published
+conservative drift in the REFIT", which books a weighting change larger than
+the net gap into the refit. Separating the two requires the intermediate row
+above; the drop-rate column alone cannot do it.
 """
 
 from __future__ import annotations
@@ -376,7 +402,10 @@ def run_envelope_evaluation(edges, triangles, k, true_lambda=None, eta=None,
             rejections += 1
 
         if check_stationarity:
-            off = float(np.linalg.norm(eye_minus_ph @ (Ph @ z)))
+            # The honest quantity: how much of the score lies OUTSIDE the
+            # harmonic subspace. It is large and it is meant to be -- see
+            # assert_stationarity for why this is a diagnostic, not a gate.
+            off = float(np.linalg.norm(eye_minus_ph @ z))
             max_off_harmonic = off if max_off_harmonic is None else max(max_off_harmonic, off)
 
     total_valid = num_replicates - drop_count
@@ -391,9 +420,14 @@ def run_envelope_evaluation(edges, triangles, k, true_lambda=None, eta=None,
         "drop_rate": drop_count / num_replicates if num_replicates else 0.0,
         "saturation_rate": n_saturated / num_replicates if num_replicates else 0.0,
         "separation_rule": separation_rule,
-        "mean_T_ratio": float(T_arr.mean() / b1) if (b1 > 0 and T_arr.size) else 0.0,
-        "var_T_ratio": float(T_arr.var(ddof=1) / (2 * b1)) if (b1 > 0 and T_arr.size > 1) else 0.0,
-        "realized_size": rejections / total_valid if total_valid > 0 else 0.0,
+        # None, not 0.0: a cell with no usable draws MEASURED NOTHING, and 0.0
+        # is a value a real cell can take. Coercing it to 0.0 made an empty cell
+        # the smallest entry in any monotone-decreasing test, so a fully
+        # truncated cell could carry assert_truncation_trend to a pass. Same
+        # 0.0-as-measurement error as deviation 1, one layer out.
+        "mean_T_ratio": float(T_arr.mean() / b1) if (b1 > 0 and T_arr.size) else None,
+        "var_T_ratio": float(T_arr.var(ddof=1) / (2 * b1)) if (b1 > 0 and T_arr.size > 1) else None,
+        "realized_size": rejections / total_valid if total_valid > 0 else None,
         "chi2_critical": crit,
         "max_score_off_harmonic": max_off_harmonic,
         "eta_absmax": float(np.max(np.abs(eta))),
@@ -434,30 +468,59 @@ def h0_eta(edges, triangles, g, rho_curl=1.0):
 
 
 # Published values from design/methodology/experiments/harmonic-zero-null/
-# results/chi2_collapse.json on branch harmonic-zero-null (2000 reps, observed
-# filling). That run fits the CONSTRAINED MLE per draw; this evaluator uses the
-# closed-form oracle at the true eta. Drop rates should agree exactly -- the
-# draws are identical and the separation rule is a function of w alone -- while
-# T and size may differ by the estimation error the oracle does not carry.
+# results/chi2_collapse.json on branch harmonic-zero-null (2000 reps). That run
+# fits the CONSTRAINED MLE per draw; this evaluator uses the closed-form oracle
+# at the true eta. Drop rates should agree exactly -- the draws are identical
+# and the separation rule is a function of w alone -- while T and size differ by
+# the refit AND by the change of quadratic form (deviation 2).
+#
+# KEYED ON FILLING. Every (graph, k) pair exists TWICE in chi2_collapse.json,
+# once per filling, and they are different cells with different b1. Keyed on
+# (graph, k) alone, `--filling empty` printed the observed-filling numbers as
+# the reference column for empty-filling rows -- e.g. graph 2's empty cell
+# (b1 = 21) was compared against the observed cell's b1 = 3 figures. A missing
+# key now prints "-" rather than the wrong cell.
 REFERENCE = {
-    (0, 512): (0.000, 1.019, 0.053),
-    (1, 512): (0.000, 1.029, 0.050),
-    (2, 512): (0.050, 0.983, 0.046), (2, 128): (0.207, 1.006, 0.059),
-    (2, 64): (0.293, 0.972, 0.052), (2, 32): (0.435, 0.973, 0.062),
-    (3, 512): (0.000, 1.061, 0.054), (3, 128): (0.0075, 1.024, 0.045),
-    (3, 64): (0.0915, 0.842, 0.039), (3, 32): (0.430, 0.740, 0.030),
+    ("observed", 0, 512): (0.000, 1.019, 0.053),
+    ("observed", 1, 512): (0.000, 1.029, 0.050),
+    ("observed", 2, 512): (0.050, 0.983, 0.046),
+    ("observed", 2, 128): (0.207, 1.006, 0.059),
+    ("observed", 2, 64): (0.293, 0.972, 0.052),
+    ("observed", 2, 32): (0.435, 0.973, 0.062),
+    ("observed", 3, 512): (0.000, 1.061, 0.054),
+    ("observed", 3, 128): (0.0075, 1.024, 0.045),
+    ("observed", 3, 64): (0.0915, 0.842, 0.039),
+    ("observed", 3, 32): (0.430, 0.740, 0.030),
 }
 
 
 # ---------------------------------------------------- verification assertions
+STATIONARITY_NOT_APPLICABLE = (
+    "not applicable on this path: the oracle scores at the TRUE eta, where no "
+    "first-order condition holds, so the score has no reason to lie in the "
+    "harmonic subspace and max_score_off_harmonic is large by construction. "
+    "The instrument's analogue -- score_test.score_off_harmonic, ||M^T U|| at "
+    "the converged constrained fit -- is a real convergence check; this one has "
+    "no content and is reported, not asserted.")
+
+
 def assert_stationarity(cell, tol=5e-13):
-    """4.1 -- the residual carries no component outside the harmonic subspace."""
-    off = cell["max_score_off_harmonic"]
-    if off is None:
-        return
-    if not off <= tol:
-        raise AssertionError(
-            f"stationarity: max norm of (I - Ph) U = {off:.3e} exceeds {tol:.1e}")
+    """4.1 -- WITHDRAWN. It measured a quantity that is identically zero.
+
+    The check read ||(I - Ph)(Ph z)||. Ph = H H^T with H orthonormal is
+    idempotent, so (I - Ph)Ph = 0 for every z: the assertion passed on any
+    input, including a pure gradient (8.5e-17 against a 5e-13 tolerance) which
+    lies entirely OUTSIDE the harmonic subspace and is exactly what 4.1 claimed
+    to rule out. It could not fail, and boundary_report.json recorded its "pass"
+    as evidence.
+
+    Deleting it rather than repairing it is deliberate: the property 4.1 names
+    does not hold on this code path at all, so there is nothing to repair. The
+    honest quantity is now reported as `max_score_off_harmonic` and left
+    unasserted. Kept as a named no-op so a caller cannot silently lose the
+    reason.
+    """
+    return STATIONARITY_NOT_APPLICABLE
 
 
 def assert_degeneracy(verbose=True):
@@ -496,6 +559,14 @@ def assert_truncation_trend(cells):
         raise AssertionError(f"truncation trend needs k in {ks}; have {sorted(cells)}")
     for field in ("mean_T_ratio", "realized_size"):
         vals = [cells[k][field] for k in have]
+        # A cell that measured nothing cannot support a trend claim. It used to
+        # arrive here as 0.0 and, being the smallest possible value, carried the
+        # monotone test to a pass from the bottom of the ladder.
+        empty = [k for k, v in zip(have, vals) if v is None]
+        if empty:
+            raise AssertionError(
+                f"truncation trend: {field} is unmeasured at k={empty} "
+                f"(no usable draws), so the trend is not readable there")
         if not all(a > b for a, b in zip(vals, vals[1:])):
             raise AssertionError(
                 f"truncation trend: {field} not monotone decreasing over "
@@ -522,6 +593,17 @@ def self_test():
 
 
 # ------------------------------------------------------------------- driver
+# An unmeasured cell carries None, not 0.0, all the way to the page: printing it
+# as "--" keeps "we measured nothing here" visually distinct from "we measured
+# zero", which is the distinction the 0.0 fallback destroyed.
+def _r6(x):
+    return None if x is None else round(x, 6)
+
+
+def _f3(x, w):
+    return f"{x:>{w}.3f}" if x is not None else f"{'--':>{w}}"
+
+
 def main():
     ap = argparse.ArgumentParser(description="operating-envelope evaluator")
     ap.add_argument("--out", default="boundary_report.json")
@@ -540,6 +622,7 @@ def main():
     self_test()
     print("\ndegeneracy (4.2), empty filling:")
     assert_degeneracy()
+    degeneracy_status = "pass"          # only reachable if the assertion held
 
     print("\n" + "=" * 82)
     print(f"OPERATING ENVELOPE  --  filling={args.filling}, "
@@ -557,7 +640,6 @@ def main():
                 edges, triangles, k, eta=eta, num_replicates=args.reps,
                 alpha=ALPHA, tag=f"c1|{args.filling}|{g}|{k}",
                 separation_rule=args.separation_rule)
-            assert_stationarity(cell)
             cells[k] = cell
         by_graph[g] = cells
         first = cells[args.ks[0]]
@@ -566,8 +648,8 @@ def main():
         for k in args.ks:
             results[key][f"k_{k}"] = {
                 "drop_rate": round(cells[k]["drop_rate"], 6),
-                "mean_T_ratio": round(cells[k]["mean_T_ratio"], 6),
-                "realized_size": round(cells[k]["realized_size"], 6),
+                "mean_T_ratio": _r6(cells[k]["mean_T_ratio"]),
+                "realized_size": _r6(cells[k]["realized_size"]),
             }
 
         print(f"\ngraph {g}  (E = {first['E']}, b1 = {first['b1']})")
@@ -575,7 +657,7 @@ def main():
               f"     {'ref drop%':>9} {'ref T/df':>9} {'ref size':>8}")
         for k in args.ks:
             c = cells[k]
-            ref = REFERENCE.get((g, k))
+            ref = REFERENCE.get((args.filling, g, k))
             if ref is None:
                 rd = f"{'-':>9}"
                 rt = f"{'-':>9}"
@@ -584,8 +666,8 @@ def main():
                 rd = f"{100 * ref[0]:>8.1f}%"
                 rt = f"{ref[1]:>9.3f}"
                 rs = f"{ref[2]:>8.3f}"
-            print(f"  {k:>5} {100 * c['drop_rate']:>6.1f}% {c['mean_T_ratio']:>9.3f} "
-                  f"{c['realized_size']:>7.3f} {c['n_usable']:>7}     {rd} {rt} {rs}")
+            print(f"  {k:>5} {100 * c['drop_rate']:>6.1f}% {_f3(c['mean_T_ratio'],9)} "
+                  f"{_f3(c['realized_size'],7)} {c['n_usable']:>7}     {rd} {rt} {rs}")
 
     b1_one = [g for g, cells in by_graph.items() if cells[args.ks[0]]["b1"] == 1]
     print("\n" + "-" * 82)
@@ -600,7 +682,8 @@ def main():
                   "meanT/df and size both fall monotonically as k drops")
             for k, v in trend.items():
                 print(f"    k={k:>4}: drop {100 * v['drop_rate']:>5.1f}%  "
-                      f"meanT/df {v['mean_T_ratio']:.3f}  size {v['realized_size']:.3f}")
+                      f"meanT/df {_f3(v['mean_T_ratio'],5).strip()}  "
+                      f"size {_f3(v['realized_size'],5).strip()}")
         except AssertionError as exc:
             trend_status, trend_detail = "fail", str(exc)
             print(f"4.3 truncation trend on graph {g} (b1 = 1): FAIL")
@@ -636,8 +719,12 @@ def main():
             }[args.separation_rule],
         },
         "assertions": {
-            "stationarity_4_1": "pass",
-            "degeneracy_4_2": "pass",
+            # Was the literal "pass" for a check that could not fail. Now says
+            # what it is: no assertion runs here.
+            "stationarity_4_1": STATIONARITY_NOT_APPLICABLE,
+            # This one really does gate -- assert_degeneracy() raises above, so
+            # reaching this line IS the pass. Derived rather than typed.
+            "degeneracy_4_2": degeneracy_status,
             "truncation_trend_4_3": trend_status,
             "truncation_trend_detail": trend_detail,
         },

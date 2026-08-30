@@ -10,6 +10,7 @@ EQUALS it, so adding a violating probe fails, and fixing a listed one also fails
 -- with a message telling you to strike it from the list. It cannot quietly grow.
 """
 
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -45,14 +46,14 @@ def results():
     return r
 
 
-def test_violation_set_is_exactly_the_known_gaps(results):
+def test_violation_set_is_exactly_the_known_gaps(results, current):
     """The ratchet. Equality, not subset -- so it catches both directions."""
-    found = set(hr.violations(results))
+    found = set(hr.violations(results, current))
     new = found - KNOWN_GAPS
     fixed = KNOWN_GAPS - found
     assert not new, (
         "a probe now reaches a verdict on low-df moment ratios without seeds:\n  "
-        + "\n  ".join(hr.violations(results)[n] for n in sorted(new)))
+        + "\n  ".join(hr.violations(results, current)[n] for n in sorted(new)))
     assert not fixed, (
         f"{sorted(fixed)} no longer violates the rule -- strike it from KNOWN_GAPS "
         "so the ratchet keeps its grip")
@@ -76,15 +77,48 @@ def test_rejection_rate_probes_are_out_of_scope(results):
                 "and this test's premise needs revisiting")
 
 
-def test_an_audit_only_discharges_when_it_has_actually_run(results):
+def test_an_audit_only_discharges_when_it_has_actually_run(results, current):
     """chi2_collapse is covered by collapse_spread. Drop the audit and the cover
     goes with it -- otherwise a registry entry excuses a probe nobody audited."""
     if "chi2_collapse" not in results:
         pytest.skip("chi2_collapse not present")
     assert hr.violation("chi2_collapse", results["chi2_collapse"],
-                        available=set(results)) is None
+                        available=set(results), results=results,
+                        current=current) is None
     assert hr.violation("chi2_collapse", results["chi2_collapse"],
-                        available={"chi2_collapse"}) is not None
+                        available={"chi2_collapse"}, results=results,
+                        current=current) is not None
+
+
+def test_a_stale_audit_does_not_discharge_its_probe(results, current):
+    """Presence was never the question; currency is.
+
+    violation() knew about audit_is_current and never called it, so a
+    collapse_spread computed under a replaced gate went on excusing
+    chi2_collapse. Asserted here on a deliberately staled copy rather than on
+    whatever state the tree happens to be in.
+    """
+    if "chi2_collapse" not in results or "collapse_spread" not in results:
+        pytest.skip("chi2_collapse/collapse_spread not both present")
+    staled = copy.deepcopy(results)
+    recorded = hr.recorded_constants(staled["collapse_spread"])
+    assert recorded, "collapse_spread records no gate constant; cannot stale it"
+    key = sorted(recorded)[0]
+    staled["collapse_spread"]["value"][key] = "definitely-not-the-current-value"
+    assert hr.staleness("collapse_spread", staled["collapse_spread"], current)
+    assert not hr.audit_is_current("chi2_collapse", staled, current)
+    assert hr.violation("chi2_collapse", staled["chi2_collapse"],
+                        available=set(staled), results=staled,
+                        current=current) is not None, (
+        "a stale audit still discharges chi2_collapse")
+
+
+def test_an_uncheckable_audit_does_not_discharge_either(results):
+    """Fail closed: without results/current the discharge cannot be verified."""
+    if "chi2_collapse" not in results:
+        pytest.skip("chi2_collapse not present")
+    assert hr.violation("chi2_collapse", results["chi2_collapse"],
+                        available=set(results)) is not None
 
 
 def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
@@ -145,22 +179,29 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
 
 
 def _probes_module():
-    """Load probes.py by path, tolerating a session mid-edit."""
+    """Load probes.py by path.
+
+    This used to catch bare Exception and return None, which the fixture below
+    turned into a skip "tolerating a session mid-edit". A SyntaxError, a missing
+    scipy, or any import-time failure in probes.py therefore disarmed four
+    guards at once -- the staleness test, the audit-discharge test, the
+    false-positive test and (through the same pattern in
+    test_source_fingerprint.py) the fingerprint round-trip -- and CI stayed
+    green. A green run became indistinguishable from a run in which nothing was
+    checked, which is the failure harness_rules.py's own docstring names: "a
+    guard nobody can satisfy is one that gets switched off -- taking the genuine
+    flags with it." An unimportable probes.py is a broken tree, not a reason to
+    stop looking. Let it raise.
+    """
     spec = importlib.util.spec_from_file_location("probes_mod", _EXP / "probes.py")
     mod = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(mod)
-    except Exception:
-        return None
+    spec.loader.exec_module(mod)
     return mod
 
 
 @pytest.fixture(scope="module")
 def current():
-    mod = _probes_module()
-    if mod is None:
-        pytest.skip("probes.py not importable right now (another session editing?)")
-    return hr.current_constants(mod)
+    return hr.current_constants(_probes_module())
 
 
 def test_no_result_is_stale_against_the_code(results, current):

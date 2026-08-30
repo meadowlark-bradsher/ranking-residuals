@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy.stats import binom
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import hodge
@@ -42,6 +43,14 @@ N_SEEDS = 5000
 P = 0.45
 FILLING = "observed"
 
+# The question `seed_noise_check` answers, as named constants rather than
+# literals buried in the record: the build measured the n=6 rate at BUILD_SEEDS
+# masks and got BUILD_ESTIMATE, against the spec's 64.7%. SEC10_N is the n that
+# disagreement was about.
+SEC10_N = 6
+BUILD_SEEDS = 64
+BUILD_ESTIMATE = 0.672
+
 
 def classify(n: int, rng) -> str:
     """'small' | 'b1_zero' | 'has_hole' for one mask draw."""
@@ -50,6 +59,43 @@ def classify(n: int, rng) -> str:
         return "small"
     d0, d1 = hodge.build_operators(n, mk, hodge.triangles_for_filling(mk, FILLING))
     return "has_hole" if hodge.harmonic_basis(d0, d1).shape[1] >= 1 else "b1_zero"
+
+
+def pooled_rate(streams: list) -> dict:
+    """The marginal b1=0 rate pooled over every seed stream measured for one n.
+
+    Sec 10's convention: `small` and `b1_zero` counted together over all draws.
+    Pooling the five streams is what buys the 25,000-mask precision the headline
+    quotes; each stream alone carries n_seeds.
+    """
+    events = sum(b["small"] + b["b1_zero"] for b in streams)
+    total = sum(b["n_seeds"] for b in streams)
+    r = events / total
+    return {"rate": r, "se": float(np.sqrt(r * (1 - r) / total)), "N": total}
+
+
+def seed_noise(rate: float, n_seeds: int = BUILD_SEEDS,
+               estimate: float = BUILD_ESTIMATE) -> dict:
+    """Could an `n_seeds`-mask budget have told `estimate` from `rate`?
+
+    Exact binomial throughout: the quantity is a tail of Binomial(n_seeds, rate)
+    and there is nothing to sample. The range is that binomial's 2.5/97.5
+    quantiles, so it lands on multiples of 1/n_seeds -- the key keeps the name
+    `empirical_...` it has always had because report_b1.py reads it, but the
+    figure is exact.
+
+    The key names are built from the constants so the two cannot drift apart.
+    report_b1.py reads them literally, so moving BUILD_SEEDS or BUILD_ESTIMATE
+    surfaces as a loud KeyError there rather than as a mislabelled number.
+    """
+    se = float(np.sqrt(rate * (1 - rate) / n_seeds))
+    lo, hi = binom.ppf([0.025, 0.975], n_seeds, rate) / n_seeds
+    return {"n": SEC10_N, "pooled_rate": rate,
+            f"se_at_{n_seeds}_seeds": se,
+            f"z_for_{estimate}": (estimate - rate) / se,
+            f"empirical_95_range_at_{n_seeds}_seeds": [float(lo), float(hi)],
+            f"p_at_or_above_{estimate}": float(
+                binom.sf(np.ceil(estimate * n_seeds) - 1, n_seeds, rate))}
 
 
 def tally(n: int, seeder, n_seeds: int = N_SEEDS) -> dict:
@@ -97,7 +143,7 @@ CELLS = ((1.0, 0.1), (2.0, 0.1), (2.0, 0.4), (3.0, 0.2))
 
 def run(n_seeds: int = N_SEEDS) -> dict:
     out = {"n_seeds": n_seeds, "p": P, "filling": FILLING,
-           "gamma_eps_cells": [list(c) for c in CELLS], "by_n": {}}
+           "gamma_eps_cells": [list(c) for c in CELLS], "by_n": {}, "pooled": {}}
     for n in (6, 12):
         rec = {"path_a_sec10": path_a(n, n_seeds),
                "path_b_floor": {f"gamma={g},eps={e}": path_b(n, g, e, n_seeds=n_seeds)
@@ -121,6 +167,14 @@ def run(n_seeds: int = N_SEEDS) -> dict:
             rec[f"{key}_a_vs_b_pooled_z"] = [
                 two_proportion_z(rec["path_a_sec10"], b, key) for b in bs]
         out["by_n"][str(n)] = rec
+        # `pooled` and `seed_noise_check` are what B1-RATE.md's headline table
+        # and its "Why 67.2% and 64.7% differed" section are built from, and
+        # report_b1.py reads both. They were present in the committed json and
+        # produced by NOTHING in the tree, so the documented two-command
+        # reproduction -- `python b1_rate.py` then `python report_b1.py` --
+        # overwrote them and then died on KeyError: 'pooled'. Computed here.
+        out["pooled"][str(n)] = pooled_rate([rec["path_a_sec10"], *bs])
+    out["seed_noise_check"] = seed_noise(out["pooled"][str(SEC10_N)]["rate"])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, indent=1))
     return out

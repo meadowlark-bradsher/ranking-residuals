@@ -38,6 +38,10 @@ from rig import fit, flows, oracle
 # checks it against the untruncated sum rather than trusting the argument.
 N_SD = 16.0
 
+# Which base seed the CI-width evidence is taken on. Named so the value stored
+# beside the rows and the value used to compute them cannot disagree.
+CI_BASE_SEED = 0
+
 _LOGC: dict[int, np.ndarray] = {}
 _Y: dict[int, np.ndarray] = {}
 
@@ -285,12 +289,13 @@ def summarise(done: dict, n_base_seeds: int) -> dict:
         "se_pct": float(100 * d.std(ddof=1) / np.sqrt(d.size)),
         "note": "Paired across identical topologies, so the mask draw cancels."}
     out["per_seed"] = {str(s): done[s] for s in seeds}
+    # report_exact.py's "coverage result needs care" table reads this, and the
+    # write below is wholesale -- so leaving it out did not merely omit it, it
+    # DELETED it from a committed file no other code path could rebuild.
+    out["ci_evidence"] = {"base_seed": CI_BASE_SEED,
+                          "rows": ci_evidence(bs=CI_BASE_SEED)}
     OUT.write_text(json.dumps(out, indent=1))
     return out
-
-
-if __name__ == "__main__":
-    run()
 
 
 def ci_evidence(cells=((2.0, 0.0), (2.0, 0.1), (2.0, 0.2), (2.0, 0.4)), bs: int = 0) -> list:
@@ -318,3 +323,15 @@ def ci_evidence(cells=((2.0, 0.0), (2.0, 0.1), (2.0, 0.2), (2.0, 0.4)), bs: int 
             if rec["exact"]["ci_width"] else float("inf"))
         rows.append(rec)
     return rows
+
+
+# The entry point lives HERE, at the very bottom, and that position is the fix.
+# It used to sit above ci_evidence(), so during a script run that function was
+# not even bound by the time run() executed -- and summarise() wrote the results
+# json wholesale without its key. The committed file carried a `ci_evidence`
+# block no executed path produced, so EXACT-ENERGY.md's own two-command recipe
+# (`python exact_energy.py`, then `python report_exact.py`) deleted it and then
+# died on KeyError: 'ci_evidence' at report_exact.py:94, taking the whole
+# "coverage result needs care" section with it.
+if __name__ == "__main__":
+    run()
