@@ -158,8 +158,14 @@ def test_an_absent_fingerprint_is_unverifiable_not_agreement():
 # every probe stamps its fingerprint from now on and this set shrinks to nothing
 # as each is re-run. The ratchet fired the moment the first one landed and told
 # me to narrow it, which is what it is for.
-UNFINGERPRINTED = {"b1_ladder", "b1_one_boundary", "chi2_collapse",
-                   "harmonic_projected_eps", "seed_spread"}
+# Empty: every shipped result now carries a fingerprint. The ratchet earned its
+# keep in BOTH directions getting here -- it said "these record none but should"
+# when the recording line landed, and "these now carry one, strike them" after
+# each sweep. Neither direction let the list rot into something nobody trusts.
+#
+# A name appearing here again means a result was written by code predating the
+# recording line, which is a thing to fix rather than to record.
+UNFINGERPRINTED = set()
 
 
 def test_the_unfingerprinted_set_is_exactly_the_results_predating_recording():
