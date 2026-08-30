@@ -205,7 +205,13 @@ def test_no_margin_is_quoted_as_a_ratio():
 
 
 def test_an_exemption_does_not_cover_its_neighbour():
-    """Pins the two-line window, which is the whole reason A chose one."""
+    """Pins the same-line window, and is what rejected the two-line one.
+
+    Written first with A's window, which allows the line above. On this fixture
+    that let line 2's marker exempt line 3's separate claim, so the check was
+    silently covering neighbours -- the failure it exists to prevent. The
+    narrowing came from this test failing, not from foresight.
+    """
     doc = ("`residual-exact` tolerance discussion.\n"
            "clears it by six orders of magnitude. <!-- margin-exempt: quoting the rule -->\n"
            "and again by a factor of 3.9e+05 here.\n")
