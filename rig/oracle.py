@@ -96,7 +96,7 @@ def regime_report(p_edge, k_min, eps, grad_flow, fit_k_min, strict=True) -> dict
     return rep
 
 
-def required_fit_k_min(c_or: float, floor_target: float, rho: float = 3.0) -> float:
+def required_fit_k_min(c_or: float, floor_target: float, rho: float) -> float:
     """Smallest k at which the variance term c/k has fallen to <= rho * floor.
 
     §2.6 pins fit_k_min at 64, but that number was MEASURED on filling='observed'
@@ -104,8 +104,21 @@ def required_fit_k_min(c_or: float, floor_target: float, rho: float = 3.0) -> fl
     variance term to the floor being resolved. On filling='empty' the same graph has
     b1=20 and c~160, so k=64 leaves the variance term ~10x larger and the intercept is
     a small difference of large extrapolated numbers (measured floor 0.016 vs a true
-    0.090). rho=3.0 reproduces the validated calibration: at observed/eps=0.3 it gives
-    k_min ~ 64, which is where the 0.87x-0.95x recovery was established.
+    0.090).
+
+    `rho` is REQUIRED and deliberately has no default: it is a shipped config field
+    (RigConfig.rho, 1.5 since v7) and a default here would be a second place to set it.
+    That is not hypothetical -- this signature defaulted to 3.0 from v6 onward while the
+    config moved to 1.5 in v7, so the calibration claim in this docstring went stale and
+    no caller noticed, because every real caller already passed rho explicitly.
+
+    Choosing rho trades against grid reach: a smaller rho demands a longer, cleaner tail,
+    so rho and the `k` grid move together. Measured over 20 base seeds (§ v7 note):
+    rho=3.0 with k->4096 leaves a +1.6% +- 0.2% residual at coverage median 13/16;
+    rho=1.5 with k->16384 gives +0.43% +- 0.09% at median 15/16 and no grid-short cells.
+    rho=3.0 is where the window was first calibrated -- at observed/eps=0.3 it returns
+    k_min ~ 64, the fixed window under which the 0.87x-0.95x recovery was established --
+    which is provenance, not a recommended value.
 
     Returns inf when floor_target is 0 -- there is no floor to resolve, and the eps=0
     negative control is judged by whether its CI covers zero, not by this window.

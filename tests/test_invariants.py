@@ -196,8 +196,12 @@ def test_2_6_fit_window_is_not_a_tuning_knob():
 
 
 def test_2_6_required_window_scales_with_c_over_floor():
-    assert oracle.required_fit_k_min(160.0, 0.09) > oracle.required_fit_k_min(17.0, 0.09)
-    assert oracle.required_fit_k_min(17.0, 0.0) == float("inf")
+    # rho is required (no default): it is RigConfig.rho, not a second source of truth.
+    # Its value is immaterial to both assertions -- the first compares two calls sharing
+    # one rho, the second returns before rho is used -- so pass the shipped 1.5.
+    assert (oracle.required_fit_k_min(160.0, 0.09, 1.5)
+            > oracle.required_fit_k_min(17.0, 0.09, 1.5))
+    assert oracle.required_fit_k_min(17.0, 0.0, 1.5) == float("inf")
 
 
 # ---------------------------------------------------------------- §10
