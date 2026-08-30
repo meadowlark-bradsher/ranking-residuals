@@ -654,7 +654,8 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
 
 # ---------------------------------------------------------------- probe 6
 def b1_one_boundary(reps=2000, n_base=10, k=64,
-                    targets=(0.010, 0.012, 0.014, 0.016, 0.018, 0.019)):
+                    targets=(0.010, 0.014, 0.019, 0.03, 0.05,
+                             0.08, 0.12, 0.18, 0.25)):
     """Where does the chi2 window actually close at b1 = 1?
 
     b1_ladder established two points and an interaction between them. Pinned at
@@ -666,6 +667,13 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     This walks the bracket to find where b1 = 1 closes, with b1 = 22 carried at the
     same targets as the control: if the control stays flat while b1 = 1 crosses,
     the interaction is real and the window has to be indexed by b1.
+
+    The range now runs well past 0.02, because 0.02 was read off the UNMATCHED
+    grid where saturation was confounded with everything else that varied there.
+    If the moments in fact survive to 0.1, a 0.02 gate refuses usable designs for
+    no reason. The drop rate is carried alongside for the same reason: separation
+    may bind before chi2 validity does, in which case the window is not the
+    operative constraint at all and the gate should say so.
 
     Seeded, because the quantity being located is the noisy one. At b1 = 1 the
     reference is chi2(1), excess kurtosis 12, so the relative sampling s.e. on
@@ -689,10 +697,11 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
             if scale is None:
                 continue
             eta = scale * eta_raw
-            mr, vr, passes = [], [], 0
+            mr, vr, dr, passes = [], [], [], 0
             for base in range(n_base):
                 T, _, dropped = run_cell(eta, k, bases,
                                          f"c6|{base}|{g}|{b1}|{target}", reps)
+                dr.append(float(dropped / reps))
                 if len(T) < 2:
                     continue
                 a = float(T.mean() / b1)
@@ -718,7 +727,7 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                 "graph": g, "df": b1, "k": k, "saturation_target": target,
                 "saturation": cell_saturation(eta, k), "eta_scale": scale,
                 "n_base_seeds": len(vr), "n_seeds_passing": passes,
-                "mean_ratio": agg(mr), "var_ratio": agg(vr),
+                "mean_ratio": agg(mr), "var_ratio": agg(vr), "drop_rate": agg(dr),
             })
 
     # The boundary: the smallest target at which b1 = 1 no longer clears the gate
@@ -731,8 +740,18 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
         return min(bad) if bad else None
 
     b1_one, b1_ctrl = closes_at(1), closes_at(22)
+
+    # Which constraint binds first: does separation make the cell unusable before
+    # the moments go? If so the chi2 window is not the operative gate.
+    def drops_at(df, cap=0.05):
+        bad = [r["saturation_target"] for r in rows
+               if r["df"] == df and r["drop_rate"]
+               and r["drop_rate"]["median"] > cap]
+        return min(bad) if bad else None
+
+    d_one, d_ctrl = drops_at(1), drops_at(22)
     verdict = ("located" if b1_one is not None and b1_ctrl is None
-               else "control-also-fails" if b1_one is not None
+               else "both-close" if b1_one is not None and b1_ctrl is not None
                else "not-closed-in-range")
     return {
         "probe": "b1_one_boundary",
@@ -745,6 +764,8 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
         "value": {"alpha": ALPHA, "reps": reps, "n_base": n_base, "k": k,
                   "targets": list(targets),
                   "b1_1_closes_at": b1_one, "b1_22_closes_at": b1_ctrl,
+                  "b1_1_drops_exceed_5pct_at": d_one,
+                  "b1_22_drops_exceed_5pct_at": d_ctrl,
                   "rows": rows},
     }
 

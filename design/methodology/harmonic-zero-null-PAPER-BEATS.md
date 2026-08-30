@@ -125,9 +125,15 @@ will remember.
 draft of this section claimed something that did not survive its own experiment.
 **Claim.** The moment failures are governed by **saturation**, E[pᵏ + (1−p)ᵏ],
 the expected fraction of edges landing at w = 0 or w = k — computable in closed
-form with no sampling, and b₁-independent across the range measured (0.010 to
-0.019, ten base seeds per level, median variance ratio flat at both b₁ = 1 and
-b₁ = 22).
+form with no sampling. The window is b₁-dependent by a factor of six: it closes
+at 0.03 for b₁ = 1 and 0.18 for b₁ = 22 (ten base seeds per level across 0.010
+to 0.25). A flat 0.02 is safe for every b₁ measured; indexing by b₁ buys headroom.
+**And two mechanisms close it, distinguishable by the mean.** Low b₁ closes by
+losing draws — the drop rate climbs 0.4% → 7.8% → 65.4% and separation truncation
+drags the surviving mean from 1.038 to 0.505. High b₁ closes by low expected
+counts — the drop rate stays at 0.0%, the mean never leaves 1.01, and the variance
+alone inflates to 2.10. Same gate, two failure modes, and only the second is the
+one §8's mechanism paragraph describes.
 **The methodological beat, which may be the more useful half.** This section's
 claim was wrong three times before it was right, and always the same way: b₁ = 1
 is the decisive cell AND the noisiest one. Its reference is χ²(1), excess
