@@ -109,6 +109,14 @@ K_GRID = (8, 32, 64, 128, 512)
 # verdicts.
 SATURATION_MAX = 0.02
 
+# The moment gate: how far meanT/df and varT/2df may sit from 1 before a cell is
+# not chi2(b1) for practical purposes. Read by b1_ladder, b1_one_boundary,
+# collapse_spread and both of write_results_md's local checks -- every moment
+# check in the file, so the gate the audit applies is the gate the suite applies.
+# NOT the rejection-rate bounds in curl_freedom and harmonic_projected_eps, which
+# are a different 0.10 with a different meaning.
+MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
+
 # Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
 # strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
@@ -622,9 +630,9 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     # the filling is a dial on the data requirement rather than a fork.
     def ok(r):
         return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
                 and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
     probe_k = 64 if 64 in ks else ks[0]
     # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
     # window (0.010) shows no b1 effect at 0.010; it does not show the window
@@ -713,7 +721,8 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                 b = float(T.var(ddof=1) / (2 * b1))
                 mr.append(a)
                 vr.append(b)
-                if abs(a - 1) <= 0.10 and abs(b - 1) <= 0.15:
+                if (abs(a - 1) <= MOMENT_MTOL
+                        and abs(b - 1) <= MOMENT_VTOL):
                     passes += 1
 
             def agg(v):
@@ -741,7 +750,7 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     def closes_at(df):
         bad = [r["saturation_target"] for r in rows
                if r["df"] == df and r["var_ratio"]
-               and abs(r["var_ratio"]["median"] - 1) > 0.15]
+               and abs(r["var_ratio"]["median"] - 1) > MOMENT_VTOL]
         return min(bad) if bad else None
 
     b1_one, b1_ctrl = closes_at(1), closes_at(22)
@@ -818,7 +827,7 @@ def write_results_md():
         r = crow(filling, g, k)
         return r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
 
-    def moments_ok(k, mtol=0.10, vtol=0.15):
+    def moments_ok(k, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
         rs = [crow(fl, g, k) for fl in fillings for g in graphs]
         rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
         return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
@@ -1024,9 +1033,9 @@ def write_results_md():
 
     def lok(r):
         return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
                 and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
 
     L += ["## 4. Is the chi2 floor a b1 floor?", "",
           "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
@@ -1106,7 +1115,8 @@ def write_results_md():
 # ---------------------------------------------------------------- probe 7
 
 
-def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
+def collapse_spread(reps=2000, n_base=10,
+                    mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
     """Was the 0.02 window calibrated on one draw?
 
     chi2_collapse runs a SINGLE draw per cell -- tag "c1|{filling}|{g}|{k}",
@@ -1127,8 +1137,9 @@ def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
     placed on, does the separation survive a different seed? The two should agree,
     and where they do the b1-dependence is not an artifact of either design.
 
-    `mtol`/`vtol` mirror write_results_md's local `moments_ok`. They are
-    duplicated rather than shared -- if one moves the other must.
+    `mtol`/`vtol` default to MOMENT_MTOL/MOMENT_VTOL, which every moment check
+    in the file now reads, so this audit applies the suite's own gate rather than
+    a copy of it that can drift away from it.
 
     Cost is (n_base + 1) x chi2_collapse by construction: turning one draw per
     cell into a distribution is exactly n_base times the work.
