@@ -32,6 +32,24 @@ agreement question is moot.
 
 from __future__ import annotations
 
+import os
+
+# Pin BLAS to one thread, BEFORE numpy is imported -- after is too late.
+#
+# Every matrix in this experiment is tiny: M is E x (E - b1), about 33 x 32, and
+# the inner solve is 32 x 32. Threaded BLAS spends orders of magnitude longer
+# spawning and joining threads than doing that arithmetic, and the cost explodes
+# when several probe processes each claim every core. Measured on a 12-core box
+# with three competing sweeps: 1417 ms/draw at default threading against
+# 1.213 ms/draw pinned -- a factor of 1169. The pinned figure is the honest cost
+# of the work; the other is thread thrash. Pinning also makes concurrent runs in
+# sibling worktrees cheap, since one thread each cannot oversubscribe.
+#
+# setdefault, not assignment: a caller who knows better can still override.
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+           "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+
 import collections
 import hashlib
 import json
@@ -39,7 +57,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import chi2, kstest
+from scipy.stats import binom, chi2, kstest, norm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -61,6 +79,90 @@ N_GRAPHS = 4          # masks held FIXED across replicates: the pre-specified ca
 # running k=128 and thinning is doing inference on folds of 64. Measuring 64
 # against 128 prices what thinning costs in separation (RAN-29).
 K_GRID = (8, 32, 64, 128, 512)
+
+# The chi2 approximation needs edges that are not near-deterministic, and that is
+# a condition on the CELL, not on the draw.
+#
+# The classical "expected cell count >= 5" rule is unusable here: it refuses 100%
+# of draws, and even a threshold of 0.5 refuses 74-90%, because the median draw
+# already carries an edge with k*p ~ 0.1. That is the design, not a pathology --
+# eta_in_S scales curl to ||eta||, so some edges are genuinely near-certain.
+#
+# What such an edge breaks is the second moment, not the first. With expected
+# count c it contributes ~c when w = 0, and ~1/c on the probability-c event that
+# w = 1, so it contributes ~1 in expectation -- exactly what a chi2 coordinate
+# should. But its second moment carries ~1/c and diverges as c -> 0. Hence the
+# pattern the rig measured: meanT/df tracks well nearly everywhere while
+# varT/2df is wildly unstable, and one draw in 1984 can carry T = 661 against a
+# chi2(10) 99.95th percentile of 31.4.
+#
+# So the guard is the instrument's own closed-form pre-filter, which this
+# experiment had never used: rig.flows.saturation gives E[p^k + (1-p)^k] with no
+# sampling at all. Measured against the chi2_collapse grid it separates PERFECTLY
+# at 0.02 -- all 25 in-window cells pass both the mean and the variance check,
+# and every cell failing either is out of window. Same discipline as the
+# methodology paper's guard: computable before fitting, and a loud refusal beats
+# a plausible number.
+#
+# Out-of-window cells are RUN AND SHOWN, not silently skipped -- that is how the
+# low-k failure became visible in the first place -- but they are excluded from
+# verdicts.
+SATURATION_MAX = 0.02
+
+# The moment gate: how far meanT/df and varT/2df may sit from 1 before a cell is
+# not chi2(b1) for practical purposes. Read by b1_ladder, b1_one_boundary,
+# collapse_spread and both of write_results_md's local checks -- every moment
+# check in the file, so the gate the audit applies is the gate the suite applies.
+# NOT the rejection-rate bounds in curl_freedom and harmonic_projected_eps, which
+# are a different 0.10 with a different meaning.
+MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
+
+# Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
+# strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
+# probe under-reports rather than manufacturing flags out of ordinary scatter.
+BINOM_ALPHA = 0.01
+
+
+# Where a b1 sweep should sit. Comfortably inside SATURATION_MAX so every level
+# of the ladder is in window and the sweep is not also a window sweep.
+SATURATION_TARGET = 0.01
+
+
+def cell_saturation(eta, k):
+    """Expected fraction of edges landing at w=0 or w=k. Closed form, spec 2.6."""
+    return float(flows.saturation(st.sigmoid(eta), k))
+
+
+def scale_to_saturation(eta, k, target=SATURATION_TARGET, lo=1e-3, hi=50.0):
+    """Scale eta so this cell's closed-form saturation equals `target`.
+
+    Scaling stays inside S, so the flow is still H0-true; the only thing that
+    changes is how extreme its edges are. That is exactly the confound this
+    removes. Filling a triangle changes the curl DIRECTION (the curl term is
+    D1^T c, and D1 grows with the filling), so saturation moves erratically along
+    the ladder -- measured 0.0056 to 0.0436 across levels of the same graph, and
+    NOT monotone in b1. A b1 sweep without this is therefore also an
+    uncontrolled saturation sweep, and the two cannot be told apart. The first
+    ladder run could not, which is why the b1 = 1 cell it indicted was out of
+    window.
+
+    Saturation is increasing in the scale, so bisection is safe. Returns None if
+    the target is unreachable on this cell, and the caller flags rather than
+    silently substituting something else.
+    """
+    def f(x):
+        return float(flows.saturation(st.sigmoid(x * eta), k)) - target
+    if f(lo) > 0 or f(hi) < 0:
+        return None
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if f(mid) < 0:
+            lo = mid
+        else:
+            hi = mid
+        if hi - lo < 1e-6:
+            break
+    return 0.5 * (lo + hi)
 
 
 def seed(*parts) -> np.random.Generator:
@@ -127,6 +229,7 @@ def chi2_collapse(reps=2000):
             df = bases[0].shape[1]
             eta = eta_in_S(D0, D1, 1.0, g)
             for k in K_GRID:
+                sat = cell_saturation(eta, k)
                 T, off, dropped = run_cell(eta, k, bases, f"c1|{filling}|{g}|{k}", reps)
                 ks = kstest(T, "chi2", args=(df,)) if len(T) > 20 else None
                 rows.append({
@@ -138,6 +241,7 @@ def chi2_collapse(reps=2000):
                     # separation rate at k=8 is not comparable to 'empty'. The
                     # chi2(b1) claim is per-cell, so this does not touch it.
                     "eta_absmax": float(np.max(np.abs(eta))),
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
                     "p_min": float(min(st.sigmoid(eta).min(),
                                        1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
@@ -159,7 +263,11 @@ def chi2_collapse(reps=2000):
     # break the claim -- from the gate that everything downstream rests on. The
     # count of what IS excluded now ships alongside the verdict, as it already
     # does for the other two probes.
-    big = [r for r in at_max_k if r["ks_p"] is not None and r["drop_rate"] <= 0.05]
+    # The saturation window comes FIRST: it is closed form and known before any
+    # draw, so a cell outside it should never have been trusted, whatever its
+    # realised drop rate happened to be.
+    big = [r for r in at_max_k if r["ks_p"] is not None and r["in_window"]
+           and r["drop_rate"] <= 0.05]
     obs_big = [r for r in big if r["filling"] == "observed"]
     frac_ok = sum(r["ks_p"] > 0.01 for r in big) / len(big) if big else 0.0
     # No judged cell is NOT evidence against the claim: say so rather than
@@ -176,6 +284,9 @@ def chi2_collapse(reps=2000):
                      "referee-proof claim goes with it.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps,
+                  "saturation_max": SATURATION_MAX,
+                  "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_total": len(rows),
                   "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
                   "n_cells_excluded_for_separation": len(at_max_k) - len(big),
                   "rows": rows},
@@ -320,29 +431,364 @@ def harmonic_projected_eps(reps=1500, k=128):
     }
 
 
-# ---------------------------------------------------------------- probe 4
-def ladder_levels(edges, levels=6):
-    """(triangles, [(b1, m)]) for `levels` rungs of the filling lattice.
-
-    b1 as a function of how many triangles are filled is monotone non-increasing,
-    so every achievable b1 has a smallest m that reaches it. Both endpoints are
-    always kept, so the ladder brackets the two cells chi2_collapse reports.
-
-    Shared by b1_ladder and dominance_ladder deliberately. The whole question is
-    what two different measurements say about the SAME rung, which is only a
-    question if both walk the same lattice; two copies of this loop would be free
-    to drift apart without anything failing.
-    """
+def _fill_curve(edges):
+    """b1 as a function of how many triangles are filled, in canonical order."""
     tris = hodge.observed_triangles(edges)
     curve = []
     for m in range(len(tris) + 1):
         D0m, D1m = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
         curve.append(hodge.harmonic_basis(D0m, D1m).shape[1])
+    return tris, curve
+
+
+def _ladder_rungs(edges, levels=6):
+    """(triangles, [(b1, m)]) -- `levels` rungs of the filling lattice.
+
+    Built on _fill_curve, which is the canonical statement of "b1 as a function
+    of how many triangles are filled". b1 is monotone non-increasing in m, so
+    every achievable b1 has a smallest m that reaches it; both endpoints are
+    always kept so the ladder brackets the two cells chi2_collapse reports.
+
+    Every probe that walks the lattice calls this. Three of them do -- b1_ladder,
+    dominance_ladder and filling_leakage -- and the questions they ask only make
+    sense against each other if they are standing on the same rungs. Two copies
+    of this arithmetic would be free to drift apart without anything failing.
+    """
+    tris, curve = _fill_curve(edges)
     reach = sorted(set(curve), reverse=True)
     if len(reach) > levels:
         idx = [round(i * (len(reach) - 1) / (levels - 1)) for i in range(levels)]
         reach = [reach[i] for i in sorted(set(idx))]
     return tris, [(b1, curve.index(b1)) for b1 in reach]
+
+
+# ---------------------------------------------------------------- probe 5
+def seed_spread(reps=2000, n_base=10):
+    """Is `meanT/df at b1 = 1 is broken` a finding, or one draw?
+
+    Two cells that should agree do not. chi2_collapse reads meanT/df = 1.024 for
+    graph 3 under `observed` at k = 128; b1_ladder reads 0.891 for the same graph
+    at the same k and the same b1 = 1, differing only in the filling that reaches
+    it (24 triangles rather than 26) and in the seed stream. 13% apart on a
+    nominally equal quantity. Spec Principle 2 says a figure that moves with the
+    seed ships as a distribution, and nothing in this experiment has yet obeyed
+    that: every number reported so far is a single base seed.
+
+    So: run each cell under n_base INDEPENDENT base seeds and report the spread of
+    meanT/df across them, not a point. Two things fall out at once --
+
+      * whether the 13% gap is inside the seed spread (a draw) or outside it (a
+        real difference between the two fillings), and
+      * whether the HEAVY RIGHT TAIL is what makes the mean move. Each base seed
+        also gets a 0.5%-trimmed mean. If the raw mean scatters and the trimmed
+        one does not, the instability is a handful of low-expected-count draws,
+        not the asymptotics -- which is a guard problem, not a b1 problem.
+    """
+    # Cells chosen to answer the discrepancy, not to survey: both b1 = 1 fillings
+    # at both k, the b1 = 5 level that the ladder says is rescued, and the cell
+    # whose varT/2df read 11.7.
+    # The decisive cells are the MATCHED low-b1 ones, because the retraction now
+    # rests on them: at b1 = 1 the reference is chi2(1), excess kurtosis 12, so
+    # the relative sampling s.e. on varT/2df is sqrt((12+2)/reps) ~ 8.4% at
+    # reps = 2000 -- and the single-draw value cleared the 15% gate by 0.0002.
+    # Ten base seeds put s.e. ~2.7% on it, which resolves inside-or-outside.
+    # b1 = 22 is the control: chi2(22) has kurtosis 0.55, so it should be quiet.
+    specs = [(3, "b1=1"), (3, "b1=5"), (3, "b1=22"), (2, "b1=10")]
+
+    rows = []
+    for g, want in specs:
+        edges = graph(g)
+        tris, curve = _fill_curve(edges)
+        m = curve.index(int(want.split("=")[1]))
+        D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+        bases = st.harmonic_zero_bases(D0, D1)
+        b1 = bases[0].shape[1]
+        eta_raw = eta_in_S(D0, D1, 1.0, g)
+        for k in (64, 128):
+            # Matched, like the ladder: an unmatched cell confounds b1 with how
+            # extreme the flow is, which is the error this whole pass corrects.
+            scale = scale_to_saturation(eta_raw, k)
+            eta = eta_raw if scale is None else scale * eta_raw
+            per = []
+            for base in range(n_base):
+                T, _, dropped = run_cell(eta, k, bases,
+                                         f"c5m|{base}|{g}|{m}|{k}", reps)
+                if not len(T):
+                    continue
+                cut = np.quantile(T, 0.995)
+                trimmed = T[T <= cut]
+                per.append({
+                    "base": base,
+                    "mean_ratio": float(T.mean() / b1),
+                    "trimmed_mean_ratio": float(trimmed.mean() / b1),
+                    "var_ratio": float(T.var(ddof=1) / (2 * b1)) if len(T) > 1 else None,
+                    "max_T": float(T.max()),
+                    "drop_rate": float(dropped / reps),
+                })
+            def agg(key):
+                v = [q[key] for q in per if q[key] is not None]
+                if not v:
+                    return None
+                mean = sum(v) / len(v)
+                se = ((sum((x - mean) ** 2 for x in v) / (len(v) - 1)) / len(v)) ** 0.5 \
+                    if len(v) > 1 else None
+                return {"mean": mean, "se": se, "min": min(v), "max": max(v),
+                        "range": max(v) - min(v)}
+            rows.append({
+                "graph": g, "level": want, "n_triangles_filled": m,
+                "n_triangles_total": len(tris), "df": b1, "k": k,
+                "eta_scale": scale, "saturation": cell_saturation(eta, k),
+                "n_base_seeds": len(per),
+                "mean_ratio": agg("mean_ratio"),
+                "trimmed_mean_ratio": agg("trimmed_mean_ratio"),
+                "var_ratio": agg("var_ratio"),
+                "max_T": agg("max_T"),
+                "drop_rate": agg("drop_rate"),
+                "per_seed": per,
+            })
+    # Does trimming stabilise what the raw mean does not? Compare the spread of
+    # the two location estimates on the same cells.
+    shrunk = [r for r in rows
+              if r["mean_ratio"] and r["trimmed_mean_ratio"]
+              and r["trimmed_mean_ratio"]["range"] < 0.5 * r["mean_ratio"]["range"]]
+    verdict = ("tail-driven" if len(shrunk) >= max(1, len(rows) // 2)
+               else "not-tail-driven" if rows else "inconclusive")
+    return {
+        "probe": "seed_spread",
+        "question": "Do the reported meanT/df figures move with the base seed, and "
+                    "is the movement driven by the heavy right tail?",
+        "falsifies": "If the spread across base seeds is negligible, the single-seed "
+                     "figures already reported are the quantity and Principle 2 is "
+                     "satisfied by accident. If trimming does not shrink the spread, "
+                     "the instability is not the tail.",
+        "verdict": verdict,
+        "value": {"reps": reps, "n_base": n_base, "rows": rows},
+    }
+
+
+# ---------------------------------------------------------------- probe 4
+def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
+    """Is the chi2 validity floor a function of b1, or of k?
+
+    `observed` and `empty` are the two ENDPOINTS of a lattice, not a binary
+    choice, and they are the two pathological ends: `observed` bottoms out at
+    b1 = 1 on graph 3, where truncating the single harmonic coordinate truncates
+    the statistic; `empty` leaves b1 so large that S = im D0 and the null IS
+    Bradley-Terry. chi2_collapse measured only those two. This walks between them.
+
+    Triangles are filled in the instrument's own canonical order and the level is
+    named by the b1 it reaches, so the filling is a function of the TOPOLOGY
+    alone -- fixed before any outcome is drawn. That is what keeps this a
+    pre-specification rather than a null chosen to get an answer; b1 does not
+    depend on the data, only on (edges, triangles).
+
+    SATURATION IS MATCHED ACROSS LEVELS. The first version of this probe was
+    confounded: filling a triangle changes the curl direction as well as b1, so
+    saturation wandered from 0.0056 to 0.0436 along a single graph's ladder, and
+    the low-b1 cells it indicted turned out to be the out-of-window ones. A b1
+    sweep that is also a saturation sweep cannot attribute anything to b1. Each
+    cell's eta is now rescaled -- which keeps it inside S, so it stays H0-true --
+    until its closed-form saturation equals SATURATION_TARGET. Whatever remains
+    is attributable to b1 and the subspace, not to how extreme the flow is.
+    """
+    rows = []
+    for g in range(N_GRAPHS):
+        edges = graph(g)
+        tris, rungs = _ladder_rungs(edges, levels)
+        for b1, m in rungs:
+            D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+            bases = st.harmonic_zero_bases(D0, D1)
+            eta_raw = eta_in_S(D0, D1, 1.0, g)
+            for target in targets:
+              for k in ks:
+                # Match saturation ACROSS LEVELS at this k, so the only thing
+                # varying along the ladder is b1 and the subspace it names.
+                # Saturation depends on k, so the scale does too: comparisons
+                # are valid across b1 at fixed k, NOT across k.
+                scale = scale_to_saturation(eta_raw, k, target)
+                eta = eta_raw if scale is None else scale * eta_raw
+                sat = cell_saturation(eta, k)
+                T, off, dropped = run_cell(eta, k, bases,
+                                           f"c4m|{g}|{b1}|{k}|{target}", reps)
+                ksres = kstest(T, "chi2", args=(b1,)) if len(T) > 20 else None
+                rows.append({
+                    "graph": g, "E": len(edges), "n_triangles_total": len(tris),
+                    "n_triangles_filled": m, "df": b1, "k": k,
+                    "is_empty_end": m == 0, "is_observed_end": m == len(tris),
+                    "eta_scale": scale, "saturation_matched": bool(scale is not None),
+                    "saturation_target": target,
+                    # Saturation is now matched across levels, so the empty end
+                    # is comparable to the rest -- previously it carried no curl
+                    # term at all and sat at a much smaller ||eta||.
+                    "eta_absmax": float(np.max(np.abs(eta))),
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "n_usable": int(len(T)), "n_dropped": dropped,
+                    "drop_rate": float(dropped / reps),
+                    "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
+                    "var_T": float(T.var(ddof=1)) if len(T) > 1 else None,
+                    "chi2_var": 2 * b1,
+                    "reject_rate": (float((T > chi2.ppf(1 - ALPHA, b1)).mean())
+                                    if len(T) else None),
+                    "ks_p": float(ksres.pvalue) if ksres else None,
+                    "score_off_harmonic_max": off,
+                })
+    # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
+    # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
+    # the filling is a dial on the data requirement rather than a fork.
+    def ok(r):
+        return (r["mean_T"] is not None
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
+                and r["var_T"] is not None
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
+    probe_k = 64 if 64 in ks else ks[0]
+    # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
+    # window (0.010) shows no b1 effect at 0.010; it does not show the window
+    # boundary is b1-independent, which is what the thinning gate assumes.
+    # Interaction, if any, lives at the edge.
+    probe_target = max(targets)
+    at_k = [r for r in rows if r["k"] == probe_k and r["in_window"]
+            and r["saturation_target"] == probe_target]
+    lo = [r for r in at_k if r["df"] <= 2]
+    hi = [r for r in at_k if r["df"] >= 3]
+    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
+    verdict = ("confirmed" if rescued
+               else "refuted" if lo and hi and all(ok(r) for r in lo)
+               else "inconclusive")
+    return {
+        "probe": "b1_ladder",
+        "question": "Between the empty and observed fillings, is the chi2 validity "
+                    "floor set by b1 rather than by k?",
+        "falsifies": "If raising b1 on the same graph at the same k does not "
+                     "restore the chi2 moments, the floor is a k floor and the "
+                     "filling is not a dial on the data requirement.",
+        "verdict": verdict,
+        "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
+                  "targets": list(targets), "probe_target": probe_target,
+                  "saturation_max": SATURATION_MAX,
+                  "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_total": len(rows),
+                  "probe_k": probe_k, "n_low_b1_cells": len(lo),
+                  "n_high_b1_cells": len(hi), "rows": rows},
+    }
+
+
+# ---------------------------------------------------------------- probe 6
+def b1_one_boundary(reps=2000, n_base=10, k=64,
+                    targets=(0.010, 0.014, 0.019, 0.03, 0.05,
+                             0.08, 0.12, 0.18, 0.25)):
+    """Where does the chi2 window actually close at b1 = 1?
+
+    b1_ladder established two points and an interaction between them. Pinned at
+    saturation 0.010 every b1 from 1 to 22 passes; pinned at 0.019, b1 = 1 reaches
+    varT/2df = 3.44 while b1 = 22 sits at 0.965. So b1 does not decide whether chi2
+    holds at a given extremity -- it decides how much extremity is affordable, and
+    a flat window across b1 would admit exactly the cells that fail worst.
+
+    This walks the bracket to find where b1 = 1 closes, with b1 = 22 carried at the
+    same targets as the control: if the control stays flat while b1 = 1 crosses,
+    the interaction is real and the window has to be indexed by b1.
+
+    The range now runs well past 0.02, because 0.02 was read off the UNMATCHED
+    grid where saturation was confounded with everything else that varied there.
+    If the moments in fact survive to 0.1, a 0.02 gate refuses usable designs for
+    no reason. The drop rate is carried alongside for the same reason: separation
+    may bind before chi2 validity does, in which case the window is not the
+    operative constraint at all and the gate should say so.
+
+    Seeded, because the quantity being located is the noisy one. At b1 = 1 the
+    reference is chi2(1), excess kurtosis 12, so the relative sampling s.e. on
+    varT/2df is sqrt((12+2)/reps) ~ 8.4% at reps = 2000 -- the single-draw value
+    that first cleared the gate did so by 0.0002. Ten base seeds put ~2.7% on it,
+    which is enough to bracket a crossing. The median across seeds is reported
+    beside the mean because a chi2(1) variance ratio has a long right tail and one
+    seed can carry the average.
+    """
+    rows = []
+    for g, want in ((3, "b1=1"), (3, "b1=22")):
+        edges = graph(g)
+        tris, curve = _fill_curve(edges)
+        m = curve.index(int(want.split("=")[1]))
+        D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+        bases = st.harmonic_zero_bases(D0, D1)
+        b1 = bases[0].shape[1]
+        eta_raw = eta_in_S(D0, D1, 1.0, g)
+        for target in targets:
+            scale = scale_to_saturation(eta_raw, k, target)
+            if scale is None:
+                continue
+            eta = scale * eta_raw
+            mr, vr, dr, passes = [], [], [], 0
+            for base in range(n_base):
+                T, _, dropped = run_cell(eta, k, bases,
+                                         f"c6|{base}|{g}|{b1}|{target}", reps)
+                dr.append(float(dropped / reps))
+                if len(T) < 2:
+                    continue
+                a = float(T.mean() / b1)
+                b = float(T.var(ddof=1) / (2 * b1))
+                mr.append(a)
+                vr.append(b)
+                if (abs(a - 1) <= MOMENT_MTOL
+                        and abs(b - 1) <= MOMENT_VTOL):
+                    passes += 1
+
+            def agg(v):
+                if not v:
+                    return None
+                mean = sum(v) / len(v)
+                se = ((sum((x - mean) ** 2 for x in v) / (len(v) - 1)) / len(v)) ** 0.5 \
+                    if len(v) > 1 else None
+                sv = sorted(v)
+                med = sv[len(sv) // 2] if len(sv) % 2 else 0.5 * (sv[len(sv)//2 - 1]
+                                                                 + sv[len(sv)//2])
+                return {"mean": mean, "se": se, "median": med,
+                        "min": min(v), "max": max(v)}
+
+            rows.append({
+                "graph": g, "df": b1, "k": k, "saturation_target": target,
+                "saturation": cell_saturation(eta, k), "eta_scale": scale,
+                "n_base_seeds": len(vr), "n_seeds_passing": passes,
+                "mean_ratio": agg(mr), "var_ratio": agg(vr), "drop_rate": agg(dr),
+            })
+
+    # The boundary: the smallest target at which b1 = 1 no longer clears the gate
+    # on the median seed. Median, not mean, because one heavy-tailed seed should
+    # not move a threshold.
+    def closes_at(df):
+        bad = [r["saturation_target"] for r in rows
+               if r["df"] == df and r["var_ratio"]
+               and abs(r["var_ratio"]["median"] - 1) > MOMENT_VTOL]
+        return min(bad) if bad else None
+
+    b1_one, b1_ctrl = closes_at(1), closes_at(22)
+
+    # Which constraint binds first: does separation make the cell unusable before
+    # the moments go? If so the chi2 window is not the operative gate.
+    def drops_at(df, cap=0.05):
+        bad = [r["saturation_target"] for r in rows
+               if r["df"] == df and r["drop_rate"]
+               and r["drop_rate"]["median"] > cap]
+        return min(bad) if bad else None
+
+    d_one, d_ctrl = drops_at(1), drops_at(22)
+    verdict = ("located" if b1_one is not None and b1_ctrl is None
+               else "both-close" if b1_one is not None and b1_ctrl is not None
+               else "not-closed-in-range")
+    return {
+        "probe": "b1_one_boundary",
+        "question": "At b1 = 1, at what saturation does the chi2 window close, and "
+                    "does the b1 = 22 control stay open across the same range?",
+        "falsifies": "If the control closes at the same target, the window is not "
+                     "b1-indexed and the interaction is something else. If b1 = 1 "
+                     "never closes in range, the 0.019 failure was a draw.",
+        "verdict": verdict,
+        "value": {"alpha": ALPHA, "reps": reps, "n_base": n_base, "k": k,
+                  "targets": list(targets),
+                  "b1_1_closes_at": b1_one, "b1_22_closes_at": b1_ctrl,
+                  "b1_1_drops_exceed_5pct_at": d_one,
+                  "b1_22_drops_exceed_5pct_at": d_ctrl,
+                  "rows": rows},
+    }
 
 
 def _spread(xs):
@@ -382,7 +828,7 @@ def dominance_ladder(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     rows = []
     for g in range(N_GRAPHS):
         edges = graph(g)
-        tris, rungs = ladder_levels(edges, levels)
+        tris, rungs = _ladder_rungs(edges, levels)
         for b1, m in rungs:
             D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
             hz, bt = st.harmonic_zero_bases(D0, D1), st.bradley_terry_bases(D0)
@@ -474,7 +920,7 @@ def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     rows = []
     for g in range(N_GRAPHS):
         edges = graph(g)
-        tris, rungs = ladder_levels(edges, levels)
+        tris, rungs = _ladder_rungs(edges, levels)
         # Built once, at the observed filling, and never rebuilt. D0 does not
         # depend on the filling; only D1 does, so the flow is fixed while the
         # subspace that judges it moves.
@@ -542,80 +988,6 @@ def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     }
 
 
-def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
-    """Is the chi2 validity floor a function of b1, or of k?
-
-    `observed` and `empty` are the two ENDPOINTS of a lattice, not a binary
-    choice, and they are the two pathological ends: `observed` bottoms out at
-    b1 = 1 on graph 3, where truncating the single harmonic coordinate truncates
-    the statistic; `empty` leaves b1 so large that S = im D0 and the null IS
-    Bradley-Terry. chi2_collapse measured only those two. This walks between them.
-
-    Triangles are filled in the instrument's own canonical order and the level is
-    named by the b1 it reaches, so the filling is a function of the TOPOLOGY
-    alone -- fixed before any outcome is drawn. That is what keeps this a
-    pre-specification rather than a null chosen to get an answer; b1 does not
-    depend on the data, only on (edges, triangles).
-    """
-    rows = []
-    for g in range(N_GRAPHS):
-        edges = graph(g)
-        tris, rungs = ladder_levels(edges, levels)
-        for b1, m in rungs:
-            D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
-            bases = st.harmonic_zero_bases(D0, D1)
-            eta = eta_in_S(D0, D1, 1.0, g)
-            for k in ks:
-                T, off, dropped = run_cell(eta, k, bases, f"c4|{g}|{b1}|{k}", reps)
-                ksres = kstest(T, "chi2", args=(b1,)) if len(T) > 20 else None
-                rows.append({
-                    "graph": g, "E": len(edges), "n_triangles_total": len(tris),
-                    "n_triangles_filled": m, "df": b1, "k": k,
-                    "is_empty_end": m == 0, "is_observed_end": m == len(tris),
-                    # eta carries a curl term scaled to ||eta||, and at m = 0 there
-                    # is no curl to add -- so the empty end sits at a smaller
-                    # ||eta|| and its drop rate is not comparable to the others.
-                    "eta_absmax": float(np.max(np.abs(eta))),
-                    "n_usable": int(len(T)), "n_dropped": dropped,
-                    "drop_rate": float(dropped / reps),
-                    "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
-                    "var_T": float(T.var(ddof=1)) if len(T) > 1 else None,
-                    "chi2_var": 2 * b1,
-                    "reject_rate": (float((T > chi2.ppf(1 - ALPHA, b1)).mean())
-                                    if len(T) else None),
-                    "ks_p": float(ksres.pvalue) if ksres else None,
-                    "score_off_harmonic_max": off,
-                })
-    # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
-    # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
-    # the filling is a dial on the data requirement rather than a fork.
-    def ok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
-    probe_k = 64 if 64 in ks else ks[0]
-    at_k = [r for r in rows if r["k"] == probe_k]
-    lo = [r for r in at_k if r["df"] <= 2]
-    hi = [r for r in at_k if r["df"] >= 3]
-    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
-    verdict = ("confirmed" if rescued
-               else "refuted" if lo and hi and all(ok(r) for r in lo)
-               else "inconclusive")
-    return {
-        "probe": "b1_ladder",
-        "question": "Between the empty and observed fillings, is the chi2 validity "
-                    "floor set by b1 rather than by k?",
-        "falsifies": "If raising b1 on the same graph at the same k does not "
-                     "restore the chi2 moments, the floor is a k floor and the "
-                     "filling is not a dial on the data requirement.",
-        "verdict": verdict,
-        "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
-                  "probe_k": probe_k, "n_low_b1_cells": len(lo),
-                  "n_high_b1_cells": len(hi), "rows": rows},
-    }
-
-
 def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
@@ -661,7 +1033,7 @@ def write_results_md():
         r = crow(filling, g, k)
         return r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
 
-    def moments_ok(k, mtol=0.10, vtol=0.15):
+    def moments_ok(k, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
         rs = [crow(fl, g, k) for fl in fillings for g in graphs]
         rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
         return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
@@ -697,15 +1069,27 @@ def write_results_md():
           f"is exact agreement. `rej` is the realised size at alpha = {cv['alpha']}: the",
           "number a certificate actually rides on. `drop%` is draws lost to separation.",
           "",
+          f"**The saturation window.** `sat` is E[p^k + (1-p)^k], the expected",
+          "fraction of edges landing at w=0 or w=k -- closed form, no sampling, known",
+          "before any draw. A cell above the window carries near-deterministic edges,",
+          f"and those break the SECOND moment while leaving the first intact: an edge",
+          "with expected count c contributes ~c when w=0 and ~1/c on the probability-c",
+          "event that w=1, so ~1 in expectation but ~1/c in second moment. That is why",
+          "meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside",
+          f"the window (sat > {cv['saturation_max']}) are shown but excluded from the",
+          f"verdict: {cv['n_cells_in_window']} of {cv['n_cells_total']} cells are in",
+          "window.", "",
           f"The verdict is computed from the k = {hi_k} cells: "
           f"{cv['n_cells_judged']} of {cv['n_cells_at_max_k']} judged, "
-          f"{cv['n_cells_excluded_for_separation']} excluded for separation.", "",
-          "| filling | graph | E | b1 | k | drop% | meanT/df | varT/2df | size | KS p |",
-          "|---|---|---|---|---|---|---|---|---|---|"]
+          f"{cv['n_cells_excluded_for_separation']} excluded (out of window or "
+          "over the separation cap).", "",
+          "| filling | graph | E | b1 | k | sat | win | drop% | meanT/df | varT/2df | size | KS p |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in cv["rows"]:
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['filling']} | {r['graph']} | {r['E']} | {r['df']} | {r['k']} | "
+              f"{r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
               f"{_f(r['reject_rate'],0,3).strip()} | {_f(r['ks_p'],0,4).strip()} |"]
     L += ["", f"Reading it: at k >= {k_ok} the first two moments land within a few percent",
@@ -850,14 +1234,14 @@ def write_results_md():
               "supply."]
     # ---- section 4: the filling lattice
     pk = lv["probe_k"]
-    lrows = [r for r in lv["rows"] if r["k"] == pk]
+    lrows = [r for r in lv["rows"] if r["k"] == pk and r["in_window"]]
     lgraphs = sorted({r["graph"] for r in lv["rows"]})
 
     def lok(r):
         return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
                 and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
 
     L += ["## 4. Is the chi2 floor a b1 floor?", "",
           "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
@@ -868,16 +1252,19 @@ def write_results_md():
           "triangles) alone, never on the outcomes, so the level is fixed before any",
           "draw.", "",
           f"At k = {pk}, {lv['reps']} replicates. `fill` is triangles filled of the",
-          "total available; the empty and observed endpoints are marked.", "",
-          "| graph | fill | b1 | drop% | meanT/df | varT/2df | size | chi2 ok |",
-          "|---|---|---|---|---|---|---|---|"]
+          "total available; the empty and observed endpoints are marked. Only in-window",
+          f"cells (saturation <= {lv['saturation_max']}) count toward the reading;",
+          f"{lv['n_cells_in_window']} of {lv['n_cells_total']} cells are in window.", "",
+          "| graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |",
+          "|---|---|---|---|---|---|---|---|---|---|"]
     for r in lrows:
         end = (" (empty)" if r["is_empty_end"] else
                " (observed)" if r["is_observed_end"] else "")
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']}{end} | "
-              f"{r['df']} | {_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
+              f"{r['df']} | {r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
               f"{'yes' if lok(r) else 'NO'} |"]
     lo = [r for r in lrows if r["df"] <= 2]
@@ -1023,26 +1410,202 @@ def write_results_md():
     (HERE / "RESULTS.md").write_text("\n".join(L) + "\n")
 
 
+# ---------------------------------------------------------------- probe 7
+
+
+def collapse_spread(reps=2000, n_base=10,
+                    mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """Was the 0.02 window calibrated on one draw?
+
+    chi2_collapse runs a SINGLE draw per cell -- tag "c1|{filling}|{g}|{k}",
+    carrying no base index -- and SATURATION_MAX was placed against that grid:
+    all 25 in-window cells pass both moment checks, every cell failing either is
+    out of window, 8 out-of-window cells pass anyway. Principle 2 says a figure
+    that moves with the seed ships as a distribution. The window's own
+    calibration never did, and it is the number every other probe gates on.
+
+    So: rerun chi2_collapse's grid UNCHANGED -- same unmatched eta_in_S, so each
+    cell keeps its natural saturation rather than a matched one -- under n_base
+    independent base seeds. The reference draw reuses chi2_collapse's own tag, so
+    the shipped value sits beside the spread around it and the harness can be
+    checked against the very number it audits.
+
+    b1_one_boundary asks this forward: sweep extremity at fixed b1 and find where
+    the window closes. This asks it backward: on the grid the window was actually
+    placed on, does the separation survive a different seed? The two should agree,
+    and where they do the b1-dependence is not an artifact of either design.
+
+    `mtol`/`vtol` default to MOMENT_MTOL/MOMENT_VTOL, which every moment check
+    in the file now reads, so this audit applies the suite's own gate rather than
+    a copy of it that can drift away from it.
+
+    Cost is (n_base + 1) x chi2_collapse by construction: turning one draw per
+    cell into a distribution is exactly n_base times the work.
+    """
+    rows = []
+    for filling in ("observed", "empty"):
+        for g in range(N_GRAPHS):
+            edges = graph(g)
+            D0, D1 = st.operators(N_ITEMS, edges, filling)
+            bases = st.harmonic_zero_bases(D0, D1)
+            df = bases[0].shape[1]
+            eta = eta_in_S(D0, D1, 1.0, g)
+            for k in K_GRID:
+                sat = cell_saturation(eta, k)
+                draws = []
+                # base=None is chi2_collapse's own tag: the shipped draw.
+                for base in [None] + list(range(n_base)):
+                    tag = (f"c1|{filling}|{g}|{k}" if base is None
+                           else f"c7|{base}|{filling}|{g}|{k}")
+                    T, _, dropped = run_cell(eta, k, bases, tag, reps)
+                    if not len(T) or len(T) < 2:
+                        continue
+                    mr = float(T.mean() / df)
+                    vr = float(T.var(ddof=1) / (2 * df))
+                    draws.append({
+                        "base": base, "mean_ratio": mr, "var_ratio": vr,
+                        "max_T": float(T.max()),
+                        "drop_rate": float(dropped / reps),
+                        "passes": bool(abs(mr - 1) <= mtol
+                                       and abs(vr - 1) <= vtol),
+                    })
+                ref = next((d for d in draws if d["base"] is None), None)
+                spread = [d for d in draws if d["base"] is not None]
+                if not spread:
+                    continue
+                rows.append({
+                    "filling": filling, "graph": g, "k": k, "df": df,
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "ref_passes": None if ref is None else ref["passes"],
+                    "ref_var_ratio": None if ref is None else ref["var_ratio"],
+                    "n_base_judged": len(spread),
+                    "n_base_passing": sum(d["passes"] for d in spread),
+                    "var_ratio_med": float(np.median([d["var_ratio"]
+                                                      for d in spread])),
+                    "var_ratio_max": max(d["var_ratio"] for d in spread),
+                    "draws": draws,
+                })
+
+    # "Any failure in n_base" is too coarse to judge a cell on, and reported 6
+    # cells on one seed family and 1 on another. The reason is that a PERFECTLY
+    # VALID cell still fails sometimes: varT/2df carries a relative sampling s.e.
+    # of sqrt((12/df + 2)/reps), which is 8.4% at df = 1 against a 15% gate, so
+    # roughly 7 draws in 100 scatter over it with nothing wrong. At df = 22 the
+    # s.e. is 3.6% and the gate is 4.2 s.e. out, so a valid cell essentially
+    # never fails. The expected pass rate is therefore df-dependent, and a flat
+    # "did it ever fail" test reads that difference as a defect.
+    #
+    # So judge each cell against the rate a valid cell of ITS df would show, and
+    # flag only a rate significantly below it. This flags the cell that fails
+    # half its seeds and leaves the ones that scatter over the gate once.
+    for r in rows:
+        se_v = float(np.sqrt((12.0 / r["df"] + 2.0) / reps))
+        se_m = float(np.sqrt(2.0 / (r["df"] * reps)))
+        # Pass = inside BOTH bands; the two are near-independent, and the mean
+        # band is so wide relative to its s.e. that it contributes almost nothing.
+        p_valid = float((2 * norm.cdf(vtol / se_v) - 1)
+                        * (2 * norm.cdf(mtol / se_m) - 1))
+        r["se_var_ratio"] = se_v
+        r["p_valid"] = p_valid
+        r["pass_rate"] = r["n_base_passing"] / r["n_base_judged"]
+        # One-sided lower tail: how surprising is this many passes if the cell
+        # is valid? Small p means the cell fails more than sampling explains.
+        r["binom_p"] = float(binom.cdf(r["n_base_passing"],
+                                       r["n_base_judged"], p_valid))
+        r["flagged"] = bool(r["binom_p"] < BINOM_ALPHA)
+
+    inw = [r for r in rows if r["in_window"]]
+    out = [r for r in rows if not r["in_window"]]
+    # The shipped claim is about SUFFICIENCY: in-window implies the moments hold.
+    # A flagged in-window cell is that claim failing -- it fails at a rate its own
+    # df cannot explain, while the single draw the window was placed by passed it.
+    flipped = [r for r in inw if r["flagged"]]
+    # Necessity was never claimed, but the count moves with the seed too, so it
+    # ships alongside rather than as the single-draw 8.
+    out_any = [r for r in out if r["n_base_passing"] > 0]
+    # df is carried because b1_one_boundary says the window is b1-dependent; if
+    # that is right the flips concentrate at low df, and this grid says so
+    # independently. NOTE the confound: every high-df cell here is `empty`,
+    # where the curl term is a no-op, so df and ||eta|| move together. This grid
+    # cannot separate them on its own -- b1_one_boundary is the design that can.
+    by_df = {}
+    for r in rows:
+        d = by_df.setdefault(r["df"], {"cells": 0, "all_pass": 0,
+                                       "sat_lo": 1.0, "sat_hi": 0.0})
+        d["cells"] += 1
+        d["all_pass"] += int(r["n_base_passing"] == r["n_base_judged"])
+        d["sat_lo"] = min(d["sat_lo"], r["saturation"])
+        d["sat_hi"] = max(d["sat_hi"], r["saturation"])
+
+    verdict = ("inconclusive" if not inw
+               else "confirmed" if not flipped else "single-draw")
+    return {
+        "probe": "collapse_spread",
+        "question": "Does the 0.02 saturation window separate, or did its "
+                    "calibration inherit one base seed?",
+        "falsifies": "If in-window cells fail the moment checks under other "
+                     "base seeds while passing on the shipped one, the window "
+                     "was placed by a draw and does not separate the grid.",
+        "verdict": verdict,
+        "value": {
+            "reps": reps, "n_base": n_base, "mtol": mtol, "vtol": vtol,
+            "binom_alpha": BINOM_ALPHA,
+            "saturation_max": SATURATION_MAX,
+            "n_cells": len(rows),
+            "n_in_window": len(inw),
+            "n_in_window_stable": len(inw) - len(flipped),
+            "n_in_window_flagged": len(flipped),
+            "flagged_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                              for r in flipped],
+            # Raw any-failure count kept for comparison: it is the statistic this
+            # probe used to report, and the gap between the two is the point.
+            "n_in_window_any_failure": sum(
+                1 for r in inw if r["n_base_passing"] < r["n_base_judged"]),
+            "n_out_passing_ref": sum(1 for r in out if r["ref_passes"]),
+            "n_out_passing_any_base": len(out_any),
+            "worst_in_window": (max((r["var_ratio_max"] for r in inw),
+                                    default=None)),
+            "by_df": by_df,
+            "rows": rows,
+        },
+    }
+
+
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
           "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
-          "dominance_ladder": dominance_ladder,
-          "filling_leakage": filling_leakage}
+          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary,
+          "dominance_ladder": dominance_ladder, "filling_leakage": filling_leakage}
+
+# An AUDIT re-measures how a PROBE was calibrated rather than measuring the null.
+# It is dispatchable by name but stays out of the default run: collapse_spread
+# alone costs (n_base + 1) x chi2_collapse, which takes the full suite from two
+# minutes to twenty. The suite is the loop everything else depends on, and a loop
+# that costs twenty minutes is one that stops being run.
+AUDITS = {"collapse_spread": collapse_spread}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
+    runnable = {**PROBES, **AUDITS}
     names = sys.argv[1:] or list(PROBES)
     for name in names:
-        r = PROBES[name]()
+        r = runnable[name]()
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:24} {r['verdict']:10} -> results/{name}.json")
     # RESULTS.md is regenerated from ALL THREE json files, so writing it after a
     # partial run would splice fresh sections onto stale ones under a heading that
     # says the file cannot drift from the data -- and would crash outright on a
     # checkout where the other results do not exist yet.
-    if set(names) == set(PROBES):
+    #
+    # Subset, not equality: an invocation may append an AUDIT to the full probe
+    # set, and an extra result never makes RESULTS.md stale. Equality would
+    # silently decline to regenerate on `probes.py <every probe> collapse_spread`.
+    if set(PROBES) <= set(names):
         write_results_md()
         print("  RESULTS.md regenerated")
     else:
         missing = ", ".join(sorted(set(PROBES) - set(names)))
         print(f"  RESULTS.md NOT regenerated -- {missing} did not run in this "
               f"invocation. Run `python probes.py` with no arguments to rebuild it.")
+    if not sys.argv[1:]:
+        print(f"  audits not run by default: {', '.join(sorted(AUDITS))} "
+              f"-- name one explicitly to run it")
