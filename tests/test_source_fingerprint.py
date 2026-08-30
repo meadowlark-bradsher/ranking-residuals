@@ -165,3 +165,83 @@ def test_every_shipped_result_is_currently_unfingerprinted():
     assert set(hr.unfingerprinted(results)) == set(results), (
         "a result now carries a source fingerprint -- good. Narrow this test to "
         "the ones that still do not, so the ratchet keeps its grip.")
+
+
+# ---------------------------------------------------------------------------
+# The real fixture.
+#
+# Everything above uses synthetic modules, which prove the rule fires on code
+# shaped the way the rule expects -- the exact reasoning error that let rule 1 sit
+# as a no-op on collapse_spread while its synthetic controls passed. So this
+# anchors to real history instead.
+#
+# 870764b is a commit where probes.py computes b1_1_closes_at = 0.03 while
+# results/b1_one_boundary.json records 0.05, with alpha as the only gate constant
+# either side. Rule 2 is structurally blind to it. Rule 3 is the reason it exists.
+#
+# Skips rather than fails when the commits are unreachable, so a fresh clone or a
+# rewritten history does not turn a missing fixture into a false alarm.
+
+PRODUCED_AT = "3467b9b"   # the code that generated the recorded 0.05
+CHANGED_AT = "870764b"    # merged branch: closes_at now tests both moments
+PROBES_REL = ("design/methodology/experiments/harmonic-zero-null/probes.py")
+
+
+def _module_at(rev, tag):
+    """Materialise probes.py at `rev` beside the real one, so its relative
+    sys.path arithmetic still resolves, and import it under a unique name."""
+    import subprocess
+    proc = subprocess.run(["git", "-C", str(_EXP), "show", f"{rev}:{PROBES_REL}"],
+                          capture_output=True, text=True)
+    if proc.returncode != 0 or not proc.stdout:
+        return None, None
+    path = _EXP / f"_fixture_{tag}.py"
+    path.write_text(proc.stdout)
+    try:
+        spec = importlib.util.spec_from_file_location(f"fixture_{tag}", path)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        return m, path
+    except Exception:
+        path.unlink(missing_ok=True)
+        return None, None
+
+
+def test_rule_3_catches_the_predicate_change_rule_2_was_blind_to():
+    paths = []
+    try:
+        produced, p1 = _module_at(PRODUCED_AT, "produced")
+        paths.append(p1)
+        current, p2 = _module_at(CHANGED_AT, "current")
+        paths.append(p2)
+        if produced is None or current is None:
+            pytest.skip("fixture commits not reachable in this checkout")
+
+        before = hr.semantic_fingerprint(produced, "b1_one_boundary")
+        after = hr.semantic_fingerprint(current, "b1_one_boundary")
+        assert before and after
+        assert before != after, (
+            "the closes_at predicate change did not move the fingerprint -- rule 3 "
+            "would be blind to the case it was written for")
+
+        # rule 2, on the same artifact, is silent: alpha is the only constant.
+        recorded = {"value": {"alpha": 0.05}}
+        assert hr.staleness("b1_one_boundary", recorded,
+                            hr.current_constants(current)) is None, (
+            "rule 2 now flags this -- if constants started being recorded, this "
+            "test's premise needs revisiting")
+
+        # and end to end, had the fingerprint been recorded at production time
+        as_recorded = {"value": {hr.FINGERPRINT_KEY: before, "alpha": 0.05}}
+        assert hr.fingerprint_mismatch(
+            "b1_one_boundary", as_recorded, current) is not None
+
+        # controls: probes untouched across the same pair must not move
+        for name in ("curl_freedom", "harmonic_projected_eps"):
+            assert (hr.semantic_fingerprint(produced, name)
+                    == hr.semantic_fingerprint(current, name)), (
+                f"{name} moved across a change that did not touch it")
+    finally:
+        for p in paths:
+            if p is not None:
+                p.unlink(missing_ok=True)
