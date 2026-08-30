@@ -159,7 +159,7 @@ def test_an_absent_fingerprint_is_unverifiable_not_agreement():
 # as each is re-run. The ratchet fired the moment the first one landed and told
 # me to narrow it, which is what it is for.
 UNFINGERPRINTED = {"b1_ladder", "b1_one_boundary", "chi2_collapse",
-                   "collapse_spread", "harmonic_projected_eps", "seed_spread"}
+                   "harmonic_projected_eps", "seed_spread"}
 
 
 def test_the_unfingerprinted_set_is_exactly_the_results_predating_recording():
