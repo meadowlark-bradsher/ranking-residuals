@@ -32,6 +32,24 @@ agreement question is moot.
 
 from __future__ import annotations
 
+import os
+
+# Pin BLAS to one thread, BEFORE numpy is imported -- after is too late.
+#
+# Every matrix in this experiment is tiny: M is E x (E - b1), about 33 x 32, and
+# the inner solve is 32 x 32. Threaded BLAS spends orders of magnitude longer
+# spawning and joining threads than doing that arithmetic, and the cost explodes
+# when several probe processes each claim every core. Measured on a 12-core box
+# with three competing sweeps: 1417 ms/draw at default threading against
+# 1.213 ms/draw pinned -- a factor of 1169. The pinned figure is the honest cost
+# of the work; the other is thread thrash. Pinning also makes concurrent runs in
+# sibling worktrees cheap, since one thread each cannot oversubscribe.
+#
+# setdefault, not assignment: a caller who knows better can still override.
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+           "VECLIB_MAXIMUM_THREADS", "NUMEXPR_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+
 import collections
 import hashlib
 import json
@@ -317,6 +335,113 @@ def harmonic_projected_eps(reps=1500, k=128):
                   "n_cells_excluded_for_separation": len(rows) - len(usable),
                   "max_control_reject": max(ctrl, default=None),
                   "max_harmonic_reject": max(harm, default=None), "rows": rows},
+    }
+
+
+def _fill_curve(edges):
+    """b1 as a function of how many triangles are filled, in canonical order."""
+    tris = hodge.observed_triangles(edges)
+    curve = []
+    for m in range(len(tris) + 1):
+        D0m, D1m = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+        curve.append(hodge.harmonic_basis(D0m, D1m).shape[1])
+    return tris, curve
+
+
+# ---------------------------------------------------------------- probe 5
+def seed_spread(reps=2000, n_base=10):
+    """Is `meanT/df at b1 = 1 is broken` a finding, or one draw?
+
+    Two cells that should agree do not. chi2_collapse reads meanT/df = 1.024 for
+    graph 3 under `observed` at k = 128; b1_ladder reads 0.891 for the same graph
+    at the same k and the same b1 = 1, differing only in the filling that reaches
+    it (24 triangles rather than 26) and in the seed stream. 13% apart on a
+    nominally equal quantity. Spec Principle 2 says a figure that moves with the
+    seed ships as a distribution, and nothing in this experiment has yet obeyed
+    that: every number reported so far is a single base seed.
+
+    So: run each cell under n_base INDEPENDENT base seeds and report the spread of
+    meanT/df across them, not a point. Two things fall out at once --
+
+      * whether the 13% gap is inside the seed spread (a draw) or outside it (a
+        real difference between the two fillings), and
+      * whether the HEAVY RIGHT TAIL is what makes the mean move. Each base seed
+        also gets a 0.5%-trimmed mean. If the raw mean scatters and the trimmed
+        one does not, the instability is a handful of low-expected-count draws,
+        not the asymptotics -- which is a guard problem, not a b1 problem.
+    """
+    # Cells chosen to answer the discrepancy, not to survey: both b1 = 1 fillings
+    # at both k, the b1 = 5 level that the ladder says is rescued, and the cell
+    # whose varT/2df read 11.7.
+    specs = []
+    for g, want in ((3, "b1=1@m=26"), (3, "b1=1@m=24"), (3, "b1=5"), (2, "b1=10")):
+        specs.append((g, want))
+
+    rows = []
+    for g, want in specs:
+        edges = graph(g)
+        tris, curve = _fill_curve(edges)
+        if want.startswith("b1=1@m="):
+            m = int(want.split("m=")[1])
+        else:
+            m = curve.index(int(want.split("=")[1]))
+        D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+        bases = st.harmonic_zero_bases(D0, D1)
+        b1 = bases[0].shape[1]
+        eta = eta_in_S(D0, D1, 1.0, g)
+        for k in (64, 128):
+            per = []
+            for base in range(n_base):
+                T, _, dropped = run_cell(eta, k, bases, f"c5|{base}|{g}|{m}|{k}", reps)
+                if not len(T):
+                    continue
+                cut = np.quantile(T, 0.995)
+                trimmed = T[T <= cut]
+                per.append({
+                    "base": base,
+                    "mean_ratio": float(T.mean() / b1),
+                    "trimmed_mean_ratio": float(trimmed.mean() / b1),
+                    "var_ratio": float(T.var(ddof=1) / (2 * b1)) if len(T) > 1 else None,
+                    "max_T": float(T.max()),
+                    "drop_rate": float(dropped / reps),
+                })
+            def agg(key):
+                v = [q[key] for q in per if q[key] is not None]
+                if not v:
+                    return None
+                mean = sum(v) / len(v)
+                se = ((sum((x - mean) ** 2 for x in v) / (len(v) - 1)) / len(v)) ** 0.5 \
+                    if len(v) > 1 else None
+                return {"mean": mean, "se": se, "min": min(v), "max": max(v),
+                        "range": max(v) - min(v)}
+            rows.append({
+                "graph": g, "level": want, "n_triangles_filled": m,
+                "n_triangles_total": len(tris), "df": b1, "k": k,
+                "n_base_seeds": len(per),
+                "mean_ratio": agg("mean_ratio"),
+                "trimmed_mean_ratio": agg("trimmed_mean_ratio"),
+                "var_ratio": agg("var_ratio"),
+                "max_T": agg("max_T"),
+                "drop_rate": agg("drop_rate"),
+                "per_seed": per,
+            })
+    # Does trimming stabilise what the raw mean does not? Compare the spread of
+    # the two location estimates on the same cells.
+    shrunk = [r for r in rows
+              if r["mean_ratio"] and r["trimmed_mean_ratio"]
+              and r["trimmed_mean_ratio"]["range"] < 0.5 * r["mean_ratio"]["range"]]
+    verdict = ("tail-driven" if len(shrunk) >= max(1, len(rows) // 2)
+               else "not-tail-driven" if rows else "inconclusive")
+    return {
+        "probe": "seed_spread",
+        "question": "Do the reported meanT/df figures move with the base seed, and "
+                    "is the movement driven by the heavy right tail?",
+        "falsifies": "If the spread across base seeds is negligible, the single-seed "
+                     "figures already reported are the quantity and Principle 2 is "
+                     "satisfied by accident. If trimming does not shrink the spread, "
+                     "the instability is not the tail.",
+        "verdict": verdict,
+        "value": {"reps": reps, "n_base": n_base, "rows": rows},
     }
 
 
@@ -723,7 +848,8 @@ def write_results_md():
 
 
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
-          "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder}
+          "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
+          "seed_spread": seed_spread}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
