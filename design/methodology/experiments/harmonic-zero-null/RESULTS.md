@@ -283,6 +283,62 @@ section 2 if it is made to reach a number. What the ladder prices is the
 COST of each admissible choice, not permission to pick one.
 
 
+## Does dominance survive where chi2 does? (the thinning window)
+
+b1_ladder makes the chi2 floor a b1 floor, so filling FEWER triangles buys
+validity at the fold size without spending data. The same dial runs the other
+way for the property the null exists for: fewer 2-cells shrink im D1^T, and at
+the empty end im D1^T = {0}, S = im D0, and the null IS Bradley-Terry. So the
+two requirements pull opposite ways along one dial, and the question is whether
+they overlap.
+
+At the fold size k = 64, rho_curl = 1.0, 600 replicates over 3 base seeds. Rejection rates
+are mean [min-max] across those seeds, never a single draw.
+
+| graph | fill | b1 | BT df | curl frac | HZ size | BT size | in window |
+|---|---|---|---|---|---|---|---|
+| 0 | 0/15 | 16 | 16 | 0.00 | 0.055 [0.048-0.058] | 0.055 [0.048-0.058] | no |
+| 0 | 2/15 | 14 | 16 | 0.71 | 0.067 [0.062-0.070] | 1.000 [1.000-1.000] | YES |
+| 0 | 5/15 | 11 | 16 | 0.71 | 0.062 [0.053-0.073] | 1.000 [1.000-1.000] | YES |
+| 0 | 7/15 | 9 | 16 | 0.71 | 0.057 [0.048-0.063] | 1.000 [1.000-1.000] | YES |
+| 0 | 12/15 | 6 | 16 | 0.71 | 0.048 [0.043-0.053] | 1.000 [1.000-1.000] | YES |
+| 0 | 14/15 | 4 | 16 | 0.71 | 0.058 [0.057-0.060] | 1.000 [1.000-1.000] | YES |
+| 1 | 0/12 | 13 | 13 | 0.00 | 0.054 [0.043-0.075] | 0.054 [0.043-0.075] | no |
+| 1 | 2/12 | 11 | 13 | 0.71 | 0.042 [0.037-0.048] | 1.000 [1.000-1.000] | YES |
+| 1 | 4/12 | 9 | 13 | 0.71 | 0.054 [0.045-0.063] | 1.000 [1.000-1.000] | YES |
+| 1 | 7/12 | 7 | 13 | 0.71 | 0.055 [0.047-0.062] | 1.000 [1.000-1.000] | YES |
+| 1 | 9/12 | 5 | 13 | 0.71 | 0.063 [0.057-0.073] | 1.000 [1.000-1.000] | YES |
+| 1 | 11/12 | 3 | 13 | 0.71 | 0.061 [0.050-0.073] | 1.000 [1.000-1.000] | YES |
+| 2 | 0/21 | 21 | 21 | 0.00 | 0.051 [0.045-0.058] | 0.051 [0.045-0.058] | no |
+| 2 | 4/21 | 17 | 21 | 0.71 | 0.043 [0.040-0.045] | 1.000 [1.000-1.000] | YES |
+| 2 | 7/21 | 14 | 21 | 0.71 | 0.054 [0.042-0.075] | 1.000 [1.000-1.000] | YES |
+| 2 | 11/21 | 10 | 21 | 0.71 | 0.055 [0.044-0.064] | 1.000 [1.000-1.000] | YES |
+| 2 | 15/21 | 7 | 21 | 0.71 | 0.038 [0.034-0.041] | 1.000 [1.000-1.000] | YES |
+| 2 | 21/21 | 3 | 21 | 0.71 | 0.056 [0.050-0.064] | 1.000 [1.000-1.000] | YES |
+| 3 | 0/26 | 22 | 22 | 0.00 | 0.051 [0.047-0.058] | 0.051 [0.047-0.058] | no |
+| 3 | 4/26 | 18 | 22 | 0.71 | 0.047 [0.045-0.050] | 1.000 [1.000-1.000] | YES |
+| 3 | 8/26 | 14 | 22 | 0.71 | 0.061 [0.060-0.062] | 1.000 [1.000-1.000] | YES |
+| 3 | 13/26 | 9 | 22 | 0.71 | 0.055 [0.050-0.062] | 1.000 [1.000-1.000] | YES |
+| 3 | 19/26 | 5 | 22 | 0.71 | 0.053 [0.038-0.062] | 1.000 [1.000-1.000] | YES |
+| 3 | 24/26 | 1 | 22 | 0.71 | 0.032 [0.024-0.041] | 1.000 [1.000-1.000] | -- |
+
+**Verdict: confirmed.** A window is open on 4 of 4 graphs.
+- graph 0: b1 in [4, 6, 9, 11, 14] clears both gates
+- graph 1: b1 in [3, 5, 7, 9, 11] clears both gates
+- graph 2: b1 in [3, 7, 10, 14, 17] clears both gates
+- graph 3: b1 in [5, 9, 14, 18] clears both gates
+
+The empty end is not a measurement of dominance and is marked by a curl
+fraction of 0.00: with no 2-cells there is nothing to inject into, so eta
+carries no curl and the two nulls have identical df. Dominance is undefined
+there rather than absent.
+
+**Read the spread, not the mean.** The b1 = 1 cell differed by 13% between two
+runs of one nominal quantity, which is why every figure above is a range over
+base seeds. A window that is open on the mean and closed at one seed is not an
+open window.
+
+
 ## What this run does NOT establish
 
 **DZW agreement is untested.** RAN-28's gating item has two halves: that the

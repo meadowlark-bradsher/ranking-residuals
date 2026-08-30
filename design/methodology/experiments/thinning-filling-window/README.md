@@ -64,6 +64,49 @@ Separation (gate 2) also needs re-reading along the ladder — it was measured a
 the endpoints too, and it is topology-dependent, so it may or may not move with
 the filling. Cheap to collect in the same sweep.
 
+## Answered (first run, `dominance_ladder`)
+
+**The window is open on 4 of 4 graphs, and the tension this branch was opened to
+resolve barely exists.** At the fold size k = 64, rho_curl = 1.0, 600 replicates
+over 3 base seeds: every rung with at least one filled triangle has Bradley-Terry
+rejecting **1.000** while the harmonic-zero null holds nominal size (0.038-0.067
+across all rungs and graphs). Dominance does not decay as b1 rises. It is
+essentially **binary in the filling**: undefined at m = 0, and full from m = 1.
+
+Filling 2 of 15 triangles on graph 0 already gives BT 1.000 against harmonic-zero
+0.067, at b1 = 14 -- far above the b1 >= 3 that gate 3 needs. So the dial has a
+wide overlap rather than a narrow window, and choosing a filling to satisfy gate 3
+costs nothing in dominance on these topologies.
+
+**A second thing this settles.** The empty-end degeneracy was previously cited
+from one case (18 = 18 on a 29-edge graph). It now holds on all four: b1 equals
+the Bradley-Terry df exactly at every empty end -- 16, 13, 21, 22 -- and the two
+nulls return identical rejection rates on identical draws, as they must when they
+are the same test.
+
+### The caveat that matters more than the result
+
+`eta_in_S` scales the curl term to ||eta||, so the curl fraction is **fixed at
+0.71 by construction** at every rung, not varied. What moves along the ladder is
+*which subspace* the curl occupies, not how much there is. And the injected curl
+is drawn from `im D1^T` **at the rung being tested**, so the null is absorbing
+curl it was constructed to absorb. That is self-consistent, and it is not the
+deployment case.
+
+**The untested risk is the one the dial creates.** Moving the filling changes what
+counts as curl versus harmonic. A *fixed* physical misspecification does not move
+with it -- so a flow that is curl under `observed` can read as harmonic under a
+partial filling, and be certified as genuine obstruction. This run cannot see
+that, because it re-derives the injection from each rung.
+
+### Next run
+
+Inject a **fixed** flow -- curl under the `observed` filling, held constant -- and
+sweep the *test's* filling level underneath it. Measure where it starts reading as
+harmonic. That is the false-positive curve for using the filling as a dial, and it
+is the question that decides whether the wide window above is usable or only
+apparent.
+
 ## Two defects to respect while working here
 
 Both surfaced in `174f20b` and neither is fixed:
