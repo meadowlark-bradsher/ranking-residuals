@@ -241,3 +241,6 @@ design/methodology/combined/combined-body.tex
 # Authored analysis in design/reference/ -- e.g. the DZW canonical briefing --
 # stays tracked; it is ours and nothing else records it.
 design/reference/*.pdf
+
+# Claude Code worktrees (transient; git worktree list is the source of truth)
+.claude/worktrees/
