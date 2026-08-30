@@ -220,6 +220,9 @@ __marimo__/
 # rig sweep outputs (regenerable: python -m rig.sweep)
 runs/
 
+# operating-envelope telemetry (regenerable: python envelope_evaluator.py)
+boundary_report.json
+
 # LaTeX build products (regenerate: tectonic -X compile)
 design/methodology/*.pdf
 design/methodology/*.log
