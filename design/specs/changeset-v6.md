@@ -4,7 +4,7 @@
 
 **Why v6 exists, in two lines:** the build overtook the v5 spec. The fit window and the emitter both became *more correct in code than in spec* during the build, and the ~10% residual the v5 note parked was mostly closed. v6 reconciles the spec to the as-built instrument and records what genuinely remains open.
 
-**Markers:** **CONFIRM** = Code must check the shipped value before locking. **DECISION** = Meadowlark's call. Every delta cites its build-report evidence; the Settled/Retracted discipline carries over.
+**Markers:** **CONFIRM** = Code must check the shipped value before locking. **DECISION** = Meadowlark's call. Every delta cites its build evidence (now [`../methodology/calibration-rig-BUILD-HISTORY.md`](../methodology/calibration-rig-BUILD-HISTORY.md)); the Settled/Retracted discipline carries over.
 
 ---
 
