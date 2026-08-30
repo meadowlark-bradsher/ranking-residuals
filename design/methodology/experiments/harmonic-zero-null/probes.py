@@ -57,7 +57,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import chi2, kstest
+from scipy.stats import binom, chi2, kstest, norm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -108,6 +108,11 @@ K_GRID = (8, 32, 64, 128, 512)
 # low-k failure became visible in the first place -- but they are excluded from
 # verdicts.
 SATURATION_MAX = 0.02
+
+# Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
+# strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
+# probe under-reports rather than manufacturing flags out of ordinary scatter.
+BINOM_ALPHA = 0.01
 
 
 # Where a b1 sweep should sit. Comfortably inside SATURATION_MAX so every level
@@ -1172,13 +1177,40 @@ def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
                     "draws": draws,
                 })
 
+    # "Any failure in n_base" is too coarse to judge a cell on, and reported 6
+    # cells on one seed family and 1 on another. The reason is that a PERFECTLY
+    # VALID cell still fails sometimes: varT/2df carries a relative sampling s.e.
+    # of sqrt((12/df + 2)/reps), which is 8.4% at df = 1 against a 15% gate, so
+    # roughly 7 draws in 100 scatter over it with nothing wrong. At df = 22 the
+    # s.e. is 3.6% and the gate is 4.2 s.e. out, so a valid cell essentially
+    # never fails. The expected pass rate is therefore df-dependent, and a flat
+    # "did it ever fail" test reads that difference as a defect.
+    #
+    # So judge each cell against the rate a valid cell of ITS df would show, and
+    # flag only a rate significantly below it. This flags the cell that fails
+    # half its seeds and leaves the ones that scatter over the gate once.
+    for r in rows:
+        se_v = float(np.sqrt((12.0 / r["df"] + 2.0) / reps))
+        se_m = float(np.sqrt(2.0 / (r["df"] * reps)))
+        # Pass = inside BOTH bands; the two are near-independent, and the mean
+        # band is so wide relative to its s.e. that it contributes almost nothing.
+        p_valid = float((2 * norm.cdf(vtol / se_v) - 1)
+                        * (2 * norm.cdf(mtol / se_m) - 1))
+        r["se_var_ratio"] = se_v
+        r["p_valid"] = p_valid
+        r["pass_rate"] = r["n_base_passing"] / r["n_base_judged"]
+        # One-sided lower tail: how surprising is this many passes if the cell
+        # is valid? Small p means the cell fails more than sampling explains.
+        r["binom_p"] = float(binom.cdf(r["n_base_passing"],
+                                       r["n_base_judged"], p_valid))
+        r["flagged"] = bool(r["binom_p"] < BINOM_ALPHA)
+
     inw = [r for r in rows if r["in_window"]]
     out = [r for r in rows if not r["in_window"]]
     # The shipped claim is about SUFFICIENCY: in-window implies the moments hold.
-    # A cell that passed on the reference draw and fails on any other base seed
-    # is the claim failing, not the cell being borderline -- the window was
-    # placed by exactly one such draw per cell.
-    flipped = [r for r in inw if r["n_base_passing"] < r["n_base_judged"]]
+    # A flagged in-window cell is that claim failing -- it fails at a rate its own
+    # df cannot explain, while the single draw the window was placed by passed it.
+    flipped = [r for r in inw if r["flagged"]]
     # Necessity was never claimed, but the count moves with the seed too, so it
     # ships alongside rather than as the single-draw 8.
     out_any = [r for r in out if r["n_base_passing"] > 0]
@@ -1208,11 +1240,18 @@ def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
         "verdict": verdict,
         "value": {
             "reps": reps, "n_base": n_base, "mtol": mtol, "vtol": vtol,
+            "binom_alpha": BINOM_ALPHA,
             "saturation_max": SATURATION_MAX,
             "n_cells": len(rows),
             "n_in_window": len(inw),
             "n_in_window_stable": len(inw) - len(flipped),
-            "n_in_window_flipped": len(flipped),
+            "n_in_window_flagged": len(flipped),
+            "flagged_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                              for r in flipped],
+            # Raw any-failure count kept for comparison: it is the statistic this
+            # probe used to report, and the gap between the two is the point.
+            "n_in_window_any_failure": sum(
+                1 for r in inw if r["n_base_passing"] < r["n_base_judged"]),
             "n_out_passing_ref": sum(1 for r in out if r["ref_passes"]),
             "n_out_passing_any_base": len(out_any),
             "worst_in_window": (max((r["var_ratio_max"] for r in inw),
