@@ -5,12 +5,17 @@ findings that outlived the build. Folded in from
 `design/reports/calibration-rig-build-report.html`, a hand-authored page that had
 no regeneration path and went stale three times before it was dissolved.
 
-**The spec is now at v8; "v2 through v7" above is the build's range, not the
-spec's.** v8 changed no rig behaviour — it added §13.3, *quote the inputs, not the
-comparison*, after a margin shipped rounded outward and the rounding was then inherited
+**The spec is now at v9; "v2 through v7" above is the build's range, not the
+spec's.** Neither revision changed rig behaviour. v8 added §13.3, *quote the inputs, not
+the comparison*, after a margin shipped rounded outward and the rounding was then inherited
 verbatim into a second document. It is worth a line here because it is this document's
 own subject arriving one layer up: the page dissolved above went stale three times for
 want of a regeneration path, and §13.3's figure went stale for want of an owner.
+
+v9 re-decided Delta F and **held §8.5's coverage criterion strict**, retiring a deferral
+clause that v7 had silently satisfied and left standing. Same subject again, one layer up
+once more: the stale thing was not a number but a *precondition*, and nothing was watching
+it either.
 
 **Nothing here is a live number.** Every measurement the original carried has
 since been re-homed — identities and closed forms into `evidence/evidence.json`
