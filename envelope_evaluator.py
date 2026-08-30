@@ -55,7 +55,7 @@ repository is built to refuse.
     UNCONSTRAINED per-edge saturation. Under H0 the natural parameter is
     confined to S, so a saturated cell is usually still fitted finitely -- the
     constraint pins it -- and divergence needs separation WITHIN the model
-    subspace. Measured on graph 2 at k = 512: 28.9% of draws saturate somewhere,
+    subspace. Measured on graph 2 at k = 512: 28.65% of draws saturate somewhere,
     5.0% actually break the fit. Carried through the grid the drafted rule
     leaves 17 usable draws of 500 at k = 32, against 43% loss for the real one.
     Both rules ship (`separation_rule=`), defaulting to 'mle'.
@@ -67,9 +67,9 @@ all sixteen observed-filling drop rates reproduce that run's to the printed
 precision. mean_T_ratio then differs only by what the two statistics actually
 are: this one is the oracle score at the true eta, whose mean is exactly b1 by
 construction; that one refits the constrained MLE per draw. The gap is largest
-where the drop rate is largest (graph 3, k = 32: 0.878 here against 0.740
-there), which locates roughly half of the published conservative drift in the
-REFIT rather than in the truncation of draws.
+where the drop rate is largest (graph 3, k = 32: 0.888 here against 0.740
+there), which locates 57% of the published conservative drift in the REFIT
+rather than in the truncation of draws.
 """
 
 from __future__ import annotations
@@ -262,14 +262,24 @@ def constrained_mle_separates(w, k, M, eta_clip=15.0, separated=14.0,
     the natural parameter is confined to S = col(M), so a single saturated cell
     is usually still fitted finitely: the constraint pins it. Divergence needs
     separation WITHIN the model subspace, which is far rarer. On graph 2 at
-    k = 512, 28.9% of draws saturate somewhere but only 5.0% break the fit.
+    k = 512, 28.65% of draws saturate somewhere but only 5.0% break the fit.
 
     IRLS on a canonical link, so the working weights ARE the Fisher information
     and this is Fisher scoring and Newton-Raphson at once. Iterative, but pure
     NumPy linear algebra -- no external optimiser.
+
+    THE TEST IS ON THE CONVERGED FIT, NOT ON THE ITERATES. An IRLS path can
+    overshoot the cut and come back: on graph 3 at k = 32, draws 700 and 1683
+    both peak above |eta| = 14 at iteration 6 and then settle near 12.8 and
+    converge finitely. A transient overshoot is not divergence, and bailing on
+    the first crossing discards two draws whose constrained MLE exists. eta is
+    therefore clipped to +/-eta_clip each pass -- which pins a genuinely
+    diverging fit at the clip, where it converges and is then caught by the cut
+    -- and separation is read off the fixed point.
     """
     beta = np.zeros(M.shape[1])
     eta = M @ beta
+    converged = False
     for _ in range(max_iter):
         p = 0.5 * (1.0 + np.tanh(0.5 * np.clip(eta, -eta_clip, eta_clip)))
         v = np.maximum(k * p * (1.0 - p), 1e-10)
@@ -281,12 +291,15 @@ def constrained_mle_separates(w, k, M, eta_clip=15.0, separated=14.0,
         eta_new = M @ beta_new
         if not np.all(np.isfinite(eta_new)):
             return True
-        if np.max(np.abs(eta_new)) > separated:
-            return True
-        if np.max(np.abs(eta_new - eta)) < tol:
-            return False
+        eta_new = np.clip(eta_new, -eta_clip, eta_clip)
+        step = np.max(np.abs(eta_new - eta))
         beta, eta = beta_new, eta_new
-    return True                                  # did not converge in max_iter
+        if step < tol:
+            converged = True
+            break
+    if not converged:
+        return True                              # did not converge in max_iter
+    return bool(np.max(np.abs(eta)) >= separated)
 
 
 def run_envelope_evaluation(edges, triangles, k, true_lambda=None, eta=None,
