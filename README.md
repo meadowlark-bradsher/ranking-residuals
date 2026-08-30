@@ -89,6 +89,7 @@ tests/
   test_harmonic_zero_null.py  identities of the harmonic-zero score test
   test_harness_rules.py       enforces "no verdict on a moment ratio from a low-df cell"
   test_source_fingerprint.py  fingerprint is sensitive to meaning, blind to presentation
+  test_readme_layout.py       the layout blocks below name only paths that exist
 design/
   specs/              the spec (v7) and the v6 changeset that reconciled it to the build
   reference/          hodge.py, the explainers, the canonical comparison note
