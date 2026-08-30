@@ -5,7 +5,7 @@ known-answer harness that manufactures comparison data with *controlled* Hodge s
 (gradient / curl / harmonic), so the certificate can be validated against ground truth
 **before** any LLM judge is involved.
 
-Spec: [`design/specs/calibration-rig-spec.md`](design/specs/calibration-rig-spec.md) (v7).
+Spec: [`design/specs/calibration-rig-spec.md`](design/specs/calibration-rig-spec.md) (v8).
 
 ## The instrument is not forked
 
@@ -91,7 +91,7 @@ tests/
   test_source_fingerprint.py  fingerprint is sensitive to meaning, blind to presentation
   test_readme_layout.py       the layout blocks below name only paths that exist
 design/
-  specs/              the spec (v7) and the v6 changeset that reconciled it to the build
+  specs/              the spec (v8) and the v6 changeset that reconciled it to the build
   reference/          hodge.py, the explainers, the canonical comparison note
   methodology/        papers, evidence registry, experiments — see below
 ```

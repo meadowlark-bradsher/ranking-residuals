@@ -29,11 +29,12 @@
 > **The rule, with a trigger you can evaluate.** Treat a disagreement beyond
 > `residual-exact`'s tolerance -- `{kind: abs, value: 0.02}` percentage points --
 > as a signal that one implementation has drifted, and reconcile before
-> publishing either. The current 5.1e-08 pt gap clears that by a factor of
-> 3.9e+05 -- five and a half orders of magnitude, not the six an earlier
-> revision of this line rounded it to. When it does fire, check the config
-> fingerprint before the arithmetic: that is where it hid last time, and a
-> mask-ensemble mismatch reads exactly like a numerical one.
+> publishing either. The current gap is ~5.1e-08 pt against that 0.02 pt
+> trigger -- both inputs, no derived ratio (spec 13.3). An earlier revision
+> quoted the ratio instead, as "six orders of magnitude"; it is 5.6, and that
+> rounding is why the ratio is no longer quoted here at all. When it does fire,
+> check the config fingerprint before the arithmetic: that is where it hid last
+> time, and a mask-ensemble mismatch reads exactly like a numerical one.
 
 Hunting the mechanism behind the residual in the floor estimator.
 

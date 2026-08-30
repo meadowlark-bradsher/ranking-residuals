@@ -1,4 +1,6 @@
-# Synthetic Calibration Rig — Design Specification (v7)
+# Synthetic Calibration Rig — Design Specification (v8)
+
+**Revision note (v8):** §13.3 added — a reporting convention for margins — after one shipped rounded outward and the rounding was then inherited verbatim into a second document. `bias-of-bias/README.md` reported a gap of `5.1e-08` pt against a `0.02` pt tolerance as "six orders of magnitude"; the factor is `3.93e+05`, so 5.6, and the overstatement is 2.5× in the linear quantity. The rule is to report the two quantities and not the ratio between them: the registry owns `residual-exact.tolerance` and owns nothing derived from it, so a quoted tolerance fails *loudly* when retuned where a quoted factor goes quietly stale. **No rig behaviour changes** — this is a documentation contract, which is why §§2–12 are untouched. §13's lead-in also said "Two results"; it says three.
 
 **Revision note (v7):** ρ is **optimised, no longer merely justified** — v6's last open item is closed as far as these levers reach. Scanned over ρ ∈ {1.5, 2, 3, 4.5, 6, 9} × 8 base seeds: the residual falls monotonically as ρ falls, because a smaller ρ demands a longer, cleaner tail. Lower ρ costs grid reach, so ρ and the `k` grid had to move together.
 
@@ -508,9 +510,9 @@ tests/         # SS8.1-8.10 acceptance + SS5.1-5.7 invariants; must stay fast (~
 
 ## 13. Carried forward to Epic C
 
-Two results from building the rig generalise past it. They are recorded here rather than
-in a revision note because Epic C — calibrating a threshold against a real judge — is
-where they bite.
+Three results from building the rig generalise past it. They are recorded here rather
+than in a revision note because Epic C — calibrating a threshold against a real judge —
+is where they bite.
 
 ### 13.1 Seed-varying quantities ship with their spread, never as a point
 
@@ -563,6 +565,53 @@ whenever the comparison pattern shifts, not only when the item set does.
 §2.6's derived window is the template. The failure it fixes — a constant calibrated on one
 topology, silently wrong on another — is the same failure a transferred threshold would
 make, one level up.
+
+### 13.3 Quote the inputs, not the comparison
+
+A margin is reported as the two quantities being compared, each in its own units. Not as
+a ratio between them, and not as a count of orders of magnitude derived from that ratio.
+**"The gap is ~5.1e-08 pt against the 0.02 pt trigger"** — never "inside tolerance by a
+factor of 3.9e+05", and never "by six orders of magnitude".
+
+Three things go wrong with the derived form; the second is the one that actually bites.
+
+- **The registry owns the inputs and not the quotient.** `0.02` is
+  `residual-exact.tolerance` in `evidence.json`, so a reader or a test can check it. The
+  ratio lives nowhere and is checkable against nothing. It is precisely the *number the
+  evidence does not have* that routing every cited figure through the registry exists to
+  prevent — `make_figures.py` reads `evidence.json` for exactly this reason.
+- **It goes stale silently, and the input does not.** Retune the tolerance and a quoted
+  factor is quietly wrong with nothing to catch it, because nothing regenerates prose. A
+  quoted `0.02` fails *loudly* instead: it stops matching the registry, which is a
+  difference a reader can see and a test can assert.
+- **A ratio invites rounding, and rounding on a log scale is not small.** Reporting 5.6
+  orders as "six" overstates the linear margin by 2.5×. Two absolutes cannot be rounded
+  into a wrong claim, because there is no derived quantity to round.
+
+This was learned the same way as §13.1 — by shipping it. The margin between the
+`bias-of-bias` replication and its registered claim was written as "six orders of
+magnitude" when the factor is `3.93e+05`, i.e. 5.6; the rounding was then inherited
+verbatim into a second document, which is how a figure with no owner travels. The
+underlying gap is floating-point summation order over 20 seeds × 16 cells, so it does not
+support three significant figures in the first place — quoting the *derived* margin to
+three is §13.1's over-precision, one derivation removed.
+
+**If a magnitude comparison genuinely earns its place, write it as an inequality rounded
+toward the weaker claim.** "More than five orders of magnitude inside" cannot be made
+wrong by rounding; "six orders" can, and was. Rounding down a lower bound is always
+honest; rounding to nearest is not.
+
+Normalisations against a *measured* scale are not what this rule is about and stay
+useful: `1.4e-07 relative`, or `2.6e-05 of one standard error`, are stable, need no
+second lookup, and do not move when a tolerance is retuned. The rule bites on
+comparisons against a **chosen** constant, because that constant is the part someone
+will later change.
+
+**The consequence for Epic C.** A calibrated threshold will be reported with a margin —
+"comfortably inside", "well below", "orders of magnitude of headroom". Report the
+threshold and the observation, in their units, and let the reader do the subtraction.
+The margin is the first thing to go stale when the threshold is recomputed on a new
+topology (§13.2), and it is the part no test is watching.
 
 ---
 
