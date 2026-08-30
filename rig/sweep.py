@@ -15,6 +15,27 @@ import json
 import math
 from pathlib import Path
 
+import os
+
+# --- BLAS/OpenMP thread pinning: MUST precede the numpy import below -------
+# This workload is many small operations, not large matrix products, so extra
+# threads are spawn-and-sync overhead rather than speedup. Measured on
+# envelope_evaluator (identical output at every setting):
+#
+#     threads=1   5.2 s wall     5.1 s CPU
+#     threads=8   8.9 s wall    70.1 s CPU
+#     unset      29.3 s wall   312.7 s CPU   (idle machine)
+#     unset     374.4 s wall  3481.8 s CPU   (load ~20-24)
+#
+# Unset also made every timing on a shared machine uninterpretable: the CPU
+# figure moved 11x with ambient load, because oversubscribed threads spin
+# rather than work. setdefault, so an explicit outer value still wins -- that
+# is how the table above was measured.
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+           "VECLIB_MAXIMUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+# ---------------------------------------------------------------------------
+
 import numpy as np
 
 import hodge

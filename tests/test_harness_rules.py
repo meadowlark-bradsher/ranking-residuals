@@ -374,6 +374,7 @@ def test_a_flag_always_corresponds_to_a_real_disagreement(results, current):
 # with no base-seed replication, which is precisely the hazard rule 1 exists
 # for, and nothing had ever read it.
 
+import re
 import subprocess
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -442,3 +443,95 @@ def test_rule_1_over_every_artifact_in_the_repo(results, current):
         f"  expected: {sorted(REPO_WIDE_KNOWN_GAPS)}\n"
         "If one was fixed, strike it from REPO_WIDE_KNOWN_GAPS. If one is new, "
         "it reaches a verdict on low-df moment ratios from a single draw.")
+
+
+# ---------------------------------------------------------------- thread pinning
+#
+# Every entry point pins BLAS/OpenMP threads before importing numpy. Unset, this
+# workload spawned a thread per core for many small operations, which is
+# spawn-and-sync overhead rather than speedup: 5.2 s wall / 5.1 s CPU at one
+# thread against 29.3 s / 312.7 s unset on an idle machine, and 374 s / 3482 s
+# under load. Output is bit-identical at 1, 2, 4, 8 and unset, so this is free.
+#
+# WHY A TEST AND NOT A CONVENTION. The pin only works if it runs BEFORE numpy is
+# imported, and nothing in Python enforces that ordering. An import sorter, or
+# anyone tidying the header, would move it below numpy and the pin would silently
+# stop working -- no error, no failing test, just runs that quietly cost 5x more
+# wall and 60x more CPU. That is a guard that goes green by not applying, which
+# is this file's recurring subject.
+
+_PINNED_ENTRY_POINTS = (
+    "envelope_evaluator.py",
+    "rig/sweep.py",
+    "design/methodology/experiments/harmonic-zero-null/probes.py",
+    "design/methodology/experiments/bias-of-bias/probes.py",
+    "design/methodology/experiments/bias-of-bias/exact_energy.py",
+    "design/methodology/experiments/b1-rate/b1_rate.py",
+    "design/methodology/evidence/generate.py",
+    "design/methodology/evidence/verify.py",
+)
+
+_THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")
+
+
+def _numpy_importers():
+    """Tracked modules that import numpy, from git rather than a list."""
+    out = subprocess.run(["git", "ls-files", "*.py"], cwd=_ROOT,
+                         capture_output=True, text=True, check=True).stdout.split()
+    hits = []
+    for rel in out:
+        if rel.startswith("tests/"):
+            continue
+        text = (_ROOT / rel).read_text()
+        if re.search(r"^\s*(import numpy|from numpy)", text, re.M):
+            hits.append(rel)
+    return hits
+
+
+def test_the_pinned_list_still_matches_the_tree():
+    """Guards the vacuous pass, and catches a NEW numpy entry point appearing.
+
+    A file that imports numpy and is not pinned is not a failure by itself --
+    library modules are imported by pinned entry points and inherit the setting.
+    What must not happen silently is the set of numpy importers drifting away
+    from the set anyone has thought about.
+    """
+    importers = set(_numpy_importers())
+    assert importers, "no numpy importers found -- the scan is broken, not the tree"
+    unpinned = importers - set(_PINNED_ENTRY_POINTS)
+    known_library_modules = {
+        "hodge.py", "rig/flows.py", "rig/graph.py", "rig/oracle.py", "rig/fit.py",
+        "rig/emit.py", "rig/pool.py", "rig/moments.py", "rig/report.py",
+        "rig/config.py", "design/reference/hodge.py",
+        "design/methodology/experiments/harmonic-zero-null/score_test.py",
+        "design/methodology/experiments/bias-of-bias/core.py",
+        "design/methodology/experiments/b1-rate/report_b1.py",
+        "design/methodology/experiments/bias-of-bias/report_exact.py",
+        "design/methodology/make_figures.py",
+        "design/methodology/combined/beats.py",
+    }
+    surprise = unpinned - known_library_modules
+    assert not surprise, (
+        f"these import numpy and are neither pinned nor a known library module:\n  "
+        + "\n  ".join(sorted(surprise))
+        + "\nIf it is an entry point, pin it. If it is a library, add it above.")
+
+
+@pytest.mark.parametrize("rel", _PINNED_ENTRY_POINTS)
+def test_thread_pin_precedes_the_numpy_import(rel):
+    """The pin is only a pin if it runs first. Nothing but this checks that."""
+    lines = (_ROOT / rel).read_text().split("\n")
+    pin = next((i for i, l in enumerate(lines)
+                if "OMP_NUM_THREADS" in l and "setdefault" not in l), None)
+    setdefault = next((i for i, l in enumerate(lines) if "setdefault" in l), None)
+    numpy_at = next((i for i, l in enumerate(lines)
+                     if re.match(r"\s*(import numpy|from numpy)", l)), None)
+    assert pin is not None and setdefault is not None, f"{rel} has no thread pin"
+    assert numpy_at is not None, f"{rel} no longer imports numpy; drop it from the list"
+    assert setdefault < numpy_at, (
+        f"{rel}: the thread pin is at line {setdefault + 1} but numpy is imported at "
+        f"line {numpy_at + 1}. Setting these after numpy loads has NO EFFECT -- the "
+        f"threading layer is already configured. Move the block above the import.")
+    for v in _THREAD_VARS:
+        assert any(v in l for l in lines[:numpy_at]), f"{rel} does not pin {v}"
