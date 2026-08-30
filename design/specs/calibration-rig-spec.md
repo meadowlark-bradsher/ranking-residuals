@@ -28,7 +28,7 @@ Per-draw spread also tightened, from (−0.7%, +3.4%) to (−0.52%, +1.16%). Cos
 
 **Residual (v6 figure, superseded by the v7 note above — kept because v7's comparison is against it):** a **1.6% ± 0.2%** (1 s.e.) negative bias, measured over **20 independent base seeds × 16 cells × 64 seeds each**. It is **real** — `t = 7.3` against zero, 19 of 20 draws below the oracle — and **smaller and noisier than any single run shows**: individual draws range −0.7% to +3.4%. `ci_covers_oracle` is **typically 13/16, range 10–15**. It has narrowed twice (10–13% before the window was derived, 3–6% after), both times from the same mechanism, which is evidence it is not exhausted. Tuning **ρ** is the remaining lever; it is *justified, not optimised*, and is now a recorded config field so it can be swept rather than edited. Post-build tuning, not a blocker.
 
-> **Quote seed-varying quantities with their spread.** Earlier revisions of this note gave the residual as "~10%", then "3–6%", then "~2.0–2.4%", and coverage as "16/20" — each from one draw, each superseded by the next. They were over-precise rather than wrong: the per-draw spread is about a percentage point wide, so a single run cannot pin the mean. Any §8.5 figure that moves with the seed belongs in the record **and** in the spec as a distribution.
+> **Quote seed-varying quantities with their spread.** Earlier revisions of this note gave the residual as "~10%", then "3–6%", then "~2.0–2.4%", and coverage as "16/20", each superseded by the next. **Part of that movement was the estimator, not the seed:** ~10% was measured on the fixed `k ≥ 64` window, and deriving the window (Delta A) plus a longer `k` grid is what took it to ~2.0–2.4% — see the v5 note below. This rule is about what was true at every stop either way: a point quoted from a single draw. They were over-precise rather than wrong: the per-draw spread is about a percentage point wide, so a single run cannot pin the mean. Any §8.5 figure that moves with the seed belongs in the record **and** in the spec as a distribution.
 
 **Revision note (v5):** §2.6 added — regime-validity preconditions for §8.5 — after an independent reproduction of the v4 saturation finding. Three corrections were forced by measurement during the insert; each is marked *(Correction, v5)* at its site:
 1. **The `c`-oracle gate is necessary but NOT sufficient.** It catches catastrophic misspecification (`beta=0.6`: `c_fit/c_oracle ≈ 0.2`) but is blind to a 2× floor bias: at `beta=0.25` it reads `c_fit/c_oracle = 1.01` — essentially exact — while the recovered floor is **1.86×** the true value.
@@ -522,10 +522,19 @@ quantity.
 
 This is not a style preference. It was learned by getting the same number wrong three
 times running: the residual was reported as "~10%", then "3–6%", then "~2.0–2.4%";
-coverage as "16/20", then "15/16". Each was one draw, each superseded by the next, and
-each *looked* settled because nothing in the output said otherwise. Re-measured over 20
-base seeds the residual was 1.6% ± 0.2% and coverage *typically* 13/16 — so "15/16",
-reported twice as the result, was the best of twenty draws.
+coverage as "16/20", then "15/16". Each was superseded by the next, and each *looked*
+settled because nothing in the output said otherwise. Re-measured over 20 base seeds the
+residual was 1.6% ± 0.2% and coverage *typically* 13/16 — so "15/16", reported twice
+as the result, was the best of twenty draws.
+
+**Coverage is the clean instance of this rule; the residual is not.** Coverage moved on
+one estimator, so its sequence is sampling alone. The residual's is not, and should not
+be read as one: ~10% was measured on the fixed `k ≥ 64` window, and deriving the window
+(Delta A) plus a longer `k` grid is what took it to ~2.0–2.4% — the estimator changed
+underneath it (§8.5 note, v5). What the rule catches is what was true at every stop
+regardless: a point quoted from a single draw, with nothing recording how wide the draw
+was. Reporting an estimator change as though it were a tighter measurement is the same
+error wearing the other hat.
 
 How it surfaced matters, because Epic C will meet it again: adding one field to the
 config changed the config fingerprint, `derive_seed` hashes that fingerprint, so every
