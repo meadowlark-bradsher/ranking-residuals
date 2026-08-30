@@ -19,7 +19,7 @@
    0.18,
    0.25
   ],
-  "b1_1_closes_at": 0.05,
+  "b1_1_closes_at": 0.03,
   "b1_22_closes_at": 0.18,
   "b1_1_drops_exceed_5pct_at": 0.03,
   "b1_22_drops_exceed_5pct_at": 0.25,
