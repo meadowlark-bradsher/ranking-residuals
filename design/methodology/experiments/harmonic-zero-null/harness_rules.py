@@ -237,8 +237,8 @@ def comparable(v):
     """A gate constant reduced to a form that survives a round trip through JSON.
 
     JSON object keys are ALWAYS strings. A constant that is a dict in the module --
-    SATURATION_WINDOW is {1: 0.019, 22: 0.120}, keyed by b1 as an int -- comes back
-    as {"1": 0.019, "22": 0.120}, and a naive != then reports every result stale
+    SATURATION_WINDOW is keyed by b1 as an int -- comes back with those keys as
+    strings, {"1": ..., "22": ...}, and a naive != then reports every result stale
     against the very module that produced it. Every gate constant before this one
     was a scalar, which is why the comparison looked sound.
 
