@@ -25,7 +25,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import hodge
-from rig import fit, flows, moments, oracle
+from rig import fit, flows, moments, oracle, provenance
 from rig.config import RigConfig
 from rig.graph import assemble
 from rig.sweep import floor_measurement, floor_sweep
@@ -805,6 +805,14 @@ if __name__ == "__main__":
               f"(it would drop every slow claim). Use `verify.py --fast` to check, or "
               f"run without --fast to regenerate.")
         raise SystemExit(0)
+    # MODULE fingerprint, not a per-entry one: six functions contribute claims
+    # to this one file, so there is no single entry to narrow to. It lands in
+    # `meta`, beside commit/numpy/python, because that is where this file keeps
+    # provenance. meta.commit records which commit ran; the fingerprint records
+    # whether the code has changed MEANING since, which a sha cannot say once
+    # the tree moves on -- and which is the whole reason evidence.json needed
+    # one: it was the largest artifact in the repo with no way to date it.
+    provenance.stamp(out, sys.modules[__name__])
     (HERE / "evidence.json").write_text(json.dumps(out, indent=1, default=float))
     write_provenance(out)
     print(f"  wrote evidence.json: {len(CLAIMS)} claims")

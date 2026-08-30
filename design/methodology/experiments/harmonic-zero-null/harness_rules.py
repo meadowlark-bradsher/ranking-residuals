@@ -302,7 +302,6 @@ def audit_is_current(probe_name, results, current):
         return False
     return staleness(audit, results[audit], current) is None
 
-
 # ---------------------------------------------------------------------------
 # THIRD RULE: a result may not be read as current if the CODE that produced it
 # has changed meaning, whether or not any named constant moved.
@@ -311,181 +310,32 @@ def audit_is_current(probe_name, results, current):
 # testing var_ratio alone to testing both moments -- b1_1_closes_at moved 0.05 ->
 # 0.03, a real change to a shipped number, and nothing mismatched because
 # b1_one_boundary records only alpha. The change travelled through a PREDICATE,
-# which constants cannot see. That is the third blind spot found in this file
-# tonight, and unlike the other two it is not a bug: rule 2 is doing exactly what
-# it says.
+# which constants cannot see.
 #
-# WHY NOT HASH THE FILE. Any edit then invalidates every result, comments
-# included. That is the permanently-red failure this module already had once, and
-# a guard nobody can satisfy is one that gets switched off -- taking the genuine
-# flags with it. So the fingerprint is per PROBE and blind to anything that does
-# not change meaning.
+# THE MACHINERY NOW LIVES IN rig/provenance.py. It was written here and it worked
+# here -- on the nine artifacts this directory owns. The repository has nineteen,
+# and the other ten wrote their JSON with a bare write_text and carried no
+# fingerprint at all, so nothing could date them against the code in either
+# direction. A rule that covers half the artifacts and is silent on the rest is
+# not a weaker rule; on those ten it is no rule, and it reads exactly like a
+# green one. Nothing about hashing source was specific to this experiment, so it
+# moved to the shared layer every experiment already imports and every writer
+# now stamps through it.
 #
-# WHAT IT COVERS. The probe's own body, plus the transitive closure of
-# module-level functions it calls and module-level constants it reads. Comments
-# never reach the AST at all; docstrings are stripped explicitly; positions are
-# excluded, so reindenting or rewrapping a line changes nothing.
-#
-# WHAT IT DOES NOT COVER, and these are stated rather than solved. Calls made
-# dynamically (getattr, a name looked up at run time) are invisible to a static
-# walk. Behaviour that depends on a THIRD-PARTY or cross-tree module -- hodge,
-# rig.flows, numpy -- is out of scope: this answers "did OUR code change", not
-# "did the world". Modules in THIS DIRECTORY are ours and are covered whole; see
-# _sibling_modules for why score_test.py had to stop counting as the world. And a
-# semantically neutral refactor, extracting a helper without altering behaviour,
-# WILL change the fingerprint. That direction is the safe one: it costs a re-run
-# nobody needed rather than hiding one that was.
+# Re-exported rather than re-implemented, so this module's callers -- and the
+# tests that read them -- keep one name for the rule.
 
-import ast
-import hashlib
-import inspect
-import os
-import textwrap
-import types
-
-
-def _strip_docstrings(tree):
-    """Docstrings reach the AST as Expr nodes; comments never do. Drop them so
-    documenting a probe does not invalidate its results."""
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
-                                 ast.ClassDef)):
-            continue
-        body = getattr(node, "body", None)
-        if (body and isinstance(body[0], ast.Expr)
-                and isinstance(body[0].value, ast.Constant)
-                and isinstance(body[0].value.value, str)):
-            node.body = body[1:] or [ast.Pass()]
-    return tree
-
-
-def _normalised_dump(source):
-    tree = _strip_docstrings(ast.parse(textwrap.dedent(source)))
-    # include_attributes=False drops lineno/col_offset, so moving code or
-    # rewrapping a line is not a change.
-    return ast.dump(tree, annotate_fields=True, include_attributes=False)
-
-
-def _module_level(module):
-    """{name: source} for module-level functions and simple constant bindings."""
-    try:
-        tree = ast.parse(inspect.getsource(module))
-    except (OSError, TypeError):
-        return {}
-    out = {}
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            out[node.name] = ast.dump(_strip_docstrings(node),
-                                      annotate_fields=True, include_attributes=False)
-        elif isinstance(node, ast.Assign):
-            dump = ast.dump(node, annotate_fields=True, include_attributes=False)
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    out[target.id] = dump
-                elif isinstance(target, ast.Tuple):
-                    for elt in target.elts:
-                        if isinstance(elt, ast.Name):
-                            out[elt.id] = dump
-    return out
-
-
-def _referenced(dump_text, known):
-    return {n for n in known if f"id='{n}'" in dump_text or f"name='{n}'" in dump_text}
-
-
-def _sibling_modules(module):
-    """Modules `module` imports that live BESIDE it -- ours, not the world.
-
-    numpy, scipy and hodge are the world: out of scope by design, and hashing
-    them would turn the fingerprint into a version stamp that any upgrade
-    invalidates. score_test.py is NOT the world. It sits in this directory, it
-    is written and edited here, and its ETA_CLIP, SEPARATED and fit_constrained
-    decide `usable` for every draw in every probe -- so editing it invalidates
-    all nine results while moving no gate constant and no probe body, leaving
-    stale(), fingerprint_mismatch() and uncheckable() all reporting clean. That
-    was rule 3's own blind spot, one file over from the one it was written to
-    close: _module_level walks tree.body for FunctionDef and Assign and has no
-    branch for Import, so an imported name could never enter the closure.
-
-    Siblings enter WHOLE rather than per-probe. There is no closure to narrow
-    them to: a constant like SEPARATED is read inside score_test's own functions,
-    not from the probe body, so reference-following from the probe would never
-    reach it. The cost is that a change anywhere in a sibling re-stamps every
-    probe -- the same conservative direction the module already accepts for a
-    neutral refactor, costing a re-run nobody needed rather than hiding one that
-    was.
-    """
-    f0 = getattr(module, "__file__", "") or ""
-    if not f0:
-        return {}
-    here = os.path.dirname(os.path.abspath(f0))
-    out = {}
-    for obj in vars(module).values():
-        if not isinstance(obj, types.ModuleType) or obj is module:
-            continue
-        f = getattr(obj, "__file__", None)
-        if f and os.path.dirname(os.path.abspath(f)) == here:
-            out[obj.__name__] = obj
-    return out
-
-
-def semantic_fingerprint(module, entry, _max_depth=12):
-    """A hash of `entry` and everything in this module it transitively depends on.
-
-    Stable across comments, docstrings, blank lines and reindentation. Changes
-    when any body or constant in the closure changes meaning.
-    """
-    level = _module_level(module)
-    if entry not in level:
-        return None
-    seen, frontier = set(), {entry}
-    for _ in range(_max_depth):
-        new = set()
-        for name in sorted(frontier):
-            if name in seen:
-                continue
-            seen.add(name)
-            new |= _referenced(level[name], set(level)) - seen
-        if not new:
-            break
-        frontier = new
-    parts = [f"{n}::{level[n]}" for n in sorted(seen)]
-    for mname, sib in sorted(_sibling_modules(module).items()):
-        lv = _module_level(sib)
-        parts += [f"{mname}.{n}::{lv[n]}" for n in sorted(lv)]
-    payload = "\n".join(parts)
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
-
-
-# The key a result carries its fingerprint under. Probes record it; this module
-# only reads it. The recording line belongs in probes.py's __main__ writer:
-#
-#     r.setdefault("value", {})["source_fingerprint"] = \
-#         harness_rules.semantic_fingerprint(sys.modules[__name__], name)
-#
-FINGERPRINT_KEY = "source_fingerprint"
-
-
-def fingerprint_mismatch(name, result, module):
-    """A sentence when this result was produced by code that has since changed
-    meaning, None when it agrees, and None when the result predates the field --
-    an absent fingerprint is unverifiable, not agreement, and is reported by
-    unfingerprinted() so it cannot be counted as passing."""
-    recorded = (result.get("value") or {}).get(FINGERPRINT_KEY)
-    if recorded is None:
-        return None
-    current = semantic_fingerprint(module, name)
-    if current is None:
-        return (f"{name}: records a source fingerprint but the module no longer "
-                f"defines a probe by that name.")
-    if recorded != current:
-        return (f"{name}: produced by code that has since changed meaning "
-                f"(fingerprint {recorded} -> {current}). No named constant need "
-                f"have moved -- a predicate is enough. Re-run it.")
-    return None
-
-
-def unfingerprinted(results):
-    """Results carrying no fingerprint: unverifiable by this rule, not agreeing."""
-    return sorted(n for n, r in results.items()
-                  if (r.get("value") or {}).get(FINGERPRINT_KEY) is None)
+from rig.provenance import (                                       # noqa: E402
+    FINGERPRINT_KEY,
+    _module_level,
+    _normalised_dump,
+    _referenced,
+    _sibling_modules,
+    _strip_docstrings,
+    module_fingerprint,
+    recorded_fingerprint,
+    semantic_fingerprint,
+    stamp,
+)
+from rig.provenance import mismatch as fingerprint_mismatch        # noqa: E402
+from rig.provenance import unfingerprinted                         # noqa: E402

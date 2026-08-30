@@ -15,6 +15,7 @@ __all__ = [
     "flows",
     "graph",
     "oracle",
+    "provenance",
     "fit",
     "emit",
     "sweep",

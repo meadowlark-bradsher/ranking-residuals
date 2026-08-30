@@ -34,7 +34,7 @@ from scipy.stats import binom
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import hodge
-from rig import flows
+from rig import flows, provenance
 from rig.config import RigConfig
 
 HERE = Path(__file__).parent
@@ -175,6 +175,11 @@ def run(n_seeds: int = N_SEEDS) -> dict:
         # overwrote them and then died on KeyError: 'pooled'. Computed here.
         out["pooled"][str(n)] = pooled_rate([rec["path_a_sec10"], *bs])
     out["seed_noise_check"] = seed_noise(out["pooled"][str(SEC10_N)]["rate"])
+    # One artifact from one entry point, so the fingerprint narrows to run()'s
+    # closure. This file shipped unfingerprinted, which is how `pooled` and
+    # `seed_noise_check` could sit in it for weeks with no writer anywhere in the
+    # tree: nothing could ask what produced them.
+    provenance.stamp(out, sys.modules[__name__], "run")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(out, indent=1))
     return out

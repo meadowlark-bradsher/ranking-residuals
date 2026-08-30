@@ -23,6 +23,7 @@
     "separation_rule": "mle",
     "separation_rule_meaning": "drop the draw when the constrained MLE diverges"
   },
+  "source_fingerprint": "1459f7182a88cc73",
   "assertions": {
     "stationarity_4_1": "not applicable on this path: the oracle scores at the TRUE eta, where no first-order condition holds, so the score has no reason to lie in the harmonic subspace and max_score_off_harmonic is large by construction. The instrument's analogue -- score_test.score_off_harmonic, ||M^T U|| at the converged constrained fit -- is a real convergence check; this one has no content and is reported, not asserted.",
     "degeneracy_4_2": "pass",

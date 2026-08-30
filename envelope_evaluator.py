@@ -1,10 +1,22 @@
 """Dependency-free operating-envelope evaluator for the harmonic-zero null.
 
-An INDEPENDENT closed-form verification oracle. It does not import `hodge`: the
-operators, the harmonic subspace and the chi-squared tail are all rebuilt here
-from the repository's stated conventions, so agreement with the instrument is
-evidence rather than tautology. NumPy and the standard library only -- no scipy,
-statsmodels, sklearn, or external optimiser.
+An INDEPENDENT closed-form verification oracle, and the scope of that word is
+worth stating precisely because it is what the agreement is worth.
+
+INDEPENDENT: the operators, the harmonic subspace and the chi-squared tail are
+rebuilt here from the repository's stated conventions, reaching no instrument
+code. NumPy and the standard library only -- no scipy, statsmodels, sklearn, or
+external optimiser. (`rig.provenance` is imported to stamp the output; it is
+stdlib-only and touches nothing numerical.)
+
+NOT INDEPENDENT: the data-generating path. `benchmark_topology` and `h0_eta`
+call `rig.flows`, which imports `hodge` -- so the edge mask and the latent are
+shared code, and this file DOES reach `hodge` transitively on every path main()
+takes. That is deliberate: the draws have to match for a draw-for-draw
+comparison to mean anything. But it makes the mask and eta common-mode, and an
+error in either would be invisible to this oracle. An earlier version of this
+paragraph said flatly "it does not import `hodge`", which a reader checking the
+claim would find false.
 
 WHAT IS TESTED
     H0 :  logit p  in  S = im D0 (+) im D1^T  =  harmonic^perp
@@ -112,6 +124,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# stdlib-only (ast, hashlib, inspect, os, textwrap, types); reaches no instrument.
+from rig import provenance                                       # noqa: E402
 
 ALPHA = 0.05
 N_ITEMS = 12
@@ -718,6 +732,13 @@ def main():
                 "saturated": "drop the draw when any edge has w = 0 or w = k",
             }[args.separation_rule],
         },
+        # What produced this file. `main` is the entry, so the fingerprint is
+        # its closure -- which reaches the operators, the tail, the separation
+        # rule and REFERENCE. boundary_report.json shipped with no fingerprint
+        # and no gate constant, so the two numbers that actually select the
+        # draws (the clip and the cut) were not recorded anywhere in it.
+        "source_fingerprint": provenance.semantic_fingerprint(
+            sys.modules[__name__], "main"),
         "assertions": {
             # Was the literal "pass" for a check that could not fail. Now says
             # what it is: no assertion runs here.

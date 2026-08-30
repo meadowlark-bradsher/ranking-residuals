@@ -17,6 +17,9 @@ import numpy as np
 
 import core
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from rig import provenance                                       # noqa: E402
+
 HERE = Path(__file__).parent
 RES = HERE / "results"
 
@@ -316,6 +319,12 @@ if __name__ == "__main__":
     want = sys.argv[1:] or list(PROBES)
     for name in want:
         r = PROBES[name]()
+        # Stamp the code that produced THIS file. These six results shipped with
+        # no fingerprint at all, so nothing could date them against the source in
+        # either direction -- and an absent fingerprint reads exactly like an
+        # agreeing one. `core` is a sibling and enters whole: it holds the mask
+        # seed, the clamp and the fit, so a change there changes these numbers.
+        provenance.stamp(r, sys.modules[__name__], name)
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:18} {r['verdict']:14} -> results/{name}.json")
     write_results_md()

@@ -55,7 +55,8 @@
    }
   ],
   "effect_decays": true,
-  "effect_shrinkage_tightest_over_loosest": 0.0027747333101962065
+  "effect_shrinkage_tightest_over_loosest": 0.0027747333101962065,
+  "source_fingerprint": "bcf89db31a0388c6"
  },
  "config": {
   "n": 12,

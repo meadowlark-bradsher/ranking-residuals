@@ -17,6 +17,7 @@ already had once. A check nobody can satisfy is a check someone switches off.
 
 import importlib.util
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -289,3 +290,103 @@ def test_rule_3_catches_the_predicate_change_rule_2_was_blind_to():
         for p in paths:
             if p is not None:
                 p.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# COVERAGE: the rule must reach every result artifact, not the nine it grew up
+# on. Ten of the repository's nineteen shipped with no fingerprint at all --
+# b1_rate, all six bias-of-bias results, evidence.json and boundary_report.json
+# -- because the machinery lived inside one experiment directory and the other
+# writers could not reach it. That is not a weaker guarantee on those ten; it is
+# none, and it reads identical to a green one. `p_at_or_above_0.672` sat in
+# b1_rate.json for weeks with no writer anywhere in the tree, and nothing could
+# ask what produced it.
+#
+# Stated as a PROPERTY over whatever is on disk rather than a list of files, for
+# the reason the migration lists were dissolved: a list is true of one checkout.
+_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _artifacts():
+    """Every committed result artifact, found rather than enumerated."""
+    found = {}
+    for p in sorted((_ROOT / "design").rglob("results/*.json")):
+        found[str(p.relative_to(_ROOT))] = p
+    for extra in ("boundary_report.json", "design/methodology/evidence/evidence.json"):
+        p = _ROOT / extra
+        if p.exists():
+            found[extra] = p
+    return found
+
+
+def test_every_result_artifact_carries_a_source_fingerprint():
+    """The property. A new experiment cannot ship unfingerprinted by default."""
+    arts = _artifacts()
+    assert arts, "no result artifacts found -- the glob is wrong, not the tree"
+    bare = sorted(name for name, p in arts.items()
+                  if hr.recorded_fingerprint(json.loads(p.read_text())) is None)
+    assert not bare, (
+        "these artifacts record no source fingerprint, so nothing can date them "
+        "against the code that made them:\n  " + "\n  ".join(bare)
+        + "\nStamp them at the writer with rig.provenance.stamp().")
+
+
+# artifact -> (module file, entry point or None for a module-wide fingerprint).
+# A list of WRITERS, not of tolerated exceptions: it records where each artifact
+# is produced, so the round-trip below can re-derive the hash the writer stored.
+_WRITERS = {
+    "boundary_report.json": ("envelope_evaluator.py", "main"),
+    "design/methodology/evidence/evidence.json": (
+        "design/methodology/evidence/generate.py", None),
+    "design/methodology/experiments/b1-rate/results/b1_rate.json": (
+        "design/methodology/experiments/b1-rate/b1_rate.py", "run"),
+    "design/methodology/experiments/bias-of-bias/results/exact_energy_residual.json": (
+        "design/methodology/experiments/bias-of-bias/exact_energy.py", "run"),
+    # The checkpoint is an INPUT as well as an output -- run(resume=True) skips
+    # every base seed it already holds -- so it needs the same provenance as a
+    # result. Unstamped, a code change was silently ignored for all 20 seeds and
+    # the "exact" residual would have been a stale number with a fresh timestamp.
+    "design/methodology/experiments/bias-of-bias/results/exact_energy_checkpoint.json": (
+        "design/methodology/experiments/bias-of-bias/exact_energy.py", "run"),
+}
+for _probe in ("rho_squared", "bias_corrected", "eps_dependence",
+               "richardson", "joint_consistency"):
+    _WRITERS[f"design/methodology/experiments/bias-of-bias/results/{_probe}.json"] = (
+        "design/methodology/experiments/bias-of-bias/probes.py", _probe)
+
+
+def _load(rel):
+    """Import a writer by path, with its own directory importable.
+
+    bias-of-bias/probes.py does a bare `import core`, which resolves only when
+    its directory is on sys.path -- true when run as a script from there, not
+    true for an importer. Adding the parent is what a script run does implicitly.
+    """
+    path = _ROOT / rel
+    parent = str(path.resolve().parent)
+    if parent not in sys.path:
+        sys.path.insert(0, parent)
+    spec = importlib.util.spec_from_file_location(f"w_{path.stem}", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("artifact", sorted(_WRITERS))
+def test_each_writers_artifact_round_trips_against_its_live_module(artifact):
+    """The recorded hash must be the one the live writer would compute.
+
+    The coverage test above proves a fingerprint is PRESENT. This proves it is
+    the RIGHT one -- the check that catches a writer stamping a different entry
+    point from the one that produced the numbers, which a present-but-wrong hash
+    would otherwise hide behind a green coverage test.
+    """
+    p = _ROOT / artifact
+    if not p.exists():
+        pytest.skip(f"{artifact} not present")
+    rel, entry = _WRITERS[artifact]
+    mod = _load(rel)
+    assert hr.fingerprint_mismatch(artifact, json.loads(p.read_text()), mod,
+                                   entry) is None, (
+        f"{artifact} was written by {rel} but reads as stale -- re-run it, or the "
+        "writer and this registry disagree about which entry point produced it")

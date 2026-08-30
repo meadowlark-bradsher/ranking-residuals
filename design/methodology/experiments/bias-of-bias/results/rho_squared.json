@@ -51,7 +51,8 @@
   "ratio_weighted_mean": 0.0006423603535708029,
   "chi2": 227.8216375798625,
   "dof": 5,
-  "reduced_chi2": 45.5643275159725
+  "reduced_chi2": 45.5643275159725,
+  "source_fingerprint": "89b52854545bf4d4"
  },
  "config": {
   "n": 12,

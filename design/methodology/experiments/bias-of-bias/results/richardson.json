@@ -41,7 +41,8 @@
     "n": 189
    }
   ],
-  "monotone": true
+  "monotone": true,
+  "source_fingerprint": "0b8d1dc3b1d5678d"
  },
  "config": {
   "n": 12,

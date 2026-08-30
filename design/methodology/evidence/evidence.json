@@ -8,10 +8,11 @@
  },
  "meta": {
   "generated": "2026-08-30",
-  "commit": "ceead11",
+  "commit": "669a8fe",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 30
+  "n_claims": 30,
+  "source_fingerprint": "56056c1ca84646f8"
  },
  "claims": {
   "pm1-trap": {

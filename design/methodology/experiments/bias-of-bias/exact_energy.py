@@ -29,7 +29,7 @@ from scipy.special import gammaln
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import hodge
-from rig import fit, flows, oracle
+from rig import fit, flows, oracle, provenance
 
 # Tail truncation for the exact sum. The binomial pmf beyond 16 sd carries mass
 # below 1e-56; the log-odds it multiplies are bounded by log(2k-1) < 11 over this
@@ -220,11 +220,26 @@ def run(n_base_seeds: int = N_BASE_SEEDS, resume: bool = True, verbose: bool = T
     base = RigConfig()
     verify_replica(_cfg(base, 0))          # never compare against an unverified replica
 
+    # THE CHECKPOINT IS AN INPUT, so it needs the same provenance as an output.
+    # `resume` skips every base seed already in it, with no check that the code
+    # which computed those seeds is the code running now -- so a change to
+    # `replica`, `edge_moments` or `core` would be silently ignored for 20 of 20
+    # seeds and the "exact" residual would be a stale number wearing a fresh
+    # timestamp. That is the same defect class as an unfingerprinted result, one
+    # step upstream and harder to see, because nothing is written down at all.
+    fp = provenance.semantic_fingerprint(sys.modules[__name__], "run")
     done = {}
     if resume and CKPT.exists():
-        done = {int(k): v for k, v in json.loads(CKPT.read_text()).items()}
-        if verbose and done:
-            print(f"  resuming: {len(done)}/{n_base_seeds} base seeds already done")
+        raw = json.loads(CKPT.read_text())
+        stamped = raw.pop(provenance.FINGERPRINT_KEY, None)
+        if stamped != fp:
+            if verbose:
+                what = "carries no fingerprint" if stamped is None else f"was made by {stamped}"
+                print(f"  checkpoint {what}, code is {fp} -- discarding and recomputing")
+        else:
+            done = {int(k): v for k, v in raw.items()}
+            if verbose and done:
+                print(f"  resuming: {len(done)}/{n_base_seeds} base seeds already done")
 
     CKPT.parent.mkdir(parents=True, exist_ok=True)
     for bs in range(n_base_seeds):
@@ -246,7 +261,9 @@ def run(n_base_seeds: int = N_BASE_SEEDS, resume: bool = True, verbose: bool = T
                             for e in c.eps if e > 0},
             }
         done[bs] = rec
-        CKPT.write_text(json.dumps({str(k): v for k, v in done.items()}, indent=1))
+        CKPT.write_text(json.dumps(
+            {**{str(k): v for k, v in done.items()}, provenance.FINGERPRINT_KEY: fp},
+            indent=1))
         if verbose:
             print(f"  base seed {bs:>2}/{n_base_seeds}: "
                   f"exact {100*(1-rec['exact']['ratio']):+.3f}%   "
@@ -294,6 +311,7 @@ def summarise(done: dict, n_base_seeds: int) -> dict:
     # DELETED it from a committed file no other code path could rebuild.
     out["ci_evidence"] = {"base_seed": CI_BASE_SEED,
                           "rows": ci_evidence(bs=CI_BASE_SEED)}
+    provenance.stamp(out, sys.modules[__name__], "run")
     OUT.write_text(json.dumps(out, indent=1))
     return out
 
