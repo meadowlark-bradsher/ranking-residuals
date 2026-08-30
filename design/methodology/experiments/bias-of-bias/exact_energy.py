@@ -261,7 +261,12 @@ def run(n_base_seeds: int = N_BASE_SEEDS, resume: bool = True, verbose: bool = T
                             for e in c.eps if e > 0},
             }
         done[bs] = rec
+        # The resume checkpoint, not a result artifact. It records the SAME `fp`
+        # compared against on load above; stamp() would recompute, and a
+        # recomputed value that drifted from the compared one would invalidate
+        # the checkpoint silently -- the opposite of the point.
         CKPT.write_text(json.dumps(
+            # provenance-exempt: resume checkpoint, not an artifact (see above)
             {**{str(k): v for k, v in done.items()}, provenance.FINGERPRINT_KEY: fp},
             indent=1))
         if verbose:
