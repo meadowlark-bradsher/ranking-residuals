@@ -140,14 +140,26 @@ effectively decided before you look. The condition is on the *cell*, not the
 draw, and it has a closed form the instrument already ships:
 
 > **saturation** = E[ p^k + (1−p)^k ] — the expected fraction of edges landing at
-> 0 or k wins. Window: **≤ 0.02**.
+> 0 or k wins. Judge it against a **b₁-indexed** window: the moments close at
+> **0.03 for b₁ = 1** and **0.18 for b₁ = 22**.
 
 No simulation. Computable from the design alone, before a single comparison is
 collected, so a deployment can know in advance whether the χ² reference is
 trustworthy at its own sample size.
 
 Under matched saturation the moments hold everywhere tested — **48 of 48 cells at
-every k, across b₁ = 1 to 22.**
+every k, across b₁ = 1 to 22.** So saturation, not b₁, is what the failures track.
+
+**There is no established flat bound, and the low-b₁ edge is not pinned.** A
+universal 0.02 was proposed and withdrawn: its calibration rested on one draw per
+cell, and reseeded ten ways an in-window cell at saturation 0.0161 with b₁ = 1
+passes only 6 of 10. Treat that region as demonstrated-marginal, and expect the
+true b₁ = 1 bound to be tighter than 0.03.
+
+**And saturation is not a complete summary of a cell.** Two cells at the same
+saturation but different flows behave differently — which is a real limit on any
+single-number gate, and the reason the two figures above are a window rather than
+a threshold.
 
 *An earlier version of this document claimed the floor was a **b₁ floor** — that
 χ² held only for b₁ ≥ 3 and broke at b₁ = 1. That was wrong, and the way it was
@@ -158,9 +170,12 @@ monotone in b₁. Every low-b₁ cell carrying the finding was out of window. Re
 each cell to matched saturation and the effect disappears entirely. The sweep was
 measuring how extreme the flow was, not how many harmonic coordinates it had.*
 
-*The window does interact with b₁ at its far edges — closing at 0.03 for b₁ = 1
-and 0.18 for b₁ = 22, by two different mechanisms — but 0.02 is conservative for
-every b₁ measured.*
+*The two edges close by different mechanisms, and the mean tells them apart. At
+b₁ = 1 the drop rate climbs and separation truncation drags the surviving mean
+down — it closes by* losing draws, *so this failure and the separation one bite
+together there rather than independently. At b₁ = 22 the drop rate stays at zero,
+the mean never moves, and only the variance inflates — it closes by* low expected
+counts, *which is what the precondition was built for.*
 
 ## The filling is not a tuning knob
 
@@ -205,7 +220,7 @@ certificate is *for* — not selected after the fact.
 - Its validity is bounded by **two failures**: MLE separation (report the drop
   rate, and it is topology-dependent) and near-deterministic edges breaking the
   χ² reference — the latter checkable in closed form, before collecting data,
-  via saturation ≤ 0.02.
+  via saturation against a b₁-indexed window.
 - The filling that sets b₁ is a modelling declaration, not a knob.
 
 ## What this does not establish
