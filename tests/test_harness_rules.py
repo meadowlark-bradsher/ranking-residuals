@@ -114,7 +114,14 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
 # These names are here to make that visible, not to excuse it. Re-running the
 # suite under the committed window clears them, and the equality assertion then
 # fails until they are struck -- same ratchet as KNOWN_GAPS.
-KNOWN_STALE = {"b1_ladder", "chi2_collapse", "collapse_spread"}
+#
+# It did exactly that. b1_ladder and chi2_collapse were struck once the key-type
+# normalisation landed: both were written by the module they are compared against,
+# and had only ever read stale because JSON turns SATURATION_WINDOW's int keys
+# into strings. collapse_spread remains, and its flag is the real one -- it still
+# records saturation_max, which the module dropped, and clearing it needs its own
+# ~20 minute invocation since AUDITS sit outside the default run.
+KNOWN_STALE = {"collapse_spread"}
 
 # Results recording no gate constant at all cannot be checked either way. That is
 # a defect in the probe, not in the checker: a result nobody can date is one that
@@ -243,3 +250,30 @@ def test_rate_fields_are_not_matched_by_shape():
                 "var_ratio_med", "var_ratio_max", "se_var_ratio",
                 "trimmed_mean_ratio"):
         assert hr.is_moment_key(key), f"{key} must be in scope"
+
+
+def test_dict_constants_survive_a_json_round_trip():
+    """JSON object keys are always strings. SATURATION_WINDOW is keyed by b1 as an
+    int, so without normalisation every result reads stale against the module that
+    produced it -- and a guard no run can satisfy is one that gets switched off,
+    taking the genuine flags with it."""
+    module = {"saturation_window": {1: 0.019, 22: 0.120}}
+    from_json = {"verdict": "confirmed", "value": {
+        "saturation_window": {"1": 0.019, "22": 0.120}, "rows": []}}
+    assert hr.staleness("x", from_json, module) is None
+    really_changed = {"verdict": "confirmed", "value": {
+        "saturation_window": {"1": 0.019, "22": 0.200}, "rows": []}}
+    assert hr.staleness("x", really_changed, module) is not None
+
+
+def test_the_stale_list_holds_only_genuine_flags(results, current):
+    """chi2_collapse and b1_ladder were written by the module they are compared
+    against; only collapse_spread predates the window change."""
+    flagged = set(hr.stale(results, current))
+    assert "collapse_spread" in flagged, "the genuine stale audit must still flag"
+    for name in ("chi2_collapse", "b1_ladder"):
+        if name in results and hr.recorded_constants(results[name]).get(
+                "saturation_window") is not None:
+            assert name not in flagged, (
+                f"{name} records saturation_window matching the module and must "
+                "not read stale -- check comparable()")

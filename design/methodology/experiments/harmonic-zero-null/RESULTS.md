@@ -31,8 +31,8 @@ and those break the SECOND moment while leaving the first intact: an edge
 with expected count c contributes ~c when w=0 and ~1/c on the probability-c
 event that w=1, so ~1 in expectation but ~1/c in second moment. That is why
 meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside
-the window (sat > 0.02) are shown but excluded from the
-verdict: 25 of 40 cells are in
+the window (sat > its row's b1-dependent limit, 0.019 at the lowest b1 to 0.120 at the highest) are shown but excluded from the
+verdict: 26 of 40 cells are in
 window.
 
 The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out of window or over the separation cap).
@@ -52,7 +52,7 @@ The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out o
 | observed | 2 | 32 | 3 | 8 | 0.1762 | . | 80.8% | 1.158 | 1.533 | 0.091 | 0.0003 |
 | observed | 2 | 32 | 3 | 32 | 0.0661 | . | 43.5% | 0.973 | 1.036 | 0.062 | 0.0046 |
 | observed | 2 | 32 | 3 | 64 | 0.0431 | . | 29.3% | 0.972 | 1.029 | 0.052 | 0.0270 |
-| observed | 2 | 32 | 3 | 128 | 0.0270 | . | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
+| observed | 2 | 32 | 3 | 128 | 0.0270 | y | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
 | observed | 2 | 32 | 3 | 512 | 0.0090 | y | 5.0% | 0.983 | 0.975 | 0.046 | 0.4808 |
 | observed | 3 | 33 | 1 | 8 | 0.2588 | . | 99.6% | 1.842 | 2.597 | 0.111 | -- |
 | observed | 3 | 33 | 1 | 32 | 0.0618 | . | 43.0% | 0.740 | 0.643 | 0.030 | 0.0000 |
@@ -251,8 +251,8 @@ draw.
 
 At k = 64, 2000 replicates. `fill` is triangles filled of the
 total available; the empty and observed endpoints are marked. Only in-window
-cells (saturation <= 0.02) count toward the reading;
-144 of 144 cells are in window.
+cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the reading;
+143 of 144 cells are in window.
 
 | graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |
 |---|---|---|---|---|---|---|---|---|---|

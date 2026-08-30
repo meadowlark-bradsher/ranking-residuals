@@ -206,6 +206,28 @@ def recorded_constants(result):
     return {k: value[k] for k in GATE_CONSTANTS if k in value}
 
 
+def comparable(v):
+    """A gate constant reduced to a form that survives a round trip through JSON.
+
+    JSON object keys are ALWAYS strings. A constant that is a dict in the module --
+    SATURATION_WINDOW is {1: 0.019, 22: 0.120}, keyed by b1 as an int -- comes back
+    as {"1": 0.019, "22": 0.120}, and a naive != then reports every result stale
+    against the very module that produced it. Every gate constant before this one
+    was a scalar, which is why the comparison looked sound.
+
+    That failure mode is worse than a false alarm. A guard no run can satisfy is a
+    guard someone switches off, and the genuine flag sitting beside it -- here,
+    collapse_spread really was computed under a constant the module has dropped --
+    goes out with the noise. So keys are normalised to strings on both sides
+    before comparing, values left alone.
+    """
+    if isinstance(v, dict):
+        return {str(k): comparable(val) for k, val in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [comparable(x) for x in v]
+    return v
+
+
 def staleness(name, result, current):
     """A sentence when this result was computed under constants the code no
     longer has, or holds a value the code has changed. None when it agrees."""
@@ -217,7 +239,8 @@ def staleness(name, result, current):
         return (f"{name}: records {gone} which the module no longer defines, so it "
                 f"was computed under a gate that has since been replaced. Re-run it.")
     differs = {k: (recorded[k], current[k])
-               for k in recorded if recorded[k] != current[k]}
+               for k in recorded
+               if comparable(recorded[k]) != comparable(current[k])}
     if differs:
         pairs = ", ".join(f"{k}: result {r!r} vs code {c!r}"
                           for k, (r, c) in sorted(differs.items()))
