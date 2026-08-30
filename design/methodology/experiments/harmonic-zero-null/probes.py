@@ -1098,9 +1098,135 @@ def write_results_md():
     (HERE / "RESULTS.md").write_text("\n".join(L) + "\n")
 
 
+# ---------------------------------------------------------------- probe 7
+
+
+def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
+    """Was the 0.02 window calibrated on one draw?
+
+    chi2_collapse runs a SINGLE draw per cell -- tag "c1|{filling}|{g}|{k}",
+    carrying no base index -- and SATURATION_MAX was placed against that grid:
+    all 25 in-window cells pass both moment checks, every cell failing either is
+    out of window, 8 out-of-window cells pass anyway. Principle 2 says a figure
+    that moves with the seed ships as a distribution. The window's own
+    calibration never did, and it is the number every other probe gates on.
+
+    So: rerun chi2_collapse's grid UNCHANGED -- same unmatched eta_in_S, so each
+    cell keeps its natural saturation rather than a matched one -- under n_base
+    independent base seeds. The reference draw reuses chi2_collapse's own tag, so
+    the shipped value sits beside the spread around it and the harness can be
+    checked against the very number it audits.
+
+    b1_one_boundary asks this forward: sweep extremity at fixed b1 and find where
+    the window closes. This asks it backward: on the grid the window was actually
+    placed on, does the separation survive a different seed? The two should agree,
+    and where they do the b1-dependence is not an artifact of either design.
+
+    `mtol`/`vtol` mirror write_results_md's local `moments_ok`. They are
+    duplicated rather than shared -- if one moves the other must.
+
+    Cost is (n_base + 1) x chi2_collapse by construction: turning one draw per
+    cell into a distribution is exactly n_base times the work.
+    """
+    rows = []
+    for filling in ("observed", "empty"):
+        for g in range(N_GRAPHS):
+            edges = graph(g)
+            D0, D1 = st.operators(N_ITEMS, edges, filling)
+            bases = st.harmonic_zero_bases(D0, D1)
+            df = bases[0].shape[1]
+            eta = eta_in_S(D0, D1, 1.0, g)
+            for k in K_GRID:
+                sat = cell_saturation(eta, k)
+                draws = []
+                # base=None is chi2_collapse's own tag: the shipped draw.
+                for base in [None] + list(range(n_base)):
+                    tag = (f"c1|{filling}|{g}|{k}" if base is None
+                           else f"c7|{base}|{filling}|{g}|{k}")
+                    T, _, dropped = run_cell(eta, k, bases, tag, reps)
+                    if not len(T) or len(T) < 2:
+                        continue
+                    mr = float(T.mean() / df)
+                    vr = float(T.var(ddof=1) / (2 * df))
+                    draws.append({
+                        "base": base, "mean_ratio": mr, "var_ratio": vr,
+                        "max_T": float(T.max()),
+                        "drop_rate": float(dropped / reps),
+                        "passes": bool(abs(mr - 1) <= mtol
+                                       and abs(vr - 1) <= vtol),
+                    })
+                ref = next((d for d in draws if d["base"] is None), None)
+                spread = [d for d in draws if d["base"] is not None]
+                if not spread:
+                    continue
+                rows.append({
+                    "filling": filling, "graph": g, "k": k, "df": df,
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "ref_passes": None if ref is None else ref["passes"],
+                    "ref_var_ratio": None if ref is None else ref["var_ratio"],
+                    "n_base_judged": len(spread),
+                    "n_base_passing": sum(d["passes"] for d in spread),
+                    "var_ratio_med": float(np.median([d["var_ratio"]
+                                                      for d in spread])),
+                    "var_ratio_max": max(d["var_ratio"] for d in spread),
+                    "draws": draws,
+                })
+
+    inw = [r for r in rows if r["in_window"]]
+    out = [r for r in rows if not r["in_window"]]
+    # The shipped claim is about SUFFICIENCY: in-window implies the moments hold.
+    # A cell that passed on the reference draw and fails on any other base seed
+    # is the claim failing, not the cell being borderline -- the window was
+    # placed by exactly one such draw per cell.
+    flipped = [r for r in inw if r["n_base_passing"] < r["n_base_judged"]]
+    # Necessity was never claimed, but the count moves with the seed too, so it
+    # ships alongside rather than as the single-draw 8.
+    out_any = [r for r in out if r["n_base_passing"] > 0]
+    # df is carried because b1_one_boundary says the window is b1-dependent; if
+    # that is right the flips concentrate at low df, and this grid says so
+    # independently. NOTE the confound: every high-df cell here is `empty`,
+    # where the curl term is a no-op, so df and ||eta|| move together. This grid
+    # cannot separate them on its own -- b1_one_boundary is the design that can.
+    by_df = {}
+    for r in rows:
+        d = by_df.setdefault(r["df"], {"cells": 0, "all_pass": 0,
+                                       "sat_lo": 1.0, "sat_hi": 0.0})
+        d["cells"] += 1
+        d["all_pass"] += int(r["n_base_passing"] == r["n_base_judged"])
+        d["sat_lo"] = min(d["sat_lo"], r["saturation"])
+        d["sat_hi"] = max(d["sat_hi"], r["saturation"])
+
+    verdict = ("inconclusive" if not inw
+               else "confirmed" if not flipped else "single-draw")
+    return {
+        "probe": "collapse_spread",
+        "question": "Does the 0.02 saturation window separate, or did its "
+                    "calibration inherit one base seed?",
+        "falsifies": "If in-window cells fail the moment checks under other "
+                     "base seeds while passing on the shipped one, the window "
+                     "was placed by a draw and does not separate the grid.",
+        "verdict": verdict,
+        "value": {
+            "reps": reps, "n_base": n_base, "mtol": mtol, "vtol": vtol,
+            "saturation_max": SATURATION_MAX,
+            "n_cells": len(rows),
+            "n_in_window": len(inw),
+            "n_in_window_stable": len(inw) - len(flipped),
+            "n_in_window_flipped": len(flipped),
+            "n_out_passing_ref": sum(1 for r in out if r["ref_passes"]),
+            "n_out_passing_any_base": len(out_any),
+            "worst_in_window": (max((r["var_ratio_max"] for r in inw),
+                                    default=None)),
+            "by_df": by_df,
+            "rows": rows,
+        },
+    }
+
+
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
           "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
-          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary}
+          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary,
+          "collapse_spread": collapse_spread}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
