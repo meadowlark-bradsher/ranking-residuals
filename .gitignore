@@ -186,7 +186,7 @@ cython_debug/
 #   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #   and can be added to the global gitignore or merged into this file.  For a more nuclear
 #   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+.idea/
 
 # Abstra
 #   Abstra is an AI-powered process automation framework.
@@ -221,6 +221,10 @@ __marimo__/
 runs/
 
 # LaTeX build products (regenerate: tectonic -X compile)
+design/reference/*.log
+design/reference/*.aux
+design/reference/*.out
+design/reference/*.xdv
 design/methodology/*.pdf
 design/methodology/*.log
 design/methodology/*.aux
@@ -232,3 +236,11 @@ design/methodology/combined/combined-body.tex
 
 # macOS Finder metadata
 .DS_Store
+
+# Reference papers (third-party PDFs: cite them by arXiv id, don't vendor them).
+# Authored analysis in design/reference/ -- e.g. the DZW canonical briefing --
+# stays tracked; it is ours and nothing else records it.
+design/reference/*.pdf
+
+# Claude Code worktrees (transient; git worktree list is the source of truth)
+.claude/worktrees/

@@ -1,0 +1,131 @@
+{
+  "topology_test_suite": "2026_operating_envelope",
+  "metrics_contract": [
+    "drop_rate",
+    "mean_T_ratio",
+    "realized_size"
+  ],
+  "config": {
+    "n_items": 12,
+    "p_edge": 0.45,
+    "beta": 0.25,
+    "gamma": 2.0,
+    "alpha": 0.05,
+    "filling": "observed",
+    "replicates": 2000,
+    "k_grid": [
+      512,
+      128,
+      64,
+      32
+    ],
+    "statistic": "closed-form oracle Rao score in harmonic coordinates: T = s^T (H^T I H)^-1 s with s = H^T (w - k p)",
+    "separation_rule": "mle",
+    "separation_rule_meaning": "drop the draw when the constrained MLE diverges"
+  },
+  "source_fingerprint": "1459f7182a88cc73",
+  "assertions": {
+    "stationarity_4_1": "not applicable on this path: the oracle scores at the TRUE eta, where no first-order condition holds, so the score has no reason to lie in the harmonic subspace and max_score_off_harmonic is large by construction. The instrument's analogue -- score_test.score_off_harmonic, ||M^T U|| at the converged constrained fit -- is a real convergence check; this one has no content and is reported, not asserted.",
+    "degeneracy_4_2": "pass",
+    "truncation_trend_4_3": "pass",
+    "truncation_trend_detail": ""
+  },
+  "results": {
+    "graph_0_observed": {
+      "b1": 4,
+      "E": 27,
+      "k_512": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 1.010076,
+        "realized_size": 0.0515
+      },
+      "k_128": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 1.013453,
+        "realized_size": 0.048
+      },
+      "k_64": {
+        "drop_rate": 0.001,
+        "mean_T_ratio": 1.01389,
+        "realized_size": 0.056557
+      },
+      "k_32": {
+        "drop_rate": 0.026,
+        "mean_T_ratio": 0.998371,
+        "realized_size": 0.047228
+      }
+    },
+    "graph_1_observed": {
+      "b1": 3,
+      "E": 24,
+      "k_512": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 1.017948,
+        "realized_size": 0.0495
+      },
+      "k_128": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 0.998521,
+        "realized_size": 0.0495
+      },
+      "k_64": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 1.017932,
+        "realized_size": 0.0465
+      },
+      "k_32": {
+        "drop_rate": 0.014,
+        "mean_T_ratio": 0.970196,
+        "realized_size": 0.046146
+      }
+    },
+    "graph_2_observed": {
+      "b1": 3,
+      "E": 32,
+      "k_512": {
+        "drop_rate": 0.05,
+        "mean_T_ratio": 0.961827,
+        "realized_size": 0.047368
+      },
+      "k_128": {
+        "drop_rate": 0.207,
+        "mean_T_ratio": 0.951894,
+        "realized_size": 0.046028
+      },
+      "k_64": {
+        "drop_rate": 0.293,
+        "mean_T_ratio": 0.907268,
+        "realized_size": 0.039604
+      },
+      "k_32": {
+        "drop_rate": 0.4355,
+        "mean_T_ratio": 0.905345,
+        "realized_size": 0.045173
+      }
+    },
+    "graph_3_observed": {
+      "b1": 1,
+      "E": 33,
+      "k_512": {
+        "drop_rate": 0.0,
+        "mean_T_ratio": 1.059923,
+        "realized_size": 0.0585
+      },
+      "k_128": {
+        "drop_rate": 0.0075,
+        "mean_T_ratio": 1.016096,
+        "realized_size": 0.048363
+      },
+      "k_64": {
+        "drop_rate": 0.0915,
+        "mean_T_ratio": 0.968531,
+        "realized_size": 0.044029
+      },
+      "k_32": {
+        "drop_rate": 0.43,
+        "mean_T_ratio": 0.887583,
+        "realized_size": 0.033333
+      }
+    }
+  }
+}

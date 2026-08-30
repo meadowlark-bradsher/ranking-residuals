@@ -1,0 +1,123 @@
+# bias-of-bias
+
+> **Status: independent replication, not the cited source.**
+>
+> The exact-energy residual computed here (`report_exact.py` ->
+> `results/exact_energy_residual.json`, **+0.36349% +- 0.00199%** over 20 base
+> seeds) replicates the registered claim `residual-exact` in
+> `../../evidence/`, which reports **+0.36238% +- 0.00238%** and is the value
+> the paper quotes.
+>
+> The two agree well inside either standard error. They are not bit-identical:
+> the implementations were written separately, and small differences in cell
+> handling are enough to move the fourth decimal. That is what makes this a
+> useful replication rather than a second opinion from the same code -- but it
+> also means **only one of them should ever be cited**. Cite `residual-exact`.
+> Treat a disagreement between the two beyond a few standard errors as a signal
+> that one implementation has drifted, and reconcile before publishing either.
+
+Hunting the mechanism behind the residual in the floor estimator.
+
+The name is literal. The floor the rig recovers *is* a bias term —
+`‖P_h·bias‖²`, the harmonic energy that survives infinite data. Our estimator of
+it carries a bias of its own: a stable **~0.43% ± 0.09%** under-read that
+survived both levers we had (tuning ρ and lengthening the `k` grid). These probes
+ask what that second bias is made of.
+
+## The five prongs
+
+| probe | asks | status |
+|---|---|---|
+| `rho_squared` | does the residual scale as ρ², as pure curvature leak predicts? | here |
+| *analytic logit-bias prediction* | does the closed-form `b_e` contribution predict 0.43%? | **worked analytically elsewhere** |
+| `bias_corrected` | does correcting the plug-in logit bias collapse it? | here |
+| `eps_dependence` | is it ε-independent (variance curvature) or ε-scaling (cross term)? | here |
+| `richardson` | does the floor converge upward as the window tightens? | here |
+| `joint_consistency` | are the two fixes one cause or two? | **added after the first run** |
+
+The analytic prong is recorded so the set reads as five. It is the one that would
+turn an empirical property into a theorem about the estimator; the others here
+constrain which mechanism that theorem should be about.
+
+`joint_consistency` was not planned. It exists because `bias_corrected` and
+`richardson` each landed on zero, and two fixes that separately explain the whole
+of one residual is a coincidence worth attacking rather than reporting.
+
+See [RESULTS.md](RESULTS.md) for what they found. It is regenerated from
+`results/*.json` by `probes.py`, so it cannot drift from the recorded data.
+
+## Why these do not go through the config
+
+`rho`, `fit_k_min` and `eps` are all config fields, so the obvious way to sweep
+them is `cfg.with_(rho=...)`. That is wrong here. `derive_seed` hashes the config
+fingerprint, so changing any field also redraws every mask — the sweep would vary
+the axis **and** hand you a different graph ensemble, and the two effects are not
+separable afterwards. The ρ scan recorded in the papers does exactly this and
+averages over base seeds to wash it out.
+
+`core.py` separates the stages the production path fuses:
+
+```
+mask_for(n, p, seed)     the graph -- depends on seed, n, p and nothing else
+draw(...)                sampling  -- win counts per (k, rep) on that graph
+energies(draw, corr)     encoding  -- counts -> flow -> harmonic energy
+fit(ks, E, window)       estimation-- energies -> floor, at a chosen window
+```
+
+ρ and the window enter **only at the last stage**, so sweeping them needs no
+resampling: draw once, refit many times. That makes `rho_squared`,
+`richardson` and `joint_consistency` exact rather than noisy, and nearly free. ε enters at `draw` and
+does need resampling — but the mask stays pinned, which the production path
+would not do.
+
+None of this changes the rig. `core.py` is an adapter for experimental control,
+not a fork of the estimator.
+
+## Why the correction is not a config flag
+
+`bias_corrected` changes what the estimator computes. It would be natural to add
+`bias_correct: bool = False` to `RigConfig` and sweep it — but a new field
+changes the fingerprint even when inert, which reseeds every mask and moves every
+stochastic number in the papers. Verified. So the correction lives in
+`core.energies(..., correction="firth")` and touches nothing shipped.
+
+If it turns out to work and we want it, adding it to the rig is a separate,
+deliberate change that pays the reseed cost once, with a full re-verification and
+a pass over the papers. That is when a branch is warranted; not before.
+
+## Results
+
+`results/*.json`, one per probe:
+
+- `question` — what it asks
+- `falsifies` — **what result would have changed the conclusion**, written before
+  the run
+- `verdict` — `supported` / `refuted` / `inconclusive`
+- `value`, `config` — the numbers and the conditions
+
+Recording `falsifies` up front is what stops a null result being reread as a
+weaker positive afterwards.
+
+**A refuted probe is a result.** It removes a mechanism from the list and saves
+the next person the run. These stay out of `evidence.json`, which holds only what
+the papers cite and must stay green; if a probe yields something a paper cites,
+it graduates deliberately.
+
+```bash
+python probes.py                 # all of them, and regenerate RESULTS.md
+python probes.py rho_squared     # one
+```
+
+## Check the power before trusting a verdict
+
+The first run of these probes used 40 seeds × 32 reps. Every verdict it produced
+was noise, and none of them looked like noise — they came with signs, magnitudes
+and confident labels. The standard error on the bias scales as roughly
+`41 / sqrt(seeds × reps)` percentage points, so that configuration carried
+±1.14pp against an effect of about half a point.
+
+`probes.py` now runs 220 × 384, for about ±0.14pp. If you change `SEEDS` or
+`REPS`, recompute that number first and compare it against the effect you are
+trying to see. This failure mode is silent: the probes will report verdicts at
+any power, and under-powered verdicts are indistinguishable from findings
+without doing this arithmetic.

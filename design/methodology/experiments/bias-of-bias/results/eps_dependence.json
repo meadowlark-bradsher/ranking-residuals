@@ -1,0 +1,72 @@
+{
+ "probe": "eps_dependence",
+ "question": "Is the residual independent of eps, as pure variance curvature predicts?",
+ "falsifies": "A spread across eps larger than twice the mean standard error refutes eps-independence and points at the injected-harmonic cross term instead.",
+ "verdict": "refuted",
+ "value": {
+  "rows": [
+   {
+    "eps": 0.15,
+    "bias_frac": 0.0021673615671616467,
+    "se": 0.0038136803678236364,
+    "n": 189
+   },
+   {
+    "eps": 0.2,
+    "bias_frac": 0.0017223681750540162,
+    "se": 0.0022954990434056466,
+    "n": 189
+   },
+   {
+    "eps": 0.3,
+    "bias_frac": 0.007220472395790976,
+    "se": 0.0015627562462955135,
+    "n": 189
+   },
+   {
+    "eps": 0.4,
+    "bias_frac": 0.00970391867974014,
+    "se": 0.0012364471543896713,
+    "n": 189
+   },
+   {
+    "eps": 0.5,
+    "bias_frac": 0.012328598529774398,
+    "se": 0.0011235455144338847,
+    "n": 189
+   }
+  ],
+  "spread": 0.010606230354720381,
+  "mean_se": 0.0020063856652696704,
+  "source_fingerprint": "eeb511ad02efa02d"
+ },
+ "config": {
+  "n": 12,
+  "p": 0.45,
+  "beta": 0.25,
+  "gamma": 2.0,
+  "ks": [
+   16,
+   32,
+   64,
+   128,
+   256,
+   512,
+   1024,
+   2048,
+   4096
+  ],
+  "seeds": 220,
+  "reps": 384,
+  "filling": "observed",
+  "epss": [
+   0.15,
+   0.2,
+   0.3,
+   0.4,
+   0.5
+  ],
+  "rho": 1.5
+ },
+ "note": "Mask pinned across eps; only the latent and the sampling change."
+}
