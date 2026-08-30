@@ -1,4 +1,10 @@
-# Synthetic Calibration Rig — Design Specification (v8)
+# Synthetic Calibration Rig — Design Specification (v9)
+
+**Revision note (v9):** **Delta F re-decided, and held strict.** v6 deferred the alternative to §8.5's coverage criterion on an explicit precondition — *"gated on ρ being optimised first, which has not happened"* — and v7 then optimised ρ without revisiting the clause, so it stood as a gate on work that was no longer blocked. The gate is now closed properly: the criterion **stays strict**, and the deferral wording is retired rather than left to be read as live.
+
+The decision goes the same way the change-set recommended, but for a stronger reason than in v6. v7's tuning did not merely narrow the residual, it **removed most of the reason to loosen**: coverage went from a median of 13 of 16 cells to **15 of 16 (range 13–16, 20 base seeds)**, and the surviving bias is **+0.435% ± 0.088** — about a third of the per-cell sampling spread, below what any single sweep resolves. A tolerance set now would be drawn around a quantity the spec still calls real (`t = 5.0`) but which is no longer the dominant term, and would hide the residual that a different mechanism still has to remove. Documenting the exception costs one cell in sixteen; encoding it costs the ability to notice when it closes.
+
+**No rig behaviour changes** — the criterion is unchanged, so §§2–12 are untouched. What changed is that §8.5's exception is now quoted as a distribution from the registry (`residual-across-draws`) instead of the single-draw `16/20` it carried, which was a pre-v7 figure on a 20-cell sweep the defaults no longer use (4 `eps` × 4 γ = 16 cells) — and one of the quotes the rule beside the v7 note retires by name. Full `verify.py` reproduces 30/30 claims at `4fc7648`.
 
 **Revision note (v8):** §13.3 added — a reporting convention for margins — after one shipped rounded outward and the rounding was then inherited verbatim into a second document. `bias-of-bias/README.md` reported a gap of `5.1e-08` pt against a `0.02` pt tolerance as "six orders of magnitude"; the factor is `3.93e+05`, so 5.6, and the overstatement is 2.5× in the linear quantity. The rule is to report the two quantities and not the ratio between them: the registry owns `residual-exact.tolerance` and owns nothing derived from it, so a quoted tolerance fails *loudly* when retuned where a quoted factor goes quietly stale. **No rig behaviour changes** — this is a documentation contract, which is why §§2–12 are untouched. §13's lead-in also said "Two results"; it says three. <!-- margin-exempt: v8 revision note reporting the defect that produced 13.3 -->
 
@@ -22,7 +28,7 @@ Per-draw spread also tightened, from (−0.7%, +3.4%) to (−0.52%, +1.16%). Cos
 - **C — ζ test construction** (§8.8). The claim stands; the construction is now specified, because the first test asserted it on a graph where ζ is *not* blind.
 - **D — the parked residual, re-measured.** See below; the open question is now narrower and partly answered.
 - **E — config defaults, CONFIRMed against the shipped code.** `beta 0.3 → 0.25`, `n_int 8 → 12`. One of the two proposed fixes did **not** do what the change-set expected — see §2.6.
-- **F — §8.5 criterion held strict** (the change-set's recommendation). The alternative was explicitly gated on ρ being optimised first, which has not happened.
+- **F — §8.5 criterion held strict** (the change-set's recommendation). The alternative was explicitly gated on ρ being optimised first, which had not happened *at v6*. **Superseded by v9:** v7 optimised ρ, which satisfied that precondition and left this sentence reading as a standing gate on unblocked work. Delta F has since been re-decided on the post-v7 numbers and is **still held strict** — see the v9 note above. Do not read this clause as deferring anything.
 
 **Also in v6, from the reconciliation itself:** the default `k` grid was extended past 1024. The derived window of Delta A needs `k ≈ 516` at `eps = 0.1`, which the old grid could not reach — so the fit fell back and flagged `grid_insufficient`. Measured over 48 seeds × 4 γ, extending to 4096 takes `grid_insufficient` from **4/20 to 0/20** and worst γ-drift from **38.0% to 11.8%**, at a cost of 1.7 s vs 1.6 s.
 
@@ -396,14 +402,21 @@ Per config, compute the exact expected decomposition (using `hodge_projectors`) 
       floor is 1.86× wrong.
    4. **Floor must equal `eps^2` within its CI**, and be **monotone in `eps^2`**.
       `eps = 0` is the negative control: its floor CI must cover 0.
-      **(Delta F, v6 — HELD STRICT.)** The criterion is deliberately not loosened. Widening
-      the tolerance would hide exactly the residual that tuning ρ is meant to remove. Known
-      exceptions are *documented*, not tolerated: over 48 seeds × 4 γ coverage is 16/20, and
-      the failing cells are recorded in the v6 residual note. Any exception encoded in the
-      suite must be `xfail(strict=True)`, so it flips to a **failure** the moment the bias
-      closes and forces this clause to be revisited rather than carrying a stale exemption.
-      *(This is not hypothetical: the two exceptions Delta D recorded went stale as soon as
-      the `k` grid was extended, and the strict marker is what surfaced it.)*
+      **(Delta F — HELD STRICT. Re-decided at v9 on the post-v7 numbers.)** The criterion is
+      deliberately not loosened. ρ is no longer the open lever — v7 optimised it — so what a
+      tolerance would now hide is the residual that a *different* mechanism still has to
+      remove, which is the one thing that must stay visible. Known exceptions are
+      *documented*, not tolerated: coverage is **typically 15 of 16 cells, range 13–16 over
+      20 base seeds**, against a surviving bias of **+0.435% ± 0.088** — so roughly one cell
+      in sixteen fails to cover, and which cell moves with the draw. Both figures are owned by
+      the registry (claim `residual-across-draws`); quote the claim rather than a copy of its
+      digits, and never a single draw. Any exception encoded in the suite must be
+      `xfail(strict=True)`, so it flips to a **failure** the moment the bias closes and forces
+      this clause to be revisited rather than carrying a stale exemption.
+      *(This is not hypothetical, twice over: the two exceptions Delta D recorded went stale
+      as soon as the `k` grid was extended, and the strict marker is what surfaced it — and
+      the figure this clause itself carried until v9, `16/20`, was a single draw on a 20-cell
+      sweep the defaults no longer use.)*
    5. **Floor must be invariant across γ** — γ shapes `c` and the `O(1/k^2)` bias, never the
       floor (§2.4). Require drift `< 15%` across the γ grid. *(This is satisfiable only on
       the `k >= 64` window: measured drift 0.8–7.1% there vs 15–21% on the full grid.)*
