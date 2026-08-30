@@ -23,8 +23,8 @@
 >
 > That is the stronger result rather than the weaker one: two independently
 > written implementations of the same identity, on the same graphs, agreeing to
-> every digit either one reports. The residual 1e-07 is summation order over
-> 20 seeds x 16 cells, not a difference in what is computed.
+> the six significant figures above. The seventh-digit gap is summation order
+> over 20 seeds x 16 cells, not a difference in what is computed.
 >
 > **The rule, with a trigger you can evaluate.** Treat a disagreement beyond
 > `residual-exact`'s tolerance -- `{kind: abs, value: 0.02}` percentage points --
@@ -38,10 +38,11 @@ Hunting the mechanism behind the residual in the floor estimator.
 
 The name is literal. The floor the rig recovers *is* a bias term —
 `‖P_h·bias‖²`, the harmonic energy that survives infinite data. Our estimator of
-it carries a bias of its own: a stable under-read of under half a percentage
-point that survived both levers we had (tuning ρ and lengthening the `k` grid).
-The registry owns both figures — `residual-across-draws` sampled, `residual-exact`
-with Monte Carlo removed. These probes ask what that second bias is made of.
+it carries a bias of its own: a small, stable under-read that survived both levers
+we had (tuning ρ and lengthening the `k` grid). The registry owns the figure twice
+over, and the two arms differ by about 20% — `residual-across-draws` sampled,
+`residual-exact` with Monte Carlo removed — which is why no single gloss for it
+belongs in this sentence. These probes ask what that second bias is made of.
 
 ## The five prongs
 
