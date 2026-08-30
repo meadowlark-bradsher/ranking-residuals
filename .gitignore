@@ -232,3 +232,6 @@ design/methodology/combined/combined-body.tex
 
 # macOS Finder metadata
 .DS_Store
+
+# Claude Code git worktrees (scaffolding, never repo content)
+.claude/worktrees/
