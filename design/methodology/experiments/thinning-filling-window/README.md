@@ -99,7 +99,74 @@ with it -- so a flow that is curl under `observed` can read as harmonic under a
 partial filling, and be certified as genuine obstruction. This run cannot see
 that, because it re-derives the injection from each rung.
 
-### Next run
+### Answered (second run, `filling_leakage`)
+
+**The dial is dead, and the reason is that it was never a statistical knob.**
+
+Hold the misspecification fixed -- built once at `observed`, where it is exactly
+H0-true -- and walk the test's filling down the ladder. Leakage is zero at the
+observed end and nonzero at every other rung, 0.196 to 0.707. The sampled
+consequence is total: rejection is **1.000** at every leaking rung (0.982 and
+0.991 at graph 2's two smallest leaks), against nominal 0.047-0.056 at every
+zero-leak rung. Section 3 puts the usable band at ||P_h eps|| around 0.1; the
+smallest leak on the ladder is twice that, so the size is not inflated, it is gone.
+
+Rungs that are simultaneously chi2-valid and safe:
+
+| graph | b1 at `observed` | usable rungs |
+|---|---|---|
+| 0 | 4 | b1 = 4 (the observed end, and only it) |
+| 1 | 3 | b1 = 3 (the observed end, and only it) |
+| 2 | 3 | b1 = 3 (the observed end, and only it) |
+| 3 | 1 | **none** -- safe only at b1 = 1, where chi2 fails |
+
+So the answer to this branch's question is: the window `dominance_ladder` found is
+**not usable**. Every rung it opened leaks. The only safe filling is the one you
+started at.
+
+### What this means for thinning, which is better than it sounds
+
+Thinning never needed the dial on three of four graphs. At their own `observed`
+filling, graphs 0, 1 and 2 sit at b1 = 4, 3, 3 and hold chi2 at k = 64
+(meanT/df 1.044, 1.055, 0.972). Gate 3's original failure was graph 3 speaking
+for the set, at b1 = 1.
+
+That yields a **free pre-check**: b1 is a function of (edges, triangles) alone, so
+a deployment can compute it before collecting a single comparison.
+
+> **b1 >= 3 at your observed filling -> thinning is safe at k/2. b1 = 1 -> it is
+> not, and no choice of filling rescues it.**
+
+Cheaper and more decisive than the dial would have been, and it runs before the
+money is spent.
+
+### The result worth keeping
+
+Note what `filling_leakage` assumes: it *defines* innocence at the `observed`
+filling by constructing eta there. If you genuinely believed fewer triangles were
+the right model, a flow that is curl under `observed` would be a real partial
+obstruction, and the test would be correctly detecting something you had declared
+to be signal -- not leaking.
+
+So the finding is not "leakage is a bug." It is that **the filling is not a
+statistical parameter at all -- it is the definition of what counts as innocent.**
+Moving it changes the hypothesis, not the estimator. It cannot be tuned for chi2
+convenience for the same reason a null cannot be tuned for a p-value.
+
+That puts the filling fork back where the briefing said it belonged: coupled to
+whose cycle the certificate certifies (RAN-3), and not settleable by rig time.
+It is a declaration to be made and defended, not a trade-off to be measured.
+
+### Scope, and the next run if there is one
+
+Both runs use a misspecification shaped as curl under `observed`. That is the
+worst case for the dial and the natural shape for a comparator whose local
+inconsistencies sit on filled triangles, but a differently-shaped one would leak
+differently. Nothing here measures that, and it is the only remaining way the
+dial could be rehabilitated -- narrowly, for misspecifications of a shape a
+deployment could actually argue for.
+
+### Superseded
 
 Inject a **fixed** flow -- curl under the `observed` filling, held constant -- and
 sweep the *test's* filling level underneath it. Measure where it starts reading as

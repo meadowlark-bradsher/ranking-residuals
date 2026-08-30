@@ -448,6 +448,100 @@ def dominance_ladder(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     }
 
 
+def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
+    """If the misspecification is FIXED and the filling moves, when does curl
+    start reading as harmonic?
+
+    dominance_ladder found a wide window, but it re-derived its curl from each
+    rung -- the null was absorbing curl it was constructed to absorb. That is
+    self-consistent and it is not the deployment case. A real comparator's
+    misspecification is a fixed flow; it does not move when we change a modelling
+    convention. Moving the filling moves the curl/harmonic BOUNDARY underneath it.
+
+    So: build eta once at the `observed` filling, where it is exactly H0-true by
+    construction, and hold it fixed while the TEST's filling walks down the
+    ladder. Every rejection below the observed end is a false positive -- innocent
+    curl reclassified as genuine obstruction because we filled fewer triangles.
+
+    `leak_frac` is the mechanism and it is exact, not sampled: ||P_H(m) eta|| /
+    ||eta||, the share of a flow with no genuine cycle that the rung's harmonic
+    subspace has captured. The rejection rate is its consequence.
+
+    This is the probe that decides whether the filling is usable as a dial or
+    only apparently so. Gate 3 wants FEWER triangles (higher b1); leakage is
+    caused by exactly that move.
+    """
+    rows = []
+    for g in range(N_GRAPHS):
+        edges = graph(g)
+        tris, rungs = ladder_levels(edges, levels)
+        # Built once, at the observed filling, and never rebuilt. D0 does not
+        # depend on the filling; only D1 does, so the flow is fixed while the
+        # subspace that judges it moves.
+        D0, D1_obs = st.operators_for_triangles(N_ITEMS, edges, tris)
+        grad = D0 @ flows.theta_gamma(N_ITEMS, BETA, GAMMA)
+        if not D1_obs.shape[0]:
+            raise ValueError(f"graph {g}: no 2-cells under `observed`, so there is "
+                             "no curl to hold fixed and nothing to leak.")
+        c = seed("curl", g).normal(size=D1_obs.shape[0])
+        curl = D1_obs.T @ c
+        eta = grad + rho * np.linalg.norm(grad) / np.linalg.norm(curl) * curl
+        for b1, m in rungs:
+            _, D1m = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+            bases = st.harmonic_zero_bases(D0, D1m)
+            H = bases[0]
+            # Exact: how much of an H0-true flow this rung calls harmonic.
+            leak = float(np.linalg.norm(H.T @ eta))
+            for k in ks:
+                rej, drop = [], []
+                for sd in range(base_seeds):
+                    T, _, dropped = run_cell(eta, k, bases,
+                                             f"c6|{g}|{b1}|{k}|s{sd}", reps)
+                    rej.append(float((T > chi2.ppf(1 - ALPHA, b1)).mean())
+                               if len(T) > 20 else None)
+                    drop.append(float(dropped / reps))
+                rows.append({
+                    "graph": g, "E": len(edges), "k": k, "rho_curl": rho,
+                    "n_triangles_filled": m, "n_triangles_total": len(tris),
+                    "df": b1, "is_empty_end": m == 0,
+                    "is_observed_end": m == len(tris),
+                    "leak_norm": leak,
+                    "leak_frac": leak / float(np.linalg.norm(eta)),
+                    "reject": _spread(rej), "drop": _spread(drop),
+                })
+    fold_k = min(ks)
+    at_fold = [r for r in rows if r["k"] == fold_k]
+    graphs = sorted({r["graph"] for r in at_fold})
+    # A rung is SAFE if a flow with no genuine cycle is not rejected there: size
+    # within 2 alpha, judged on the worst base seed rather than the mean.
+    def safe(r):
+        return r["reject"]["max"] is not None and r["reject"]["max"] <= 2 * ALPHA
+    safe_b1 = {g: sorted(r["df"] for r in at_fold if r["graph"] == g and safe(r))
+               for g in graphs}
+    # Usable = chi2-valid (b1 >= 3) AND safe. Dominance is the third gate and
+    # dominance_ladder found it open everywhere with a filled triangle.
+    usable = {g: [b for b in safe_b1[g] if b >= 3] for g in graphs}
+    worst = max((r["leak_frac"] for r in at_fold), default=0.0)
+    leaks = bool(worst > 1e-8)
+    verdict = ("confirmed" if leaks else "refuted")
+    return {
+        "probe": "filling_leakage",
+        "question": "With the misspecification held fixed, does lowering the "
+                    "filling reclassify innocent curl as harmonic and reject it?",
+        "falsifies": "If leak_frac stays at zero and size stays nominal all the "
+                     "way down the ladder, the filling is a free dial and "
+                     "dominance_ladder's window is usable as measured.",
+        "verdict": verdict,
+        "value": {"alpha": ALPHA, "reps": reps, "base_seeds": base_seeds,
+                  "ks": list(ks), "rho_curl": rho, "fold_k": fold_k,
+                  "max_leak_frac": worst,
+                  "safe_b1_by_graph": {str(g): safe_b1[g] for g in graphs},
+                  "usable_b1_by_graph": {str(g): usable[g] for g in graphs},
+                  "n_graphs_with_usable_rung": sum(1 for g in graphs if usable[g]),
+                  "n_graphs": len(graphs), "rows": rows},
+    }
+
+
 def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
     """Is the chi2 validity floor a function of b1, or of k?
 
@@ -545,6 +639,7 @@ def write_results_md():
     e = json.loads((RES / "harmonic_projected_eps.json").read_text())
     l = json.loads((RES / "b1_ladder.json").read_text())
     dm = json.loads((RES / "dominance_ladder.json").read_text())
+    fl = json.loads((RES / "filling_leakage.json").read_text())
     cv, fv, ev, lv = c["value"], f["value"], e["value"], l["value"]
 
     ks_grid = sorted({r["k"] for r in cv["rows"]})
@@ -853,6 +948,55 @@ def write_results_md():
           "base seeds. A window that is open on the mean and closed at one seed is not an",
           "open window.", ""]
 
+    lv2 = fl["value"]
+    lfold = [r for r in lv2["rows"] if r["k"] == lv2["fold_k"]]
+    L += ["", "## What the dial costs: leakage under a FIXED misspecification", "",
+          "dominance_ladder re-derived its curl from each rung, so the null was",
+          "absorbing curl it was constructed to absorb. A real comparator's",
+          "misspecification is a fixed flow: it does not move when we change a modelling",
+          "convention. Moving the filling moves the curl/harmonic BOUNDARY underneath it.",
+          "", "Here eta is built once at the `observed` filling -- exactly H0-true there --",
+          "and held fixed while the TEST's filling walks down the ladder. Every rejection",
+          "below the observed end is a FALSE POSITIVE: innocent curl reclassified as",
+          "genuine obstruction because fewer triangles were filled.", "",
+          "`leak` is exact, not sampled: ||P_H(rung) eta|| / ||eta||, the share of a flow",
+          "with no genuine cycle that the rung's harmonic subspace has captured.", "",
+          f"At k = {lv2['fold_k']}, rho_curl = {lv2['rho_curl']}, {lv2['reps']} "
+          f"replicates over {lv2['base_seeds']} base seeds.", "",
+          "| graph | fill | b1 | leak | size (mean [min-max]) | chi2 ok | safe |",
+          "|---|---|---|---|---|---|---|"]
+    for r in sorted(lfold, key=lambda r: (r["graph"], -r["df"])):
+        rj = r["reject"]
+        chi2ok = "yes" if r["df"] >= 3 else "NO"
+        safe = ("yes" if rj["max"] is not None and rj["max"] <= 2 * lv2["alpha"]
+                else "NO")
+        L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']} "
+              f"| {r['df']} | {r['leak_frac']:.3f} | "
+              f"{_f(rj['mean'],0,3).strip()} [{_f(rj['min'],0,3).strip()}-"
+              f"{_f(rj['max'],0,3).strip()}] | {chi2ok} | {safe} |"]
+    us = lv2["usable_b1_by_graph"]
+    L += ["", f"**Verdict: {fl['verdict']}.** Maximum leakage across the ladder is "
+          f"{lv2['max_leak_frac']:.3f}.", "",
+          "**The dial is not free, and the two gates are in direct opposition.** Leakage",
+          "is zero at the observed end -- it must be, that is where eta was built -- and",
+          "nonzero at every other rung. But gate 3 wants to move OFF the observed end,",
+          "because that is the direction b1 rises. So the move that buys chi2 validity is",
+          "exactly the move that reclassifies innocent curl as signal.", "",
+          "Rungs that are both chi2-valid (b1 >= 3) and safe (size within 2 alpha on the",
+          "worst base seed):", ""]
+    for g in sorted(us, key=int):
+        L += [f"- graph {g}: " + (f"b1 in {us[g]}" if us[g]
+                                  else "**none** -- no rung is both valid and safe")]
+    L += ["",
+          "Read this against the `||P_h eps||` band in section 3: the null is usable only",
+          "while the harmonic-projected perturbation stays around 0.1. Every rung off the",
+          "observed end leaks well above that, so the size is not merely inflated, it is",
+          "gone.", "",
+          "**Scope.** This holds for a misspecification that is curl under `observed`. It",
+          "is the worst case for the dial and the natural one for a comparator whose",
+          "local inconsistencies sit on filled triangles. A misspecification shaped",
+          "differently would leak differently, and that is not measured here.", ""]
+
     se = (cv["alpha"] * (1 - cv["alpha"]) / cv["reps"]) ** 0.5
     L += ["", "## What this run does NOT establish", "",
           "**DZW agreement is untested.** RAN-28's gating item has two halves: that the",
@@ -881,7 +1025,8 @@ def write_results_md():
 
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
           "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
-          "dominance_ladder": dominance_ladder}
+          "dominance_ladder": dominance_ladder,
+          "filling_leakage": filling_leakage}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)

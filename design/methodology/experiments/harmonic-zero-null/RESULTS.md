@@ -339,6 +339,77 @@ base seeds. A window that is open on the mean and closed at one seed is not an
 open window.
 
 
+## What the dial costs: leakage under a FIXED misspecification
+
+dominance_ladder re-derived its curl from each rung, so the null was
+absorbing curl it was constructed to absorb. A real comparator's
+misspecification is a fixed flow: it does not move when we change a modelling
+convention. Moving the filling moves the curl/harmonic BOUNDARY underneath it.
+
+Here eta is built once at the `observed` filling -- exactly H0-true there --
+and held fixed while the TEST's filling walks down the ladder. Every rejection
+below the observed end is a FALSE POSITIVE: innocent curl reclassified as
+genuine obstruction because fewer triangles were filled.
+
+`leak` is exact, not sampled: ||P_H(rung) eta|| / ||eta||, the share of a flow
+with no genuine cycle that the rung's harmonic subspace has captured.
+
+At k = 64, rho_curl = 1.0, 600 replicates over 3 base seeds.
+
+| graph | fill | b1 | leak | size (mean [min-max]) | chi2 ok | safe |
+|---|---|---|---|---|---|---|
+| 0 | 0/15 | 16 | 0.707 | 1.000 [1.000-1.000] | yes | NO |
+| 0 | 2/15 | 14 | 0.681 | 1.000 [1.000-1.000] | yes | NO |
+| 0 | 5/15 | 11 | 0.471 | 1.000 [1.000-1.000] | yes | NO |
+| 0 | 7/15 | 9 | 0.446 | 1.000 [1.000-1.000] | yes | NO |
+| 0 | 12/15 | 6 | 0.308 | 1.000 [1.000-1.000] | yes | NO |
+| 0 | 14/15 | 4 | 0.000 | 0.056 [0.048-0.062] | yes | yes |
+| 1 | 0/12 | 13 | 0.707 | 1.000 [1.000-1.000] | yes | NO |
+| 1 | 2/12 | 11 | 0.692 | 1.000 [1.000-1.000] | yes | NO |
+| 1 | 4/12 | 9 | 0.632 | 1.000 [1.000-1.000] | yes | NO |
+| 1 | 7/12 | 7 | 0.541 | 1.000 [1.000-1.000] | yes | NO |
+| 1 | 9/12 | 5 | 0.320 | 1.000 [1.000-1.000] | yes | NO |
+| 1 | 11/12 | 3 | 0.000 | 0.056 [0.045-0.068] | yes | yes |
+| 2 | 0/21 | 21 | 0.707 | 1.000 [1.000-1.000] | yes | NO |
+| 2 | 4/21 | 17 | 0.515 | 1.000 [1.000-1.000] | yes | NO |
+| 2 | 7/21 | 14 | 0.409 | 1.000 [1.000-1.000] | yes | NO |
+| 2 | 11/21 | 10 | 0.228 | 0.982 [0.980-0.984] | yes | NO |
+| 2 | 15/21 | 7 | 0.196 | 0.991 [0.990-0.992] | yes | NO |
+| 2 | 21/21 | 3 | 0.000 | 0.047 [0.041-0.051] | yes | yes |
+| 3 | 0/26 | 22 | 0.707 | 1.000 [1.000-1.000] | yes | NO |
+| 3 | 4/26 | 18 | 0.566 | 1.000 [1.000-1.000] | yes | NO |
+| 3 | 8/26 | 14 | 0.484 | 1.000 [1.000-1.000] | yes | NO |
+| 3 | 13/26 | 9 | 0.405 | 1.000 [1.000-1.000] | yes | NO |
+| 3 | 19/26 | 5 | 0.357 | 1.000 [1.000-1.000] | yes | NO |
+| 3 | 24/26 | 1 | 0.000 | 0.038 [0.028-0.043] | NO | yes |
+
+**Verdict: confirmed.** Maximum leakage across the ladder is 0.707.
+
+**The dial is not free, and the two gates are in direct opposition.** Leakage
+is zero at the observed end -- it must be, that is where eta was built -- and
+nonzero at every other rung. But gate 3 wants to move OFF the observed end,
+because that is the direction b1 rises. So the move that buys chi2 validity is
+exactly the move that reclassifies innocent curl as signal.
+
+Rungs that are both chi2-valid (b1 >= 3) and safe (size within 2 alpha on the
+worst base seed):
+
+- graph 0: b1 in [4]
+- graph 1: b1 in [3]
+- graph 2: b1 in [3]
+- graph 3: **none** -- no rung is both valid and safe
+
+Read this against the `||P_h eps||` band in section 3: the null is usable only
+while the harmonic-projected perturbation stays around 0.1. Every rung off the
+observed end leaks well above that, so the size is not merely inflated, it is
+gone.
+
+**Scope.** This holds for a misspecification that is curl under `observed`. It
+is the worst case for the dial and the natural one for a comparator whose
+local inconsistencies sit on filled triangles. A misspecification shaped
+differently would leak differently, and that is not measured here.
+
+
 ## What this run does NOT establish
 
 **DZW agreement is untested.** RAN-28's gating item has two halves: that the
