@@ -142,7 +142,21 @@ K_GRID = (8, 32, 64, 128, 512)
 # separated draws are dropped. That is truncation shrinking the variance, not the
 # heavy tail inflating it. At low b1 the binding constraint is separation loss and
 # the moment check only registers it downstream.
+# The b1 = 1 entry NO LONGER CLASSIFIES ANYTHING: saturation_window() refuses
+# below SATURATION_ORDERS_AT_OR_ABOVE, so nothing ever reads it as a window. It
+# stays because it is still the interpolation's low ENDPOINT -- the line through
+# to b1 = 22 is drawn from it, so removing it would move every b1 >= 3 window
+# rather than tidying a dead constant. Deleting it is a real change, not cleanup.
 SATURATION_WINDOW = {1: 0.0017, 22: 0.120}
+
+# Below this b1 the saturation axis does not ORDER outcomes, so no window on it
+# is meaningful and saturation_window() refuses rather than returning a number.
+# Measured: at b1 = 1 the two grids invert -- scaled eta at k = 64 and saturation
+# 0.019 passes while natural eta at k = 128 and saturation 0.0161 fails, and
+# 0.0161 is the SMALLER number. A threshold cannot separate cells its own axis
+# does not rank. 3 is where the inversion stops being observed, not a fitted
+# boundary; b1 >= 3 is unaffected by this and keeps the interpolated window.
+SATURATION_ORDERS_AT_OR_ABOVE = 3
 
 
 def saturation_window(b1):
@@ -163,6 +177,13 @@ def saturation_window(b1):
     number. Whatever decides those cells, it is not saturation; at low b1 the
     binding constraint is separation, which depends on k and on the flow.
 
+    THIS FUNCTION RETURNS None BELOW b1 = SATURATION_ORDERS_AT_OR_ABOVE. That is a
+    refusal to judge, not a window of zero and not a gap awaiting a number: a cell
+    there is UNCLASSIFIABLE by this criterion and must be reported as such rather
+    than folded in with cells measured to be out. Callers that coerce None to
+    False silently convert "we decline to say" into "we say no", which is the one
+    reading this change exists to prevent.
+
     So clamping to the low anchor is NOT a conservative approximation of a true
     boundary, and reading it as one is the wrong inference to draw from a value
     that looks like a threshold. 0.0017 is the largest saturation at b1 = 1 with
@@ -171,6 +192,8 @@ def saturation_window(b1):
     finds a failure beneath it, the right response is to lower it again or to
     refuse at low b1 entirely, NOT to interpolate more finely.
     """
+    if b1 < SATURATION_ORDERS_AT_OR_ABOVE:
+        return None            # refusal: see SATURATION_ORDERS_AT_OR_ABOVE
     lo_b, hi_b = min(SATURATION_WINDOW), max(SATURATION_WINDOW)
     lo, hi = SATURATION_WINDOW[lo_b], SATURATION_WINDOW[hi_b]
     if b1 <= lo_b:
@@ -178,6 +201,26 @@ def saturation_window(b1):
     if b1 >= hi_b:
         return hi
     return lo + (hi - lo) * (b1 - lo_b) / (hi_b - lo_b)
+
+def _in_window(saturation, b1):
+    """True / False / None -- and None is NOT False.
+
+    None means the cell sits below the b1 at which saturation orders outcomes, so
+    this criterion declines to classify it. Every consumer must keep that distinct
+    from a cell measured to be out of window: `if r["in_window"]` is correct for
+    selecting cells we vouch for, but counting `not r["in_window"]` as "out"
+    silently absorbs the refused ones and reproduces exactly the disappearance
+    this change was made to stop.
+    """
+    w = saturation_window(b1)
+    return None if w is None else bool(saturation <= w)
+
+
+def unclassifiable(rows):
+    """The rows this criterion refused to judge. Named so callers cannot omit it
+    by forgetting it exists."""
+    return [r for r in rows if r.get("in_window") is None]
+
 
 # The moment gate: how far meanT/df and varT/2df may sit from 1 before a cell is
 # not chi2(b1) for practical purposes. Read by b1_ladder, b1_one_boundary,
@@ -314,7 +357,7 @@ def chi2_collapse(reps=2000):
                     "eta_absmax": float(np.max(np.abs(eta))),
                     "saturation": sat,
                     "window": saturation_window(df),
-                    "in_window": bool(sat <= saturation_window(df)),
+                    "in_window": _in_window(sat, df),
                     "p_min": float(min(st.sigmoid(eta).min(),
                                        1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
@@ -359,6 +402,7 @@ def chi2_collapse(reps=2000):
         "value": {"alpha": ALPHA, "reps": reps,
                   "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_unclassifiable": len(unclassifiable(rows)),
                   "n_cells_total": len(rows),
                   "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
                   "n_cells_excluded_for_separation": len(at_max_k) - len(big),
@@ -689,7 +733,7 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
                     "eta_absmax": float(np.max(np.abs(eta))),
                     "saturation": sat,
                     "window": saturation_window(b1),
-                    "in_window": bool(sat <= saturation_window(b1)),
+                    "in_window": _in_window(sat, b1),
                     "n_usable": int(len(T)), "n_dropped": dropped,
                     "drop_rate": float(dropped / reps),
                     "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
@@ -734,6 +778,7 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
                   "targets": list(targets), "probe_target": probe_target,
                   "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_unclassifiable": len(unclassifiable(rows)),
                   "n_cells_total": len(rows),
                   "probe_k": probe_k, "n_low_b1_cells": len(lo),
                   "n_high_b1_cells": len(hi), "rows": rows},
@@ -859,6 +904,11 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     }
 
 
+def _win(v):
+    """Three glyphs for three states. '?' is a refusal, not a near-miss."""
+    return "?" if v is None else ("y" if v else ".")
+
+
 def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
@@ -961,7 +1011,7 @@ def write_results_md():
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['filling']} | {r['graph']} | {r['E']} | {r['df']} | {r['k']} | "
-              f"{r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{r['saturation']:.4f} | {_win(r['in_window'])} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
               f"{_f(r['reject_rate'],0,3).strip()} | {_f(r['ks_p'],0,4).strip()} |"]
     L += ["", f"Reading it: at k >= {k_ok} the first two moments land within a few percent",
@@ -1137,7 +1187,7 @@ def write_results_md():
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']}{end} | "
-              f"{r['df']} | {r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{r['df']} | {r['saturation']:.4f} | {_win(r['in_window'])} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
               f"{'yes' if lok(r) else 'NO'} |"]
@@ -1145,7 +1195,21 @@ def write_results_md():
     hi = [r for r in lrows if r["df"] >= 3]
     lo_bad = [r for r in lo if not lok(r)]
     hi_bad = [r for r in hi if not lok(r)]
-    L += ["", f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;",
+    # Cells the criterion REFUSED are not evidence of anything and must not be
+    # reported as a count of zero failures -- "none examined" reads as "none
+    # failed" to anyone skimming, which is how the b1 question disappeared from
+    # its own section.
+    lo_refused = [r for r in unclassifiable(lv["rows"]) if r["k"] == pk
+                  and r["df"] <= 2]
+    L += ["",
+          (f"**No cell at b1 <= 2 is examined here.** {len(lo_refused)} such cells "
+           f"were measured and then REFUSED by the saturation criterion, which "
+           f"declines to judge below b1 = {SATURATION_ORDERS_AT_OR_ABOVE} because "
+           f"the axis does not order outcomes there. That is a refusal, not a pass: "
+           f"the b1 question this section asks is NOT answered at low b1 by this "
+           f"probe. Their moments are in section 1's table, marked as refused."
+           if lo_refused else
+           f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;"),
           f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail.",
           ("**The floor is a b1 floor, not a k floor.** On the same graph at the same k,"
            if l["verdict"] == "confirmed" else
@@ -1259,7 +1323,7 @@ def collapse_spread(reps=2000, n_base=10,
                     "filling": filling, "graph": g, "k": k, "df": df,
                     "saturation": sat,
                     "window": saturation_window(df),
-                    "in_window": bool(sat <= saturation_window(df)),
+                    "in_window": _in_window(sat, df),
                     "ref_passes": None if ref is None else ref["passes"],
                     "ref_var_ratio": None if ref is None else ref["var_ratio"],
                     "n_base_judged": len(spread),
@@ -1299,7 +1363,10 @@ def collapse_spread(reps=2000, n_base=10,
         r["flagged"] = bool(r["binom_p"] < BINOM_ALPHA)
 
     inw = [r for r in rows if r["in_window"]]
-    out = [r for r in rows if not r["in_window"]]
+    # `is False`, not `not r[...]` -- the refused cells are neither in nor out,
+    # and sweeping them into `out` is the conflation this change exists to stop.
+    out = [r for r in rows if r["in_window"] is False]
+    refused = unclassifiable(rows)
     # The shipped claim is about SUFFICIENCY: in-window implies the moments hold.
     # A flagged in-window cell is that claim failing -- it fails at a rate its own
     # df cannot explain, while the single draw the window was placed by passed it.
@@ -1337,6 +1404,22 @@ def collapse_spread(reps=2000, n_base=10,
             "saturation_window": SATURATION_WINDOW,
             "n_cells": len(rows),
             "n_in_window": len(inw),
+            "n_unclassifiable": len(refused),
+            "unclassifiable_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                                     for r in refused],
+            # THE CELLS THAT MOTIVATED THE REFUSAL LIVE HERE NOW. Under the
+            # refusal the b1 = 1 cells stop being classified, so they leave
+            # `flipped` and n_in_window_flagged reads 0 -- which is honest (we
+            # decline to call them in-window) and reads as though the problem went
+            # away. It did not: they still fail their own df's pass rate. Reported
+            # separately so the audit cannot quietly stop carrying the finding
+            # that caused the shape change.
+            "n_refused_and_flagged": sum(1 for r in refused if r["flagged"]),
+            "refused_and_flagged_cells": [
+                f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                f" (sat {r['saturation']:.4f}, {r['n_base_passing']}"
+                f"/{r['n_base_judged']} seeds, binom_p {r['binom_p']:.4f})"
+                for r in refused if r["flagged"]],
             "n_in_window_stable": len(inw) - len(flipped),
             "n_in_window_flagged": len(flipped),
             "flagged_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"

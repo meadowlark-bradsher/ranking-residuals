@@ -32,10 +32,10 @@ with expected count c contributes ~c when w=0 and ~1/c on the probability-c
 event that w=1, so ~1 in expectation but ~1/c in second moment. That is why
 meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside
 the window (sat > its row's b1-dependent limit, 0.002 at the lowest b1 to 0.120 at the highest) are shown but excluded from the
-verdict: 24 of 40 cells are in
+verdict: 23 of 40 cells are in
 window.
 
-The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out of window or over the separation cap).
+The verdict is computed from the k = 512 cells: 7 of 8 judged, 1 excluded (out of window or over the separation cap).
 
 | filling | graph | E | b1 | k | sat | win | drop% | meanT/df | varT/2df | size | KS p |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -54,11 +54,11 @@ The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out o
 | observed | 2 | 32 | 3 | 64 | 0.0431 | . | 29.3% | 0.972 | 1.029 | 0.052 | 0.0270 |
 | observed | 2 | 32 | 3 | 128 | 0.0270 | . | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
 | observed | 2 | 32 | 3 | 512 | 0.0090 | y | 5.0% | 0.983 | 0.975 | 0.046 | 0.4808 |
-| observed | 3 | 33 | 1 | 8 | 0.2588 | . | 99.6% | 1.842 | 2.597 | 0.111 | -- |
-| observed | 3 | 33 | 1 | 32 | 0.0618 | . | 43.0% | 0.740 | 0.643 | 0.030 | 0.0000 |
-| observed | 3 | 33 | 1 | 64 | 0.0309 | . | 9.2% | 0.842 | 0.859 | 0.039 | 0.0000 |
-| observed | 3 | 33 | 1 | 128 | 0.0161 | . | 0.8% | 1.024 | 0.974 | 0.045 | 0.0013 |
-| observed | 3 | 33 | 1 | 512 | 0.0017 | y | 0.0% | 1.061 | 1.034 | 0.054 | 0.0157 |
+| observed | 3 | 33 | 1 | 8 | 0.2588 | ? | 99.6% | 1.842 | 2.597 | 0.111 | -- |
+| observed | 3 | 33 | 1 | 32 | 0.0618 | ? | 43.0% | 0.740 | 0.643 | 0.030 | 0.0000 |
+| observed | 3 | 33 | 1 | 64 | 0.0309 | ? | 9.2% | 0.842 | 0.859 | 0.039 | 0.0000 |
+| observed | 3 | 33 | 1 | 128 | 0.0161 | ? | 0.8% | 1.024 | 0.974 | 0.045 | 0.0013 |
+| observed | 3 | 33 | 1 | 512 | 0.0017 | ? | 0.0% | 1.061 | 1.034 | 0.054 | 0.0157 |
 | empty | 0 | 27 | 16 | 8 | 0.1257 | . | 0.1% | 1.068 | 1.053 | 0.071 | 0.0000 |
 | empty | 0 | 27 | 16 | 32 | 0.0087 | y | 0.0% | 1.012 | 0.982 | 0.049 | 0.1399 |
 | empty | 0 | 27 | 16 | 64 | 0.0006 | y | 0.0% | 1.000 | 0.914 | 0.040 | 0.6870 |
@@ -300,7 +300,7 @@ cells (saturation <= the b1-dependent window, 0.002 to 0.120) count toward the r
 | 3 | 19/26 | 5 | 0.0100 | y | 0.0% | 1.017 | 1.016 | 0.053 | yes |
 | 3 | 19/26 | 5 | 0.0190 | y | 0.0% | 1.026 | 1.089 | 0.056 | yes |
 
-Of the 0 cells at b1 <= 2, 0 fail the moment check;
+**No cell at b1 <= 2 is examined here.** 2 such cells were measured and then REFUSED by the saturation criterion, which declines to judge below b1 = 3 because the axis does not order outcomes there. That is a refusal, not a pass: the b1 question this section asks is NOT answered at low b1 by this probe. Their moments are in section 1's table, marked as refused.
 of the 43 cells at b1 >= 3, 1 fail.
 **The b1 reading is not clean here** -- see the table rather than a slogan.
 The cells do not separate on b1 alone at this k, so the filling
