@@ -230,6 +230,39 @@ def unclassifiable(rows):
 # are a different 0.10 with a different meaning.
 MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
 
+
+def moment_ratios_ok(mean_ratio, var_ratio, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """Do a cell's two moment ratios both sit inside the gate?
+
+    The gate is a PAIR and testing half of it silently narrows what a result
+    means. closes_at() tested the variance alone and exported the answer as
+    `b1_1_closes_at`, a name that promises moment closure: it read 0.05 while the
+    write-up said 0.03, and both were right about different gates. At b1 = 1 the
+    MEAN fails first -- at saturation 0.030 the median mean ratio is 0.838
+    against mtol 0.10 while the variance is still 0.873 against vtol 0.15. At
+    b1 = 22 neither fails until 0.180, which is why the control never showed it.
+
+    Callers pass ratios rather than raw moments because the two row shapes in this
+    file disagree: chi2_collapse and b1_ladder carry mean_T with chi2_mean beside
+    it, b1_one_boundary carries pre-divided medians.
+    """
+    return (mean_ratio is not None and var_ratio is not None
+            and abs(mean_ratio - 1) <= mtol and abs(var_ratio - 1) <= vtol)
+
+
+def row_moments_ok(row, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """moment_ratios_ok for the raw-moment row shape.
+
+    chi2_collapse and b1_ladder rows carry mean_T beside chi2_mean rather than a
+    ratio. Three callers were each decoding that shape and re-testing the pair
+    inline, which is the duplication that let closes_at drift to testing one half
+    without anything noticing. One decoder, one predicate.
+    """
+    if row["mean_T"] is None or row["var_T"] is None:
+        return False
+    return moment_ratios_ok(row["mean_T"] / row["chi2_mean"],
+                            row["var_T"] / row["chi2_var"], mtol, vtol)
+
 # Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
 # strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
@@ -747,11 +780,6 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
     # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
     # the filling is a dial on the data requirement rather than a fork.
-    def ok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
     probe_k = 64 if 64 in ks else ks[0]
     # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
     # window (0.010) shows no b1 effect at 0.010; it does not show the window
@@ -762,9 +790,11 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
             and r["saturation_target"] == probe_target]
     lo = [r for r in at_k if r["df"] <= 2]
     hi = [r for r in at_k if r["df"] >= 3]
-    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
+    rescued = bool(lo and hi
+                   and not all(row_moments_ok(r) for r in lo)
+                   and all(row_moments_ok(r) for r in hi))
     verdict = ("confirmed" if rescued
-               else "refuted" if lo and hi and all(ok(r) for r in lo)
+               else "refuted" if lo and hi and all(row_moments_ok(r) for r in lo)
                else "inconclusive")
     return {
         "probe": "b1_ladder",
@@ -841,8 +871,7 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                 b = float(T.var(ddof=1) / (2 * b1))
                 mr.append(a)
                 vr.append(b)
-                if (abs(a - 1) <= MOMENT_MTOL
-                        and abs(b - 1) <= MOMENT_VTOL):
+                if moment_ratios_ok(a, b):
                     passes += 1
 
             def agg(v):
@@ -868,9 +897,12 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     # on the median seed. Median, not mean, because one heavy-tailed seed should
     # not move a threshold.
     def closes_at(df):
+        # BOTH moments, via the shared predicate. Testing var_ratio alone made
+        # this export a variance boundary under a moment-closure name.
         bad = [r["saturation_target"] for r in rows
-               if r["df"] == df and r["var_ratio"]
-               and abs(r["var_ratio"]["median"] - 1) > MOMENT_VTOL]
+               if r["df"] == df and r["var_ratio"] and r["mean_ratio"]
+               and not moment_ratios_ok(r["mean_ratio"]["median"],
+                                        r["var_ratio"]["median"])]
         return min(bad) if bad else None
 
     b1_one, b1_ctrl = closes_at(1), closes_at(22)
@@ -955,9 +987,7 @@ def write_results_md():
     def moments_ok(k, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
         rs = [crow(fl, g, k) for fl in fillings for g in graphs]
         rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
-        return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
-                                and abs(r["var_T"] / r["chi2_var"] - 1) <= vtol
-                                for r in rs)
+        return bool(rs) and all(row_moments_ok(r, mtol, vtol) for r in rs)
 
     # Smallest k from which the moments hold at every larger k, and the k below it.
     k_ok = next((kk for kk in ks_grid if all(moments_ok(x) for x in ks_grid if x >= kk)),
@@ -1159,12 +1189,6 @@ def write_results_md():
     lrows = [r for r in lv["rows"] if r["k"] == pk and r["in_window"]]
     lgraphs = sorted({r["graph"] for r in lv["rows"]})
 
-    def lok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
-
     L += ["## 4. Is the chi2 floor a b1 floor?", "",
           "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
           "choice: filling a triangle adds a row to D1, so S grows and b1 shrinks,",
@@ -1190,11 +1214,14 @@ def write_results_md():
               f"{r['df']} | {r['saturation']:.4f} | {_win(r['in_window'])} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
-              f"{'yes' if lok(r) else 'NO'} |"]
+              f"{'yes' if row_moments_ok(r) else 'NO'} |"]
     lo = [r for r in lrows if r["df"] <= 2]
     hi = [r for r in lrows if r["df"] >= 3]
-    lo_bad = [r for r in lo if not lok(r)]
-    hi_bad = [r for r in hi if not lok(r)]
+    # Their predicate, my reporting. row_moments_ok is the point of 7c66230 --
+    # one decoder for the row shapes, so a caller cannot drift to testing half
+    # the gate the way closes_at did. lok() is gone with the other inline copies.
+    lo_bad = [r for r in lo if not row_moments_ok(r)]
+    hi_bad = [r for r in hi if not row_moments_ok(r)]
     # Cells the criterion REFUSED are not evidence of anything and must not be
     # reported as a count of zero failures -- "none examined" reads as "none
     # failed" to anyone skimming, which is how the b1 question disappeared from
@@ -1312,8 +1339,7 @@ def collapse_spread(reps=2000, n_base=10,
                         "base": base, "mean_ratio": mr, "var_ratio": vr,
                         "max_T": float(T.max()),
                         "drop_rate": float(dropped / reps),
-                        "passes": bool(abs(mr - 1) <= mtol
-                                       and abs(vr - 1) <= vtol),
+                        "passes": moment_ratios_ok(mr, vr, mtol, vtol),
                     })
                 ref = next((d for d in draws if d["base"] is None), None)
                 spread = [d for d in draws if d["base"] is not None]
