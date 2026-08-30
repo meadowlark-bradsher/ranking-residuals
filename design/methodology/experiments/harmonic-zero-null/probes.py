@@ -80,6 +80,77 @@ N_GRAPHS = 4          # masks held FIXED across replicates: the pre-specified ca
 # against 128 prices what thinning costs in separation (RAN-29).
 K_GRID = (8, 32, 64, 128, 512)
 
+# The chi2 approximation needs edges that are not near-deterministic, and that is
+# a condition on the CELL, not on the draw.
+#
+# The classical "expected cell count >= 5" rule is unusable here: it refuses 100%
+# of draws, and even a threshold of 0.5 refuses 74-90%, because the median draw
+# already carries an edge with k*p ~ 0.1. That is the design, not a pathology --
+# eta_in_S scales curl to ||eta||, so some edges are genuinely near-certain.
+#
+# What such an edge breaks is the second moment, not the first. With expected
+# count c it contributes ~c when w = 0, and ~1/c on the probability-c event that
+# w = 1, so it contributes ~1 in expectation -- exactly what a chi2 coordinate
+# should. But its second moment carries ~1/c and diverges as c -> 0. Hence the
+# pattern the rig measured: meanT/df tracks well nearly everywhere while
+# varT/2df is wildly unstable, and one draw in 1984 can carry T = 661 against a
+# chi2(10) 99.95th percentile of 31.4.
+#
+# So the guard is the instrument's own closed-form pre-filter, which this
+# experiment had never used: rig.flows.saturation gives E[p^k + (1-p)^k] with no
+# sampling at all. Measured against the chi2_collapse grid it separates PERFECTLY
+# at 0.02 -- all 25 in-window cells pass both the mean and the variance check,
+# and every cell failing either is out of window. Same discipline as the
+# methodology paper's guard: computable before fitting, and a loud refusal beats
+# a plausible number.
+#
+# Out-of-window cells are RUN AND SHOWN, not silently skipped -- that is how the
+# low-k failure became visible in the first place -- but they are excluded from
+# verdicts.
+SATURATION_MAX = 0.02
+
+
+# Where a b1 sweep should sit. Comfortably inside SATURATION_MAX so every level
+# of the ladder is in window and the sweep is not also a window sweep.
+SATURATION_TARGET = 0.01
+
+
+def cell_saturation(eta, k):
+    """Expected fraction of edges landing at w=0 or w=k. Closed form, spec 2.6."""
+    return float(flows.saturation(st.sigmoid(eta), k))
+
+
+def scale_to_saturation(eta, k, target=SATURATION_TARGET, lo=1e-3, hi=50.0):
+    """Scale eta so this cell's closed-form saturation equals `target`.
+
+    Scaling stays inside S, so the flow is still H0-true; the only thing that
+    changes is how extreme its edges are. That is exactly the confound this
+    removes. Filling a triangle changes the curl DIRECTION (the curl term is
+    D1^T c, and D1 grows with the filling), so saturation moves erratically along
+    the ladder -- measured 0.0056 to 0.0436 across levels of the same graph, and
+    NOT monotone in b1. A b1 sweep without this is therefore also an
+    uncontrolled saturation sweep, and the two cannot be told apart. The first
+    ladder run could not, which is why the b1 = 1 cell it indicted was out of
+    window.
+
+    Saturation is increasing in the scale, so bisection is safe. Returns None if
+    the target is unreachable on this cell, and the caller flags rather than
+    silently substituting something else.
+    """
+    def f(x):
+        return float(flows.saturation(st.sigmoid(x * eta), k)) - target
+    if f(lo) > 0 or f(hi) < 0:
+        return None
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        if f(mid) < 0:
+            lo = mid
+        else:
+            hi = mid
+        if hi - lo < 1e-6:
+            break
+    return 0.5 * (lo + hi)
+
 
 def seed(*parts) -> np.random.Generator:
     """Deterministic per-cell stream. No wall-clock, per spec 9."""
@@ -145,6 +216,7 @@ def chi2_collapse(reps=2000):
             df = bases[0].shape[1]
             eta = eta_in_S(D0, D1, 1.0, g)
             for k in K_GRID:
+                sat = cell_saturation(eta, k)
                 T, off, dropped = run_cell(eta, k, bases, f"c1|{filling}|{g}|{k}", reps)
                 ks = kstest(T, "chi2", args=(df,)) if len(T) > 20 else None
                 rows.append({
@@ -156,6 +228,7 @@ def chi2_collapse(reps=2000):
                     # separation rate at k=8 is not comparable to 'empty'. The
                     # chi2(b1) claim is per-cell, so this does not touch it.
                     "eta_absmax": float(np.max(np.abs(eta))),
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
                     "p_min": float(min(st.sigmoid(eta).min(),
                                        1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
@@ -177,7 +250,11 @@ def chi2_collapse(reps=2000):
     # break the claim -- from the gate that everything downstream rests on. The
     # count of what IS excluded now ships alongside the verdict, as it already
     # does for the other two probes.
-    big = [r for r in at_max_k if r["ks_p"] is not None and r["drop_rate"] <= 0.05]
+    # The saturation window comes FIRST: it is closed form and known before any
+    # draw, so a cell outside it should never have been trusted, whatever its
+    # realised drop rate happened to be.
+    big = [r for r in at_max_k if r["ks_p"] is not None and r["in_window"]
+           and r["drop_rate"] <= 0.05]
     obs_big = [r for r in big if r["filling"] == "observed"]
     frac_ok = sum(r["ks_p"] > 0.01 for r in big) / len(big) if big else 0.0
     # No judged cell is NOT evidence against the claim: say so rather than
@@ -194,6 +271,9 @@ def chi2_collapse(reps=2000):
                      "referee-proof claim goes with it.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps,
+                  "saturation_max": SATURATION_MAX,
+                  "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_total": len(rows),
                   "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
                   "n_cells_excluded_for_separation": len(at_max_k) - len(big),
                   "rows": rows},
@@ -460,6 +540,15 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
     alone -- fixed before any outcome is drawn. That is what keeps this a
     pre-specification rather than a null chosen to get an answer; b1 does not
     depend on the data, only on (edges, triangles).
+
+    SATURATION IS MATCHED ACROSS LEVELS. The first version of this probe was
+    confounded: filling a triangle changes the curl direction as well as b1, so
+    saturation wandered from 0.0056 to 0.0436 along a single graph's ladder, and
+    the low-b1 cells it indicted turned out to be the out-of-window ones. A b1
+    sweep that is also a saturation sweep cannot attribute anything to b1. Each
+    cell's eta is now rescaled -- which keeps it inside S, so it stays H0-true --
+    until its closed-form saturation equals SATURATION_TARGET. Whatever remains
+    is attributable to b1 and the subspace, not to how extreme the flow is.
     """
     rows = []
     for g in range(N_GRAPHS):
@@ -482,18 +571,28 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
             m = curve.index(b1)                 # fewest triangles reaching this b1
             D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
             bases = st.harmonic_zero_bases(D0, D1)
-            eta = eta_in_S(D0, D1, 1.0, g)
+            eta_raw = eta_in_S(D0, D1, 1.0, g)
             for k in ks:
-                T, off, dropped = run_cell(eta, k, bases, f"c4|{g}|{b1}|{k}", reps)
+                # Match saturation ACROSS LEVELS at this k, so the only thing
+                # varying along the ladder is b1 and the subspace it names.
+                # Saturation depends on k, so the scale does too: comparisons
+                # are valid across b1 at fixed k, NOT across k.
+                scale = scale_to_saturation(eta_raw, k)
+                eta = eta_raw if scale is None else scale * eta_raw
+                sat = cell_saturation(eta, k)
+                T, off, dropped = run_cell(eta, k, bases, f"c4m|{g}|{b1}|{k}", reps)
                 ksres = kstest(T, "chi2", args=(b1,)) if len(T) > 20 else None
                 rows.append({
                     "graph": g, "E": len(edges), "n_triangles_total": len(tris),
                     "n_triangles_filled": m, "df": b1, "k": k,
                     "is_empty_end": m == 0, "is_observed_end": m == len(tris),
-                    # eta carries a curl term scaled to ||eta||, and at m = 0 there
-                    # is no curl to add -- so the empty end sits at a smaller
-                    # ||eta|| and its drop rate is not comparable to the others.
+                    "eta_scale": scale, "saturation_matched": bool(scale is not None),
+                    "saturation_target": SATURATION_TARGET,
+                    # Saturation is now matched across levels, so the empty end
+                    # is comparable to the rest -- previously it carried no curl
+                    # term at all and sat at a much smaller ||eta||.
                     "eta_absmax": float(np.max(np.abs(eta))),
+                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
                     "n_usable": int(len(T)), "n_dropped": dropped,
                     "drop_rate": float(dropped / reps),
                     "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
@@ -513,7 +612,7 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
                 and r["var_T"] is not None
                 and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
     probe_k = 64 if 64 in ks else ks[0]
-    at_k = [r for r in rows if r["k"] == probe_k]
+    at_k = [r for r in rows if r["k"] == probe_k and r["in_window"]]
     lo = [r for r in at_k if r["df"] <= 2]
     hi = [r for r in at_k if r["df"] >= 3]
     rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
@@ -529,6 +628,9 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
                      "filling is not a dial on the data requirement.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
+                  "saturation_max": SATURATION_MAX,
+                  "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_total": len(rows),
                   "probe_k": probe_k, "n_low_b1_cells": len(lo),
                   "n_high_b1_cells": len(hi), "rows": rows},
     }
@@ -613,15 +715,27 @@ def write_results_md():
           f"is exact agreement. `rej` is the realised size at alpha = {cv['alpha']}: the",
           "number a certificate actually rides on. `drop%` is draws lost to separation.",
           "",
+          f"**The saturation window.** `sat` is E[p^k + (1-p)^k], the expected",
+          "fraction of edges landing at w=0 or w=k -- closed form, no sampling, known",
+          "before any draw. A cell above the window carries near-deterministic edges,",
+          f"and those break the SECOND moment while leaving the first intact: an edge",
+          "with expected count c contributes ~c when w=0 and ~1/c on the probability-c",
+          "event that w=1, so ~1 in expectation but ~1/c in second moment. That is why",
+          "meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside",
+          f"the window (sat > {cv['saturation_max']}) are shown but excluded from the",
+          f"verdict: {cv['n_cells_in_window']} of {cv['n_cells_total']} cells are in",
+          "window.", "",
           f"The verdict is computed from the k = {hi_k} cells: "
           f"{cv['n_cells_judged']} of {cv['n_cells_at_max_k']} judged, "
-          f"{cv['n_cells_excluded_for_separation']} excluded for separation.", "",
-          "| filling | graph | E | b1 | k | drop% | meanT/df | varT/2df | size | KS p |",
-          "|---|---|---|---|---|---|---|---|---|---|"]
+          f"{cv['n_cells_excluded_for_separation']} excluded (out of window or "
+          "over the separation cap).", "",
+          "| filling | graph | E | b1 | k | sat | win | drop% | meanT/df | varT/2df | size | KS p |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in cv["rows"]:
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['filling']} | {r['graph']} | {r['E']} | {r['df']} | {r['k']} | "
+              f"{r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
               f"{_f(r['reject_rate'],0,3).strip()} | {_f(r['ks_p'],0,4).strip()} |"]
     L += ["", f"Reading it: at k >= {k_ok} the first two moments land within a few percent",
@@ -766,7 +880,7 @@ def write_results_md():
               "supply."]
     # ---- section 4: the filling lattice
     pk = lv["probe_k"]
-    lrows = [r for r in lv["rows"] if r["k"] == pk]
+    lrows = [r for r in lv["rows"] if r["k"] == pk and r["in_window"]]
     lgraphs = sorted({r["graph"] for r in lv["rows"]})
 
     def lok(r):
@@ -784,16 +898,19 @@ def write_results_md():
           "triangles) alone, never on the outcomes, so the level is fixed before any",
           "draw.", "",
           f"At k = {pk}, {lv['reps']} replicates. `fill` is triangles filled of the",
-          "total available; the empty and observed endpoints are marked.", "",
-          "| graph | fill | b1 | drop% | meanT/df | varT/2df | size | chi2 ok |",
-          "|---|---|---|---|---|---|---|---|"]
+          "total available; the empty and observed endpoints are marked. Only in-window",
+          f"cells (saturation <= {lv['saturation_max']}) count toward the reading;",
+          f"{lv['n_cells_in_window']} of {lv['n_cells_total']} cells are in window.", "",
+          "| graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |",
+          "|---|---|---|---|---|---|---|---|---|---|"]
     for r in lrows:
         end = (" (empty)" if r["is_empty_end"] else
                " (observed)" if r["is_observed_end"] else "")
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']}{end} | "
-              f"{r['df']} | {_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
+              f"{r['df']} | {r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
               f"{'yes' if lok(r) else 'NO'} |"]
     lo = [r for r in lrows if r["df"] <= 2]
