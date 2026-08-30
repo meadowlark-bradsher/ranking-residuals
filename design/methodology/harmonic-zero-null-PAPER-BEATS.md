@@ -133,7 +133,7 @@ any figure here: last-passing gives 0.019, first-failing 0.030, variance-alone
 But at b₁ = 1 none of them is usable, because saturation does not determine the
 outcome: a natural-η cell at saturation 0.0161 fails 40% of its seeds while a
 scaled-η cell at the HIGHER 0.019 passes. The bound is bracketed to
-(0.0017, 0.0161] and left open — and every b₁ = 1 cell measured is one graph. A flat 0.02 is safe for every b₁ measured; indexing by b₁ buys headroom.
+(0.0017, 0.0161] and left open — and every b₁ = 1 cell measured is one graph. A flat 0.02 was proposed on this basis and is **withdrawn** — reseeded, an in-window cell at 0.0161 with b₁ = 1 passes only 6 of 10 — so the gate indexes by b₁ and refuses below b₁ = 3 rather than carrying any flat bound.
 **And two mechanisms close it, distinguishable by the mean.** Low b₁ closes by
 losing draws — the drop rate climbs 0.4% → 7.8% → 65.4% and separation truncation
 drags the surviving mean from 1.038 to 0.505. High b₁ closes by low expected

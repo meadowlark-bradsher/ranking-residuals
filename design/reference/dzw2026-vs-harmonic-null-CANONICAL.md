@@ -78,6 +78,14 @@ The **last-passing** row is the one an admission limit must use: a first-failing
 
 **Why this took four passes to get right.** At b₁ = 1 the reference is χ²(1), excess kurtosis 12, so the relative sampling s.e. on the variance ratio is ≈ 8.4% at 2000 replicates against a 15% gate — the noisiest cell on the grid by a factor of eight, and simultaneously the decisive one. Single draws from it produced, in order, a b₁ floor, a fold-size floor, and an interaction at 0.019; the first two were false and the third was right about the phenomenon and wrong about the threshold by a factor of six. **A single-run varT/2df at b₁ = 1 is not a diagnostic.** Every claim resting on that cell needs seeds, and needs a range wide enough to contain the effect.
 
+**⚠ Shipped shape (later than the paragraph below).** What is in the code is a
+refusal, not a bare high-b₁ rule: `saturation_window()` returns **None** below
+b₁ = 3, and callers record those cells as *unclassifiable* rather than
+out-of-window — so the artifact says a judgement was declined instead of implying
+a measurement. Above it, the interpolated window runs to 0.120 at b₁ = 22. The
+reasoning in the paragraph below is what produced that shape and is unchanged; the
+form it takes in the code is the refusal.
+
 **The gate, and it ships for high b₁ only.** Evaluate E[pᵏ + (1−p)ᵏ] at k/2 and compare against **0.120 at b₁ = 22** — the largest rung passing both moment checks, and safe to ship because the high-b₁ cells were uniformly stable under reseeding (5/5 at df ∈ {16, 21, 22}). There is no flat bound: 0.02 was withdrawn above, and it would be two errors at once anyway, too loose at b₁ = 1 and far too strict at b₁ = 22.
 
 **⚠ At b₁ = 1 no saturation limit is shippable, and lowering the number does not fix it.** An earlier version of this paragraph proposed 0.019, the last matched rung to pass. That admits `observed|g3|k128`, which sits at saturation **0.0161 — inside 0.019 — and fails 40% of its base seeds** (6/10 against the 0.926 its df predicts, binomial p = 0.0045). Admitting a cell measured to fail is the exact error this section already charges against first-failing limits; 0.019 commits it via a cell the matched sweep never visited.

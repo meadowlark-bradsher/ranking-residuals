@@ -1,3 +1,27 @@
+> **⚠ HISTORICAL — read as a record of how this branch reasoned, not as current
+> guidance.** The premise below is **withdrawn**. This document argues from a
+> "χ² holds wherever b₁ ≥ 3" floor, and there is no b₁ floor: the sweep behind it
+> moved the curl direction along with b₁, so the injected flow grew more extreme
+> as b₁ fell and the sweep varied both at once. At matched extremity every level
+> passes, b₁ = 1 through 22.
+>
+> **What actually shipped**, and what to use instead: the gate indexes on
+> saturation, E[pᵏ + (1−p)ᵏ], with an interpolated window anchored at 0.120 for
+> b₁ = 22; and below b₁ = 3 it **refuses** — `saturation_window()` returns None
+> and those cells are recorded as *unclassifiable* rather than out-of-window,
+> because the axis does not order outcomes there. See RAN-29 acceptance (3) and
+> the canonical briefing.
+>
+> **Two specific claims below are wrong**, beyond the framing. The "free
+> pre-check" on b₁ is not a valid rule. And thinning is not safe on graphs 0, 1
+> and 2 — under the saturation gate it is graphs **0 and 1**, since graph 2 sits
+> outside the window at full k, before any thinning.
+>
+> **What survives, and it is the reason this is kept:** the leakage result. It
+> holds a misspecification fixed and moves the test's filling underneath it, and
+> it never depended on the b₁ floor. That result is what forbids using the filling
+> as a dial at all, whatever the χ² gate turns out to be.
+
 # Thinning, reopened: is there a filling level where both gates hold?
 
 *Branch `thinning-filling-window`, off `harmonic-zero-null` at `174f20b`.*
@@ -134,8 +158,10 @@ for the set, at b1 = 1.
 That yields a **free pre-check**: b1 is a function of (edges, triangles) alone, so
 a deployment can compute it before collecting a single comparison.
 
-> **b1 >= 3 at your observed filling -> thinning is safe at k/2. b1 = 1 -> it is
-> not, and no choice of filling rescues it.**
+> **~~b1 >= 3 at your observed filling -> thinning is safe at k/2. b1 = 1 -> it is
+> not, and no choice of filling rescues it.~~ WITHDRAWN — do not use this rule.**
+> The replacement is the saturation window with a refusal below b1 = 3, and the
+> per-graph answer is graphs 0 and 1, not 0, 1 and 2. See the banner at the top.
 
 Cheaper and more decisive than the dial would have been, and it runs before the
 money is spent.

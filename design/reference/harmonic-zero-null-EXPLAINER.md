@@ -10,29 +10,18 @@ record. This document is a snapshot and **will go stale silently the next time
 the probes are re-run**. If a number here disagrees with RESULTS.md, RESULTS.md
 is right. Re-check before quoting any figure onward.
 
-**⚠ The saturation section describes a gate THIS BRANCH DOES NOT HAVE.** Read it
-as a description of where the work has got to, not of what the code here does.
+**The saturation section now matches the code.** An earlier version of this note
+warned that it did not — that warning is itself obsolete and has been removed
+rather than left to mislead in the opposite direction.
 
-`harmonic-zero-null` ships `SATURATION_MAX = 0.02` — a flat bound that has since
-been **withdrawn** on branch `seed-spread`, because its calibration rested on one
-draw per cell. The b₁-indexed anchors quoted below (0.0017 and 0.120) live only on
-`seed-spread`, which is not merged here: they arrived in `0d54cab`, after the
-commit this branch merged. So on this branch the prose is ahead of the code, which
-is the mirror of the split the merge is being held to avoid, and it is my error
-rather than a timing artifact — I wrote the section against `seed-spread`'s tip
-while this branch sat five commits behind it.
+What this branch ships: `SATURATION_WINDOW = {1: 0.0017, 22: 0.120}` interpolated
+for b₁ ≥ 3, and a **refusal** below that — `saturation_window()` returns None and
+those cells are recorded as *unclassifiable* rather than out-of-window, because
+the axis does not order outcomes there. The flat `SATURATION_MAX = 0.02` this
+branch once carried is gone; its calibration rested on one draw per cell.
 
-**And the shape is under review.** The 0.0017 anchor is likely to be replaced by a
-refusal — `saturation_window()` returning None below the lowest measured anchor,
-with those cells recorded as *unclassifiable* rather than out-of-window. It
-excludes the same cells; what changes is that the artifact says a judgement was
-made instead of quoting a number whose provenance is the single cell it was chosen
-to keep. Four sessions reached that independently.
-
-Until that lands and merges, treat every specific figure in "Where the test is
-valid" as provisional, and treat this branch's own `0.02` as superseded rather
-than current. The five-cell table, the ordering argument and the graph-3 caveat do
-not depend on which shape wins.
+The low anchor is a **floor, not a threshold**: 0.0017 classifies nothing now that
+the refusal precedes it, and survives only as the interpolation's low endpoint.
 
 All measurements are on the known-answer rig: four pre-specified fixed graphs, 12
 items, 24–33 edges — the deployment-realistic regime.
