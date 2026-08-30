@@ -1886,8 +1886,7 @@ if __name__ == "__main__":
         # and nothing noticed. Recorded here rather than computed at read time
         # because the question is what produced THIS file, which only the writer
         # knows.
-        r.setdefault("value", {})[harness_rules.FINGERPRINT_KEY] = (
-            harness_rules.semantic_fingerprint(sys.modules[__name__], name))
+        harness_rules.stamp(r, sys.modules[__name__], name)
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:24} {r['verdict']:10} -> results/{name}.json")
     # RESULTS.md is regenerated from ALL THREE json files, so writing it after a
