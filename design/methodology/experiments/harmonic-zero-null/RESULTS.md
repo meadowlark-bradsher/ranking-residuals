@@ -301,7 +301,7 @@ cells (saturation <= the b1-dependent window, 0.002 to 0.120) count toward the r
 | 3 | 19/26 | 5 | 0.0190 | y | 0.0% | 1.026 | 1.089 | 0.056 | yes |
 
 **No cell at b1 <= 2 is examined here.** 2 such cells were measured and then REFUSED by the saturation criterion, which declines to judge below b1 = 3 because the axis does not order outcomes there. That is a refusal, not a pass: the b1 question this section asks is NOT answered at low b1 by this probe. Their moments are in section 1's table, marked as refused.
-of the 43 cells at b1 >= 3, 1 fail.
+Of the 43 cells at b1 >= 3, 1 fail.
 **The b1 reading is not clean here** -- see the table rather than a slogan.
 The cells do not separate on b1 alone at this k, so the filling
 cannot be read as a dial on the data requirement from this run alone;
@@ -317,12 +317,30 @@ COST of each admissible choice, not permission to pick one.
 
 ## Does dominance survive where chi2 does? (the thinning window)
 
-b1_ladder makes the chi2 floor a b1 floor, so filling FEWER triangles buys
-validity at the fold size without spending data. The same dial runs the other
-way for the property the null exists for: fewer 2-cells shrink im D1^T, and at
-the empty end im D1^T = {0}, S = im D0, and the null IS Bradley-Terry. So the
-two requirements pull opposite ways along one dial, and the question is whether
-they overlap.
+**This section was built on a premise that has since been withdrawn, and it
+is kept because its measurement does not depend on it.** The question it was
+posed to answer was: b1_ladder appeared to show the chi2 floor was a b1 floor,
+so filling FEWER triangles looked like it bought validity at the fold size for
+free -- while the same dial runs the other way for the property the null exists
+for, since fewer 2-cells shrink im D1^T until at the empty end S = im D0 and the
+null IS Bradley-Terry. Two requirements pulling opposite ways along one dial,
+and the question was whether they overlap.
+
+THERE IS NO b1 FLOOR. That sweep was confounded: filling a triangle changes the
+curl DIRECTION as well as b1, so the injected flow grew more extreme as b1 fell
+and the sweep moved both at once. At matched extremity every level passes, b1 = 1
+through 22 (section 4). So the motivating tension is not real as stated, and
+nothing below should be read as establishing a b1 threshold.
+
+WHAT THE MEASUREMENT STILL SHOWS, because it never rested on the floor: dominance
+over Bradley-Terry is BINARY IN THE FILLING, not graded. It is undefined with no
+2-cells -- where the two nulls are the same test -- and full from the first
+filled triangle onward. That is a within-rung paired comparison at each level,
+so the confound that broke the b1 sweep cancels out of it.
+
+And the question is settled from the other side anyway. The leakage section below
+shows the filling cannot be moved for statistical convenience at all, whatever
+the chi2 floor turns out to be, so an overlap would not have been usable.
 
 At the fold size k = 64, rho_curl = 1.0, 600 replicates over 3 base seeds. Rejection rates
 are mean [min-max] across those seeds, never a single draw.
@@ -354,11 +372,16 @@ are mean [min-max] across those seeds, never a single draw.
 | 3 | 19/26 | 5 | 22 | 0.71 | 0.053 [0.038-0.062] | 1.000 [1.000-1.000] | YES |
 | 3 | 24/26 | 1 | 22 | 0.71 | 0.032 [0.024-0.041] | 1.000 [1.000-1.000] | -- |
 
-**Verdict: confirmed.** A window is open on 4 of 4 graphs.
-- graph 0: b1 in [4, 6, 9, 11, 14] clears both gates
-- graph 1: b1 in [3, 5, 7, 9, 11] clears both gates
-- graph 2: b1 in [3, 7, 10, 14, 17] clears both gates
-- graph 3: b1 in [5, 9, 14, 18] clears both gates
+**Verdict as recorded: confirmed.** The probe's own criterion was
+"b1 >= 3 AND dominance holds", and its b1 half is the withdrawn claim -- so read
+the rows below as WHERE DOMINANCE HOLDS, which is what they measure, and not as
+a gate. On that reading: dominance is present at every rung with a filled
+triangle, on 4 of 4 graphs.
+
+- graph 0: dominance at b1 in [4, 6, 9, 11, 14] (the probe's b1 >= 3 filter; lower rungs dominate too)
+- graph 1: dominance at b1 in [3, 5, 7, 9, 11] (the probe's b1 >= 3 filter; lower rungs dominate too)
+- graph 2: dominance at b1 in [3, 7, 10, 14, 17] (the probe's b1 >= 3 filter; lower rungs dominate too)
+- graph 3: dominance at b1 in [5, 9, 14, 18] (the probe's b1 >= 3 filter; lower rungs dominate too)
 
 The empty end is not a measurement of dominance and is marked by a curl
 fraction of 0.00: with no 2-cells there is nothing to inject into, so eta
@@ -423,8 +446,10 @@ nonzero at every other rung. But gate 3 wants to move OFF the observed end,
 because that is the direction b1 rises. So the move that buys chi2 validity is
 exactly the move that reclassifies innocent curl as signal.
 
-Rungs that are both chi2-valid (b1 >= 3) and safe (size within 2 alpha on the
-worst base seed):
+Rungs that are safe -- size within 2 alpha on the worst base seed -- among those
+the probe filtered to b1 >= 3. That filter came from the withdrawn b1 floor and
+is not a validity criterion; it is left in place because re-running to remove it
+would not change the leakage result, which is exact rather than sampled:
 
 - graph 0: b1 in [4]
 - graph 1: b1 in [3]

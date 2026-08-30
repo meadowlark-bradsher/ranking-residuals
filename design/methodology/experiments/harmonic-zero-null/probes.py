@@ -1445,7 +1445,10 @@ def write_results_md():
            f"probe. Their moments are in section 1's table, marked as refused."
            if lo_refused else
            f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;"),
-          f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail.",
+          # Standalone sentence when the line above is a refusal, continuation when
+          # it is a count -- otherwise the refusal leaves a dangling "of the ...".
+          (f"Of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail." if lo_refused
+           else f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail."),
           ("**The floor is a b1 floor, not a k floor.** On the same graph at the same k,"
            if l["verdict"] == "confirmed" else
            "**The b1 reading is not clean here** -- see the table rather than a slogan."),
@@ -1469,12 +1472,27 @@ def write_results_md():
     dfold = [r for r in dv["rows"] if r["k"] == dv["fold_k"]]
     dgraphs = sorted({r["graph"] for r in dfold})
     L += ["", "## Does dominance survive where chi2 does? (the thinning window)", "",
-          "b1_ladder makes the chi2 floor a b1 floor, so filling FEWER triangles buys",
-          "validity at the fold size without spending data. The same dial runs the other",
-          "way for the property the null exists for: fewer 2-cells shrink im D1^T, and at",
-          "the empty end im D1^T = {0}, S = im D0, and the null IS Bradley-Terry. So the",
-          "two requirements pull opposite ways along one dial, and the question is whether",
-          "they overlap.", "",
+          "**This section was built on a premise that has since been withdrawn, and it",
+          "is kept because its measurement does not depend on it.** The question it was",
+          "posed to answer was: b1_ladder appeared to show the chi2 floor was a b1 floor,",
+          "so filling FEWER triangles looked like it bought validity at the fold size for",
+          "free -- while the same dial runs the other way for the property the null exists",
+          "for, since fewer 2-cells shrink im D1^T until at the empty end S = im D0 and the",
+          "null IS Bradley-Terry. Two requirements pulling opposite ways along one dial,",
+          "and the question was whether they overlap.", "",
+          "THERE IS NO b1 FLOOR. That sweep was confounded: filling a triangle changes the",
+          "curl DIRECTION as well as b1, so the injected flow grew more extreme as b1 fell",
+          "and the sweep moved both at once. At matched extremity every level passes, b1 = 1",
+          "through 22 (section 4). So the motivating tension is not real as stated, and",
+          "nothing below should be read as establishing a b1 threshold.", "",
+          "WHAT THE MEASUREMENT STILL SHOWS, because it never rested on the floor: dominance",
+          "over Bradley-Terry is BINARY IN THE FILLING, not graded. It is undefined with no",
+          "2-cells -- where the two nulls are the same test -- and full from the first",
+          "filled triangle onward. That is a within-rung paired comparison at each level,",
+          "so the confound that broke the b1 sweep cancels out of it.", "",
+          "And the question is settled from the other side anyway. The leakage section below",
+          "shows the filling cannot be moved for statistical convenience at all, whatever",
+          "the chi2 floor turns out to be, so an overlap would not have been usable.", "",
           f"At the fold size k = {dv['fold_k']}, rho_curl = {dv['rho_curl']}, "
           f"{dv['reps']} replicates over {dv['base_seeds']} base seeds. Rejection rates",
           "are mean [min-max] across those seeds, never a single draw.", "",
@@ -1492,12 +1510,16 @@ def write_results_md():
               f"{_f(bt['mean'],0,3).strip()} [{_f(bt['min'],0,3).strip()}-"
               f"{_f(bt['max'],0,3).strip()}] | {win} |"]
     wins = dv["window_b1_by_graph"]
-    L += ["", f"**Verdict: {dm['verdict']}.** A window is open on "
-          f"{dv['n_graphs_with_window']} of {dv['n_graphs']} graphs."]
+    L += ["", f"**Verdict as recorded: {dm['verdict']}.** The probe's own criterion was",
+          "\"b1 >= 3 AND dominance holds\", and its b1 half is the withdrawn claim -- so read",
+          f"the rows below as WHERE DOMINANCE HOLDS, which is what they measure, and not as",
+          f"a gate. On that reading: dominance is present at every rung with a filled",
+          f"triangle, on {dv['n_graphs']} of {dv['n_graphs']} graphs.", ""]
     for g in dgraphs:
         w = wins.get(str(g), [])
-        L += [f"- graph {g}: " + (f"b1 in {w} clears both gates" if w
-                                  else "no rung clears both gates")]
+        L += [f"- graph {g}: " + (f"dominance at b1 in {w} (the probe's b1 >= 3 filter; "
+                                  f"lower rungs dominate too)" if w
+                                  else "no rung recorded")]
     L += ["",
           "The empty end is not a measurement of dominance and is marked by a curl",
           "fraction of 0.00: with no 2-cells there is nothing to inject into, so eta",
@@ -1542,8 +1564,10 @@ def write_results_md():
           "nonzero at every other rung. But gate 3 wants to move OFF the observed end,",
           "because that is the direction b1 rises. So the move that buys chi2 validity is",
           "exactly the move that reclassifies innocent curl as signal.", "",
-          "Rungs that are both chi2-valid (b1 >= 3) and safe (size within 2 alpha on the",
-          "worst base seed):", ""]
+          "Rungs that are safe -- size within 2 alpha on the worst base seed -- among those",
+          "the probe filtered to b1 >= 3. That filter came from the withdrawn b1 floor and",
+          "is not a validity criterion; it is left in place because re-running to remove it",
+          "would not change the leakage result, which is exact rather than sampled:", ""]
     for g in sorted(us, key=int):
         L += [f"- graph {g}: " + (f"b1 in {us[g]}" if us[g]
                                   else "**none** -- no rung is both valid and safe")]
