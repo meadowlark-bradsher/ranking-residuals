@@ -55,7 +55,7 @@ repository is built to refuse.
     UNCONSTRAINED per-edge saturation. Under H0 the natural parameter is
     confined to S, so a saturated cell is usually still fitted finitely -- the
     constraint pins it -- and divergence needs separation WITHIN the model
-    subspace. Measured on graph 2 at k = 512: 28.9% of draws saturate somewhere,
+    subspace. Measured on graph 2 at k = 512: 28.65% of draws saturate somewhere,
     5.0% actually break the fit. Carried through the grid the drafted rule
     leaves 17 usable draws of 500 at k = 32, against 43% loss for the real one.
     Both rules ship (`separation_rule=`), defaulting to 'mle'.
@@ -263,7 +263,7 @@ def constrained_mle_separates(w, k, M, eta_clip=15.0, separated=14.0,
     the natural parameter is confined to S = col(M), so a single saturated cell
     is usually still fitted finitely: the constraint pins it. Divergence needs
     separation WITHIN the model subspace, which is far rarer. On graph 2 at
-    k = 512, 28.9% of draws saturate somewhere but only 5.0% break the fit.
+    k = 512, 28.65% of draws saturate somewhere but only 5.0% break the fit.
 
     IRLS on a canonical link, so the working weights ARE the Fisher information
     and this is Fisher scoring and Newton-Raphson at once. Iterative, but pure
