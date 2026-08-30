@@ -111,18 +111,38 @@ K_GRID = (8, 32, 64, 128, 512)
 # found the moments hold far further out at high b1 than at low, so a flat limit is
 # two errors at once: too strict at b1 = 22, too loose at b1 = 1.
 #
-# The anchors are the last rung that passed BOTH criteria in that sweep, not the
-# first that failed. At b1 = 1 the drop rate is already 7.9% at 0.030 while the
-# moments still read 0.873, so 0.030 is a truncated sample rather than a clean
-# pass and 0.019 is the last honest rung. At b1 = 22 the moments break at 0.180,
-# leaving 0.120. Taking first-failing instead would admit the very saturations
-# these were measured to fail at.
+# The anchors are the last rung that passed, not the first that failed. Taking
+# first-failing would admit the very saturations these were measured to fail at.
+# At b1 = 22 the moments break at 0.180, leaving 0.120.
+#
+# THE LOW ANCHOR IS 0.0017, NOT THE 0.019 THIS LINE FIRST CARRIED, and the reason
+# matters more than the number. 0.019 was the last passing rung of the MATCHED
+# sweep, which scales eta to hit a target at fixed k = 64. The NATURAL grid
+# disagrees: observed|g3|k128 sits at saturation 0.0161 -- inside 0.019 -- and
+# fails 6 of 10 base seeds (binomial p = 0.0045). So 0.019 admitted a cell
+# measured to fail, which is the exact error first-failing anchors are rejected
+# for, arriving by a different route.
+#
+# The two grids disagree because SATURATION DOES NOT ORDER OUTCOMES AT LOW b1.
+# Scaled eta at k = 64 and saturation 0.019 passes; natural eta at k = 128 and
+# saturation 0.0161 -- LOWER -- fails. A quantity that can be smaller on the
+# failing cell than on the passing one is not ranking them. At low b1 the binding
+# constraint is separation, which depends on k and on the flow, and the moment
+# check registers it only downstream.
+#
+# 0.0017 is therefore NOT a claim that saturation orders b1 = 1. It is the
+# largest saturation at b1 = 1 with no measured counterexample above it -- the
+# k = 512 cell, 10/10 seeds -- chosen so the gate admits no cell the audit
+# flagged. It buys that at the cost of one passing cell, observed|g2|k128 at
+# df = 3, which the tightened interpolation also excludes.
+#
+# Every cell collapse_spread flags is out of window under these anchors.
 #
 # Note WHICH WAY b1 = 1 fails: varT/2df falls BELOW 1 -- 0.873, then 0.724 -- as
 # separated draws are dropped. That is truncation shrinking the variance, not the
 # heavy tail inflating it. At low b1 the binding constraint is separation loss and
 # the moment check only registers it downstream.
-SATURATION_WINDOW = {1: 0.019, 22: 0.120}
+SATURATION_WINDOW = {1: 0.0017, 22: 0.120}
 
 
 def saturation_window(b1):
@@ -135,6 +155,21 @@ def saturation_window(b1):
     absorbs k, which is why saturation is the variable but is not itself tested.
     Linear rather than log-linear because it is the more conservative of the two
     fits the anchors admit.
+
+    READ THE LOW END AS A FLOOR, NOT AS A THRESHOLD. Below roughly b1 = 3 this
+    axis stops ORDERING outcomes at all -- not "orders them approximately". The
+    two grids invert there: scaled eta at k = 64 and saturation 0.019 passes,
+    natural eta at k = 128 and saturation 0.0161 fails, and 0.0161 is the smaller
+    number. Whatever decides those cells, it is not saturation; at low b1 the
+    binding constraint is separation, which depends on k and on the flow.
+
+    So clamping to the low anchor is NOT a conservative approximation of a true
+    boundary, and reading it as one is the wrong inference to draw from a value
+    that looks like a threshold. 0.0017 is the largest saturation at b1 = 1 with
+    no measured counterexample above it, and it earns its place by excluding every
+    cell the audit flagged -- not by locating an edge. If a future measurement
+    finds a failure beneath it, the right response is to lower it again or to
+    refuse at low b1 entirely, NOT to interpolate more finely.
     """
     lo_b, hi_b = min(SATURATION_WINDOW), max(SATURATION_WINDOW)
     lo, hi = SATURATION_WINDOW[lo_b], SATURATION_WINDOW[hi_b]

@@ -266,14 +266,29 @@ def test_dict_constants_survive_a_json_round_trip():
     assert hr.staleness("x", really_changed, module) is not None
 
 
-def test_the_stale_list_holds_only_genuine_flags(results, current):
-    """chi2_collapse and b1_ladder were written by the module they are compared
-    against; only collapse_spread predates the window change."""
-    flagged = set(hr.stale(results, current))
-    assert "collapse_spread" in flagged, "the genuine stale audit must still flag"
-    for name in ("chi2_collapse", "b1_ladder"):
-        if name in results and hr.recorded_constants(results[name]).get(
-                "saturation_window") is not None:
-            assert name not in flagged, (
-                f"{name} records saturation_window matching the module and must "
-                "not read stale -- check comparable()")
+def test_a_flag_always_corresponds_to_a_real_disagreement(results, current):
+    """Every stale flag must be traceable to a constant that actually differs.
+
+    Written first as "chi2_collapse and b1_ladder must never be flagged", which
+    was wrong: after the low anchor moved to 0.0017 those results legitimately
+    disagreed with the module and SHOULD have flagged. Naming probes made the test
+    assert a snapshot rather than the property. It now checks the property, so it
+    survives the anchor moving again.
+    """
+    flagged = hr.stale(results, current)
+    for name, msg in flagged.items():
+        recorded = hr.recorded_constants(results[name])
+        gone = [k for k in recorded if k not in current]
+        differs = [k for k in recorded
+                   if k in current
+                   and hr.comparable(recorded[k]) != hr.comparable(current[k])]
+        assert gone or differs, (
+            f"{name} is flagged but every constant it records matches the module: "
+            f"{msg}. That is a false positive -- check comparable().")
+    for name, result in results.items():
+        if name in flagged:
+            continue
+        recorded = hr.recorded_constants(result)
+        for key, val in recorded.items():
+            assert key in current and hr.comparable(val) == hr.comparable(current[key]), (
+                f"{name} is NOT flagged but its {key} disagrees with the module")

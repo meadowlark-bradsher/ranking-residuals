@@ -31,8 +31,8 @@ and those break the SECOND moment while leaving the first intact: an edge
 with expected count c contributes ~c when w=0 and ~1/c on the probability-c
 event that w=1, so ~1 in expectation but ~1/c in second moment. That is why
 meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside
-the window (sat > its row's b1-dependent limit, 0.019 at the lowest b1 to 0.120 at the highest) are shown but excluded from the
-verdict: 26 of 40 cells are in
+the window (sat > its row's b1-dependent limit, 0.002 at the lowest b1 to 0.120 at the highest) are shown but excluded from the
+verdict: 24 of 40 cells are in
 window.
 
 The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out of window or over the separation cap).
@@ -52,12 +52,12 @@ The verdict is computed from the k = 512 cells: 8 of 8 judged, 0 excluded (out o
 | observed | 2 | 32 | 3 | 8 | 0.1762 | . | 80.8% | 1.158 | 1.533 | 0.091 | 0.0003 |
 | observed | 2 | 32 | 3 | 32 | 0.0661 | . | 43.5% | 0.973 | 1.036 | 0.062 | 0.0046 |
 | observed | 2 | 32 | 3 | 64 | 0.0431 | . | 29.3% | 0.972 | 1.029 | 0.052 | 0.0270 |
-| observed | 2 | 32 | 3 | 128 | 0.0270 | y | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
+| observed | 2 | 32 | 3 | 128 | 0.0270 | . | 20.7% | 1.006 | 1.077 | 0.059 | 0.8147 |
 | observed | 2 | 32 | 3 | 512 | 0.0090 | y | 5.0% | 0.983 | 0.975 | 0.046 | 0.4808 |
 | observed | 3 | 33 | 1 | 8 | 0.2588 | . | 99.6% | 1.842 | 2.597 | 0.111 | -- |
 | observed | 3 | 33 | 1 | 32 | 0.0618 | . | 43.0% | 0.740 | 0.643 | 0.030 | 0.0000 |
 | observed | 3 | 33 | 1 | 64 | 0.0309 | . | 9.2% | 0.842 | 0.859 | 0.039 | 0.0000 |
-| observed | 3 | 33 | 1 | 128 | 0.0161 | y | 0.8% | 1.024 | 0.974 | 0.045 | 0.0013 |
+| observed | 3 | 33 | 1 | 128 | 0.0161 | . | 0.8% | 1.024 | 0.974 | 0.045 | 0.0013 |
 | observed | 3 | 33 | 1 | 512 | 0.0017 | y | 0.0% | 1.061 | 1.034 | 0.054 | 0.0157 |
 | empty | 0 | 27 | 16 | 8 | 0.1257 | . | 0.1% | 1.068 | 1.053 | 0.071 | 0.0000 |
 | empty | 0 | 27 | 16 | 32 | 0.0087 | y | 0.0% | 1.012 | 0.982 | 0.049 | 0.1399 |
@@ -251,8 +251,8 @@ draw.
 
 At k = 64, 2000 replicates. `fill` is triangles filled of the
 total available; the empty and observed endpoints are marked. Only in-window
-cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the reading;
-143 of 144 cells are in window.
+cells (saturation <= the b1-dependent window, 0.002 to 0.120) count toward the reading;
+129 of 144 cells are in window.
 
 | graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |
 |---|---|---|---|---|---|---|---|---|---|
@@ -267,7 +267,6 @@ cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the r
 | 0 | 12/15 | 6 | 0.0100 | y | 0.0% | 1.024 | 1.019 | 0.051 | yes |
 | 0 | 12/15 | 6 | 0.0190 | y | 0.0% | 1.045 | 1.034 | 0.054 | yes |
 | 0 | 14/15 | 4 | 0.0100 | y | 0.1% | 1.063 | 1.078 | 0.055 | yes |
-| 0 | 14/15 | 4 | 0.0190 | y | 0.3% | 1.042 | 1.257 | 0.055 | NO |
 | 1 | 0/12 (empty) | 13 | 0.0100 | y | 0.0% | 0.997 | 0.957 | 0.047 | yes |
 | 1 | 0/12 (empty) | 13 | 0.0190 | y | 0.0% | 1.018 | 1.005 | 0.051 | yes |
 | 1 | 2/12 | 11 | 0.0100 | y | 0.0% | 1.017 | 1.047 | 0.054 | yes |
@@ -279,7 +278,6 @@ cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the r
 | 1 | 9/12 | 5 | 0.0100 | y | 0.0% | 1.035 | 1.008 | 0.049 | yes |
 | 1 | 9/12 | 5 | 0.0190 | y | 0.0% | 1.044 | 1.063 | 0.061 | yes |
 | 1 | 11/12 | 3 | 0.0100 | y | 0.0% | 1.058 | 1.084 | 0.058 | yes |
-| 1 | 11/12 | 3 | 0.0190 | y | 0.0% | 1.085 | 1.110 | 0.063 | yes |
 | 2 | 0/21 (empty) | 21 | 0.0100 | y | 0.0% | 0.999 | 0.975 | 0.041 | yes |
 | 2 | 0/21 (empty) | 21 | 0.0190 | y | 0.0% | 1.009 | 0.971 | 0.045 | yes |
 | 2 | 4/21 | 17 | 0.0100 | y | 0.0% | 1.012 | 0.988 | 0.051 | yes |
@@ -291,7 +289,6 @@ cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the r
 | 2 | 15/21 | 7 | 0.0100 | y | 0.0% | 1.027 | 1.059 | 0.052 | yes |
 | 2 | 15/21 | 7 | 0.0190 | y | 0.1% | 0.985 | 0.958 | 0.046 | yes |
 | 2 | 21/21 (observed) | 3 | 0.0100 | y | 11.1% | 1.061 | 1.061 | 0.055 | yes |
-| 2 | 21/21 (observed) | 3 | 0.0190 | y | 17.4% | 1.003 | 1.022 | 0.053 | yes |
 | 3 | 0/26 (empty) | 22 | 0.0100 | y | 0.0% | 1.024 | 1.001 | 0.057 | yes |
 | 3 | 0/26 (empty) | 22 | 0.0190 | y | 0.0% | 1.014 | 0.965 | 0.051 | yes |
 | 3 | 4/26 | 18 | 0.0100 | y | 0.0% | 1.006 | 1.029 | 0.059 | yes |
@@ -302,11 +299,9 @@ cells (saturation <= the b1-dependent window, 0.019 to 0.120) count toward the r
 | 3 | 13/26 | 9 | 0.0190 | y | 0.0% | 0.994 | 0.987 | 0.045 | yes |
 | 3 | 19/26 | 5 | 0.0100 | y | 0.0% | 1.017 | 1.016 | 0.053 | yes |
 | 3 | 19/26 | 5 | 0.0190 | y | 0.0% | 1.026 | 1.089 | 0.056 | yes |
-| 3 | 24/26 | 1 | 0.0100 | y | 0.4% | 1.077 | 1.141 | 0.053 | yes |
-| 3 | 24/26 | 1 | 0.0190 | y | 2.1% | 1.063 | 3.442 | 0.047 | NO |
 
-Of the 2 cells at b1 <= 2, 1 fail the moment check;
-of the 46 cells at b1 >= 3, 2 fail.
+Of the 0 cells at b1 <= 2, 0 fail the moment check;
+of the 43 cells at b1 >= 3, 1 fail.
 **The b1 reading is not clean here** -- see the table rather than a slogan.
 The cells do not separate on b1 alone at this k, so the filling
 cannot be read as a dial on the data requirement from this run alone;
