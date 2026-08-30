@@ -121,9 +121,9 @@
         "realized_size": 0.044029
       },
       "k_32": {
-        "drop_rate": 0.431,
-        "mean_T_ratio": 0.877957,
-        "realized_size": 0.031634
+        "drop_rate": 0.43,
+        "mean_T_ratio": 0.887583,
+        "realized_size": 0.033333
       }
     }
   }
