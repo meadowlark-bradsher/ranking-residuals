@@ -125,11 +125,18 @@ will remember.
 draft of this section claimed something that did not survive its own experiment.
 **Claim.** The moment failures are governed by **saturation**, E[pᵏ + (1−p)ᵏ],
 the expected fraction of edges landing at w = 0 or w = k — computable in closed
-form with no sampling. But the tolerable level is b₁-dependent, so the paper
-must state a window per b₁ rather than one number: pinned at 0.010 every b₁ from
-1 to 22 passes, while pinned at 0.019 the b₁ = 1 cell reaches varT/2df = 3.44
-and b₁ = 22 is unmoved at 0.965. b₁ does not decide whether χ² holds at a given
-extremity; it decides how much extremity is affordable.
+form with no sampling, and b₁-independent across the range measured (0.010 to
+0.019, ten base seeds per level, median variance ratio flat at both b₁ = 1 and
+b₁ = 22).
+**The methodological beat, which may be the more useful half.** This section's
+claim was wrong three times before it was right, and always the same way: b₁ = 1
+is the decisive cell AND the noisiest one. Its reference is χ²(1), excess
+kurtosis 12, so varT/2df carries ≈ 8.4% sampling s.e. at 2000 replicates against
+a 15% gate — one or two seeds in ten exceed it with no trend in anything. Single
+draws from that cell produced, in order: a b₁ floor, a fold-size floor, and a
+b₁-by-saturation interaction. None survived replication. The paper should carry
+this as a worked example of a decisive-and-noisy cell, because the reader's
+instinct will be to trust the cell that discriminates most.
 **Mechanism, and it explains the asymmetry.** An edge with expected count c
 contributes ~c when w = 0 and ~1/c on the probability-c event that w = 1 — so ~1
 in expectation, exactly what a χ² coordinate should contribute, but ~1/c in

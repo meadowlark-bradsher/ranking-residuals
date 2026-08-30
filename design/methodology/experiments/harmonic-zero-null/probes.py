@@ -652,6 +652,103 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     }
 
 
+# ---------------------------------------------------------------- probe 6
+def b1_one_boundary(reps=2000, n_base=10, k=64,
+                    targets=(0.010, 0.012, 0.014, 0.016, 0.018, 0.019)):
+    """Where does the chi2 window actually close at b1 = 1?
+
+    b1_ladder established two points and an interaction between them. Pinned at
+    saturation 0.010 every b1 from 1 to 22 passes; pinned at 0.019, b1 = 1 reaches
+    varT/2df = 3.44 while b1 = 22 sits at 0.965. So b1 does not decide whether chi2
+    holds at a given extremity -- it decides how much extremity is affordable, and
+    a flat window across b1 would admit exactly the cells that fail worst.
+
+    This walks the bracket to find where b1 = 1 closes, with b1 = 22 carried at the
+    same targets as the control: if the control stays flat while b1 = 1 crosses,
+    the interaction is real and the window has to be indexed by b1.
+
+    Seeded, because the quantity being located is the noisy one. At b1 = 1 the
+    reference is chi2(1), excess kurtosis 12, so the relative sampling s.e. on
+    varT/2df is sqrt((12+2)/reps) ~ 8.4% at reps = 2000 -- the single-draw value
+    that first cleared the gate did so by 0.0002. Ten base seeds put ~2.7% on it,
+    which is enough to bracket a crossing. The median across seeds is reported
+    beside the mean because a chi2(1) variance ratio has a long right tail and one
+    seed can carry the average.
+    """
+    rows = []
+    for g, want in ((3, "b1=1"), (3, "b1=22")):
+        edges = graph(g)
+        tris, curve = _fill_curve(edges)
+        m = curve.index(int(want.split("=")[1]))
+        D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+        bases = st.harmonic_zero_bases(D0, D1)
+        b1 = bases[0].shape[1]
+        eta_raw = eta_in_S(D0, D1, 1.0, g)
+        for target in targets:
+            scale = scale_to_saturation(eta_raw, k, target)
+            if scale is None:
+                continue
+            eta = scale * eta_raw
+            mr, vr, passes = [], [], 0
+            for base in range(n_base):
+                T, _, dropped = run_cell(eta, k, bases,
+                                         f"c6|{base}|{g}|{b1}|{target}", reps)
+                if len(T) < 2:
+                    continue
+                a = float(T.mean() / b1)
+                b = float(T.var(ddof=1) / (2 * b1))
+                mr.append(a)
+                vr.append(b)
+                if abs(a - 1) <= 0.10 and abs(b - 1) <= 0.15:
+                    passes += 1
+
+            def agg(v):
+                if not v:
+                    return None
+                mean = sum(v) / len(v)
+                se = ((sum((x - mean) ** 2 for x in v) / (len(v) - 1)) / len(v)) ** 0.5 \
+                    if len(v) > 1 else None
+                sv = sorted(v)
+                med = sv[len(sv) // 2] if len(sv) % 2 else 0.5 * (sv[len(sv)//2 - 1]
+                                                                 + sv[len(sv)//2])
+                return {"mean": mean, "se": se, "median": med,
+                        "min": min(v), "max": max(v)}
+
+            rows.append({
+                "graph": g, "df": b1, "k": k, "saturation_target": target,
+                "saturation": cell_saturation(eta, k), "eta_scale": scale,
+                "n_base_seeds": len(vr), "n_seeds_passing": passes,
+                "mean_ratio": agg(mr), "var_ratio": agg(vr),
+            })
+
+    # The boundary: the smallest target at which b1 = 1 no longer clears the gate
+    # on the median seed. Median, not mean, because one heavy-tailed seed should
+    # not move a threshold.
+    def closes_at(df):
+        bad = [r["saturation_target"] for r in rows
+               if r["df"] == df and r["var_ratio"]
+               and abs(r["var_ratio"]["median"] - 1) > 0.15]
+        return min(bad) if bad else None
+
+    b1_one, b1_ctrl = closes_at(1), closes_at(22)
+    verdict = ("located" if b1_one is not None and b1_ctrl is None
+               else "control-also-fails" if b1_one is not None
+               else "not-closed-in-range")
+    return {
+        "probe": "b1_one_boundary",
+        "question": "At b1 = 1, at what saturation does the chi2 window close, and "
+                    "does the b1 = 22 control stay open across the same range?",
+        "falsifies": "If the control closes at the same target, the window is not "
+                     "b1-indexed and the interaction is something else. If b1 = 1 "
+                     "never closes in range, the 0.019 failure was a draw.",
+        "verdict": verdict,
+        "value": {"alpha": ALPHA, "reps": reps, "n_base": n_base, "k": k,
+                  "targets": list(targets),
+                  "b1_1_closes_at": b1_one, "b1_22_closes_at": b1_ctrl,
+                  "rows": rows},
+    }
+
+
 def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
@@ -982,7 +1079,7 @@ def write_results_md():
 
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
           "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
-          "seed_spread": seed_spread}
+          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
