@@ -154,39 +154,36 @@ def test_an_absent_fingerprint_is_unverifiable_not_agreement():
     assert "probe" in hr.unfingerprinted({"probe": bare})
 
 
-# Results that predate the recording line. It landed in probes.py's writer, so
-# every probe stamps its fingerprint from now on and this set shrinks to nothing
-# as each is re-run. The ratchet fired the moment the first one landed and told
-# me to narrow it, which is what it is for.
-# Empty: every shipped result now carries a fingerprint. The ratchet earned its
-# keep in BOTH directions getting here -- it said "these record none but should"
-# when the recording line landed, and "these now carry one, strike them" after
-# each sweep. Neither direction let the list rot into something nobody trusts.
+# UNFINGERPRINTED is gone. It existed only to tolerate the migration from results
+# written before the recording line to results written after, and that migration
+# is complete. The ratchet earned its keep on the way -- it fired in BOTH
+# directions, "this now carries one, strike it" as well as "this records none but
+# should" -- but what it was standing in for is a property needing no list at all:
 #
-# A name appearing here again means a result was written by code predating the
-# recording line, which is a thing to fix rather than to record.
-UNFINGERPRINTED = set()
+#     every result carries a fingerprint
+#
+# A list also carries a defect the property does not. It asserts a fact about
+# ARTIFACTS in a working tree while living in SOURCE, so on a repo where results
+# differ per branch it says different things depending on what is checked out. A
+# strike request was correct on one branch and wrong on another at the same
+# moment, and only checking before editing caught it. The property is true or
+# false the same way everywhere.
+#
+# If a future migration genuinely needs tolerance, re-introduce a list
+# DELIBERATELY with its reason attached, rather than leaving an empty one lying
+# around to be appended to.
 
 
-def test_the_unfingerprinted_set_is_exactly_the_results_predating_recording():
-    """Equality, so it catches both directions: a new result arriving without a
-    fingerprint fails, and a re-run one that gains a fingerprint also fails --
-    telling whoever re-ran it to strike the name rather than letting the set rot
-    into a list nobody trusts."""
+def test_every_result_carries_a_fingerprint():
+    """The property the migration list was standing in for."""
     results = {p.stem: json.loads(p.read_text())
                for p in sorted(RESULTS.glob("*.json"))}
     if not results:
         pytest.skip("no results checked in")
-    found = set(hr.unfingerprinted(results)) & set(results)
-    expected = UNFINGERPRINTED & set(results)
-    new = found - expected
-    fixed = expected - found
-    assert not new, (
-        f"{sorted(new)} record no fingerprint but should -- the writer stamps "
-        "every probe now, so a bare result means it was written by older code")
-    assert not fixed, (
-        f"{sorted(fixed)} now carries a fingerprint -- strike it from "
-        "UNFINGERPRINTED so the ratchet keeps its grip")
+    bare = hr.unfingerprinted(results)
+    assert not bare, (
+        f"{bare} record no fingerprint. The writer stamps every probe, so a bare "
+        "result was written by code predating the recording line -- re-run it.")
 
 
 def test_a_recorded_fingerprint_round_trips_against_the_live_module():

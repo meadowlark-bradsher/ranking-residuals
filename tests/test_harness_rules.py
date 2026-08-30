@@ -115,17 +115,23 @@ def test_the_rule_fires_on_a_constructed_unseeded_low_df_verdict():
 # suite under the committed window clears them, and the equality assertion then
 # fails until they are struck -- same ratchet as KNOWN_GAPS.
 #
-# It did exactly that, twice. b1_ladder and chi2_collapse were struck when the
-# key-type normalisation landed -- both were written by the module they are
-# compared against and had only ever read stale because JSON turns
-# SATURATION_WINDOW's int keys into strings. collapse_spread was struck when it
-# was finally re-run under the refusal, which is what the whole sequencing was
-# for: it was the one genuinely stale artifact and it is now current.
+# KNOWN_STALE is gone, and its absence is the point.
 #
-# Empty is the right resting state. A stale entry appearing here again means a
-# result has fallen behind the code, which is a thing to fix rather than to
-# record.
-KNOWN_STALE = set()
+# It existed to tolerate a migration: results predating a gate change, tolerated by
+# name until they could be re-run. Both entries were struck as the sequencing
+# cleared them, and once the last one went the list was an empty container inviting
+# additions. The property it was standing in for -- NO RESULT IS STALE -- needs no
+# list, and unlike a list it says the same thing on every branch.
+#
+# That last part matters more than the tidiness. A named list asserts a fact about
+# artifacts in a working tree while living in source, so on a repo where results
+# differ per branch it asserts different things depending on what is checked out.
+# That bit us for real: a strike request was correct on one branch and wrong on
+# another at the same moment. Dissolving the list dissolves the failure mode.
+#
+# If a future migration genuinely needs tolerance, re-introduce a list DELIBERATELY
+# with the reason attached, rather than leaving an empty one lying around for
+# someone to append to.
 
 # Results recording no gate constant at all cannot be checked either way. That is
 # a defect in the probe, not in the checker: a result nobody can date is one that
@@ -152,15 +158,13 @@ def current():
     return hr.current_constants(mod)
 
 
-def test_stale_result_set_is_exactly_the_known_stale(results, current):
-    found = set(hr.stale(results, current))
-    new = found - KNOWN_STALE
-    fixed = KNOWN_STALE - found
-    assert not new, (
-        "a result is now out of step with the gate constants in probes.py:\n  "
-        + "\n  ".join(hr.stale(results, current)[n] for n in sorted(new)))
-    assert not fixed, (
-        f"{sorted(fixed)} now agrees with the code -- strike it from KNOWN_STALE")
+def test_no_result_is_stale_against_the_code(results, current):
+    """The property, not a list of exceptions to it."""
+    flagged = hr.stale(results, current)
+    assert not flagged, (
+        "a result is out of step with the gate constants in probes.py -- re-run "
+        "it rather than recording the disagreement:\n  "
+        + "\n  ".join(flagged[n] for n in sorted(flagged)))
 
 
 def test_uncheckable_results_are_exactly_the_known_ones(results):
