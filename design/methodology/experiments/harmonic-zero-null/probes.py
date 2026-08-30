@@ -1225,24 +1225,38 @@ def collapse_spread(reps=2000, n_base=10, mtol=0.10, vtol=0.15):
 
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
           "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder,
-          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary,
-          "collapse_spread": collapse_spread}
+          "seed_spread": seed_spread, "b1_one_boundary": b1_one_boundary}
+
+# An AUDIT re-measures how a PROBE was calibrated rather than measuring the null.
+# It is dispatchable by name but stays out of the default run: collapse_spread
+# alone costs (n_base + 1) x chi2_collapse, which takes the full suite from two
+# minutes to twenty. The suite is the loop everything else depends on, and a loop
+# that costs twenty minutes is one that stops being run.
+AUDITS = {"collapse_spread": collapse_spread}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)
+    runnable = {**PROBES, **AUDITS}
     names = sys.argv[1:] or list(PROBES)
     for name in names:
-        r = PROBES[name]()
+        r = runnable[name]()
         (RES / f"{name}.json").write_text(json.dumps(r, indent=1, default=float))
         print(f"  {name:24} {r['verdict']:10} -> results/{name}.json")
     # RESULTS.md is regenerated from ALL THREE json files, so writing it after a
     # partial run would splice fresh sections onto stale ones under a heading that
     # says the file cannot drift from the data -- and would crash outright on a
     # checkout where the other results do not exist yet.
-    if set(names) == set(PROBES):
+    #
+    # Subset, not equality: an invocation may append an AUDIT to the full probe
+    # set, and an extra result never makes RESULTS.md stale. Equality would
+    # silently decline to regenerate on `probes.py <every probe> collapse_spread`.
+    if set(PROBES) <= set(names):
         write_results_md()
         print("  RESULTS.md regenerated")
     else:
         missing = ", ".join(sorted(set(PROBES) - set(names)))
         print(f"  RESULTS.md NOT regenerated -- {missing} did not run in this "
               f"invocation. Run `python probes.py` with no arguments to rebuild it.")
+    if not sys.argv[1:]:
+        print(f"  audits not run by default: {', '.join(sorted(AUDITS))} "
+              f"-- name one explicitly to run it")
