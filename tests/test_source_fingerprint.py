@@ -154,17 +154,56 @@ def test_an_absent_fingerprint_is_unverifiable_not_agreement():
     assert "probe" in hr.unfingerprinted({"probe": bare})
 
 
-def test_every_shipped_result_is_currently_unfingerprinted():
-    """A ratchet. Probes do not record the fingerprint yet -- the recording line
-    belongs in probes.py's writer and that file is held by another session. When
-    it lands, this fails and tells whoever landed it to narrow the assertion."""
+# Results that predate the recording line. It landed in probes.py's writer, so
+# every probe stamps its fingerprint from now on and this set shrinks to nothing
+# as each is re-run. The ratchet fired the moment the first one landed and told
+# me to narrow it, which is what it is for.
+UNFINGERPRINTED = {"b1_ladder", "b1_one_boundary", "chi2_collapse",
+                   "collapse_spread", "harmonic_projected_eps", "seed_spread"}
+
+
+def test_the_unfingerprinted_set_is_exactly_the_results_predating_recording():
+    """Equality, so it catches both directions: a new result arriving without a
+    fingerprint fails, and a re-run one that gains a fingerprint also fails --
+    telling whoever re-ran it to strike the name rather than letting the set rot
+    into a list nobody trusts."""
     results = {p.stem: json.loads(p.read_text())
                for p in sorted(RESULTS.glob("*.json"))}
     if not results:
         pytest.skip("no results checked in")
-    assert set(hr.unfingerprinted(results)) == set(results), (
-        "a result now carries a source fingerprint -- good. Narrow this test to "
-        "the ones that still do not, so the ratchet keeps its grip.")
+    found = set(hr.unfingerprinted(results)) & set(results)
+    expected = UNFINGERPRINTED & set(results)
+    new = found - expected
+    fixed = expected - found
+    assert not new, (
+        f"{sorted(new)} record no fingerprint but should -- the writer stamps "
+        "every probe now, so a bare result means it was written by older code")
+    assert not fixed, (
+        f"{sorted(fixed)} now carries a fingerprint -- strike it from "
+        "UNFINGERPRINTED so the ratchet keeps its grip")
+
+
+def test_a_recorded_fingerprint_round_trips_against_the_live_module():
+    """The recording line and the checker must agree on the real module, not just
+    on synthetic ones -- the lesson from rule 1 sitting as a no-op while its
+    synthetic controls passed."""
+    spec = importlib.util.spec_from_file_location("probes_live", _EXP / "probes.py")
+    live = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(live)
+    except Exception:
+        pytest.skip("probes.py not importable right now")
+    checked = 0
+    for path in sorted(RESULTS.glob("*.json")):
+        result = json.loads(path.read_text())
+        if (result.get("value") or {}).get(hr.FINGERPRINT_KEY) is None:
+            continue
+        checked += 1
+        assert hr.fingerprint_mismatch(path.stem, result, live) is None, (
+            f"{path.stem} was written by this module but reads as stale -- the "
+            "writer and the checker disagree, which makes the rule useless")
+    if not checked:
+        pytest.skip("no fingerprinted results yet")
 
 
 # ---------------------------------------------------------------------------
