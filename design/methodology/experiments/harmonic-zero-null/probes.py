@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import score_test as st                                          # noqa: E402
+import hodge                                                     # noqa: E402
 from rig import flows                                            # noqa: E402
 
 HERE = Path(__file__).parent
@@ -319,6 +320,95 @@ def harmonic_projected_eps(reps=1500, k=128):
     }
 
 
+# ---------------------------------------------------------------- probe 4
+def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6):
+    """Is the chi2 validity floor a function of b1, or of k?
+
+    `observed` and `empty` are the two ENDPOINTS of a lattice, not a binary
+    choice, and they are the two pathological ends: `observed` bottoms out at
+    b1 = 1 on graph 3, where truncating the single harmonic coordinate truncates
+    the statistic; `empty` leaves b1 so large that S = im D0 and the null IS
+    Bradley-Terry. chi2_collapse measured only those two. This walks between them.
+
+    Triangles are filled in the instrument's own canonical order and the level is
+    named by the b1 it reaches, so the filling is a function of the TOPOLOGY
+    alone -- fixed before any outcome is drawn. That is what keeps this a
+    pre-specification rather than a null chosen to get an answer; b1 does not
+    depend on the data, only on (edges, triangles).
+    """
+    rows = []
+    for g in range(N_GRAPHS):
+        edges = graph(g)
+        tris = hodge.observed_triangles(edges)
+        # b1 as a function of how many triangles are filled. Monotone
+        # non-increasing, so every achievable b1 has a smallest m that reaches it.
+        curve = []
+        for m in range(len(tris) + 1):
+            D0m, D1m = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+            curve.append(hodge.harmonic_basis(D0m, D1m).shape[1])
+        reach = sorted(set(curve), reverse=True)
+        # Subsample evenly, always keeping both endpoints: the empty-filling b1
+        # and the observed-filling b1 must appear so the ladder brackets the two
+        # cells chi2_collapse already reports.
+        if len(reach) > levels:
+            idx = [round(i * (len(reach) - 1) / (levels - 1)) for i in range(levels)]
+            reach = [reach[i] for i in sorted(set(idx))]
+        for b1 in reach:
+            m = curve.index(b1)                 # fewest triangles reaching this b1
+            D0, D1 = st.operators_for_triangles(N_ITEMS, edges, tris[:m])
+            bases = st.harmonic_zero_bases(D0, D1)
+            eta = eta_in_S(D0, D1, 1.0, g)
+            for k in ks:
+                T, off, dropped = run_cell(eta, k, bases, f"c4|{g}|{b1}|{k}", reps)
+                ksres = kstest(T, "chi2", args=(b1,)) if len(T) > 20 else None
+                rows.append({
+                    "graph": g, "E": len(edges), "n_triangles_total": len(tris),
+                    "n_triangles_filled": m, "df": b1, "k": k,
+                    "is_empty_end": m == 0, "is_observed_end": m == len(tris),
+                    # eta carries a curl term scaled to ||eta||, and at m = 0 there
+                    # is no curl to add -- so the empty end sits at a smaller
+                    # ||eta|| and its drop rate is not comparable to the others.
+                    "eta_absmax": float(np.max(np.abs(eta))),
+                    "n_usable": int(len(T)), "n_dropped": dropped,
+                    "drop_rate": float(dropped / reps),
+                    "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
+                    "var_T": float(T.var(ddof=1)) if len(T) > 1 else None,
+                    "chi2_var": 2 * b1,
+                    "reject_rate": (float((T > chi2.ppf(1 - ALPHA, b1)).mean())
+                                    if len(T) else None),
+                    "ks_p": float(ksres.pvalue) if ksres else None,
+                    "score_off_harmonic_max": off,
+                })
+    # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
+    # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
+    # the filling is a dial on the data requirement rather than a fork.
+    def ok(r):
+        return (r["mean_T"] is not None
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
+                and r["var_T"] is not None
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
+    probe_k = 64 if 64 in ks else ks[0]
+    at_k = [r for r in rows if r["k"] == probe_k]
+    lo = [r for r in at_k if r["df"] <= 2]
+    hi = [r for r in at_k if r["df"] >= 3]
+    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
+    verdict = ("confirmed" if rescued
+               else "refuted" if lo and hi and all(ok(r) for r in lo)
+               else "inconclusive")
+    return {
+        "probe": "b1_ladder",
+        "question": "Between the empty and observed fillings, is the chi2 validity "
+                    "floor set by b1 rather than by k?",
+        "falsifies": "If raising b1 on the same graph at the same k does not "
+                     "restore the chi2 moments, the floor is a k floor and the "
+                     "filling is not a dial on the data requirement.",
+        "verdict": verdict,
+        "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
+                  "probe_k": probe_k, "n_low_b1_cells": len(lo),
+                  "n_high_b1_cells": len(hi), "rows": rows},
+    }
+
+
 def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
@@ -340,7 +430,8 @@ def write_results_md():
     c = json.loads((RES / "chi2_collapse.json").read_text())
     f = json.loads((RES / "curl_freedom.json").read_text())
     e = json.loads((RES / "harmonic_projected_eps.json").read_text())
-    cv, fv, ev = c["value"], f["value"], e["value"]
+    l = json.loads((RES / "b1_ladder.json").read_text())
+    cv, fv, ev, lv = c["value"], f["value"], e["value"], l["value"]
 
     ks_grid = sorted({r["k"] for r in cv["rows"]})
     graphs = sorted({r["graph"] for r in cv["rows"]})
@@ -384,7 +475,7 @@ def write_results_md():
          "RAN-28 on known-answer synthetic data. Three probes; the first is the gate.",
          "", "## Verdicts", "",
          "| probe | asks | verdict |", "|---|---|---|"]
-    for d in (c, f, e):
+    for d in (c, f, e, l):
         L += [f"| `{d['probe']}` | {d['question']} | **{d['verdict']}** |"]
     L += ["", "## 1. Does it collapse to chi2(b1)?  [GATING]", "",
           "The claim: on a pre-specified fixed graph the harmonic-zero score test",
@@ -548,6 +639,63 @@ def write_results_md():
         L += ["Whether a real LLM judge sits below that is not something this run can",
               "answer -- it is the measurement RAN-30 and the comparator work have to",
               "supply."]
+    # ---- section 4: the filling lattice
+    pk = lv["probe_k"]
+    lrows = [r for r in lv["rows"] if r["k"] == pk]
+    lgraphs = sorted({r["graph"] for r in lv["rows"]})
+
+    def lok(r):
+        return (r["mean_T"] is not None
+                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= 0.10
+                and r["var_T"] is not None
+                and abs(r["var_T"] / r["chi2_var"] - 1) <= 0.15)
+
+    L += ["## 4. Is the chi2 floor a b1 floor?", "",
+          "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
+          "choice: filling a triangle adds a row to D1, so S grows and b1 shrinks,",
+          "monotonically. Probe 1 measured only the endpoints -- which are the two",
+          "pathological ends. This walks between them, filling triangles in canonical",
+          "order and naming each level by the b1 it reaches. b1 depends on (edges,",
+          "triangles) alone, never on the outcomes, so the level is fixed before any",
+          "draw.", "",
+          f"At k = {pk}, {lv['reps']} replicates. `fill` is triangles filled of the",
+          "total available; the empty and observed endpoints are marked.", "",
+          "| graph | fill | b1 | drop% | meanT/df | varT/2df | size | chi2 ok |",
+          "|---|---|---|---|---|---|---|---|"]
+    for r in lrows:
+        end = (" (empty)" if r["is_empty_end"] else
+               " (observed)" if r["is_observed_end"] else "")
+        mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
+        vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
+        L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']}{end} | "
+              f"{r['df']} | {_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
+              f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
+              f"{'yes' if lok(r) else 'NO'} |"]
+    lo = [r for r in lrows if r["df"] <= 2]
+    hi = [r for r in lrows if r["df"] >= 3]
+    lo_bad = [r for r in lo if not lok(r)]
+    hi_bad = [r for r in hi if not lok(r)]
+    L += ["", f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;",
+          f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail.",
+          ("**The floor is a b1 floor, not a k floor.** On the same graph at the same k,"
+           if l["verdict"] == "confirmed" else
+           "**The b1 reading is not clean here** -- see the table rather than a slogan."),
+          ("raising b1 by filling fewer triangles restores the chi2 moments. The filling"
+           if l["verdict"] == "confirmed" else
+           "The cells do not separate on b1 alone at this k, so the filling"),
+          ("is therefore a dial on the data requirement, not only a fork between two"
+           if l["verdict"] == "confirmed" else
+           "cannot be read as a dial on the data requirement from this run alone;"),
+          ("named conventions -- and the two named conventions sit at its worst ends."
+           if l["verdict"] == "confirmed" else
+           "the endpoints remain the only characterised levels."), "",
+          "What this does NOT license: choosing a filling to obtain a convenient b1.",
+          "Filling a triangle asserts that a 3-cycle among those items is local",
+          "inconsistency rather than genuine obstruction. That is a claim about the",
+          "domain, and it is the same circularity charged against Bradley-Terry in",
+          "section 2 if it is made to reach a number. What the ladder prices is the",
+          "COST of each admissible choice, not permission to pick one.", ""]
+
     se = (cv["alpha"] * (1 - cv["alpha"]) / cv["reps"]) ** 0.5
     L += ["", "## What this run does NOT establish", "",
           "**DZW agreement is untested.** RAN-28's gating item has two halves: that the",
@@ -575,7 +723,7 @@ def write_results_md():
 
 
 PROBES = {"chi2_collapse": chi2_collapse, "curl_freedom": curl_freedom,
-          "harmonic_projected_eps": harmonic_projected_eps}
+          "harmonic_projected_eps": harmonic_projected_eps, "b1_ladder": b1_ladder}
 
 if __name__ == "__main__":
     RES.mkdir(exist_ok=True)

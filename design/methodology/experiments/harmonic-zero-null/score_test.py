@@ -202,3 +202,16 @@ def operators(n, edges, filling):
     """D0, D1 for a graph under a named filling -- via the instrument (RAN-7)."""
     tris = hodge.triangles_for_filling(edges, filling)
     return hodge.build_operators(n, edges, tris)
+
+
+def operators_for_triangles(n, edges, triangles):
+    """D0, D1 for an EXPLICIT 2-skeleton, routed through the instrument's own
+    'custom' filling so a partial fill cannot drift from the named ones.
+
+    'observed' and 'empty' are the two ENDPOINTS of a lattice, not a binary
+    choice. Filling a triangle adds a row to D1, so im D1^T grows weakly, S grows,
+    and b1 shrinks -- monotonically. Everything between the endpoints is reachable
+    and, until now, unmeasured.
+    """
+    tris = hodge.triangles_for_filling(edges, "custom", list(triangles))
+    return hodge.build_operators(n, edges, tris)

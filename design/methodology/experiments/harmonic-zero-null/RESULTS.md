@@ -11,6 +11,7 @@ RAN-28 on known-answer synthetic data. Three probes; the first is the gate.
 | `chi2_collapse` | On a pre-specified fixed graph, is the harmonic-zero score statistic distributed chi2(b1)? | **confirmed** |
 | `curl_freedom` | Does the harmonic-zero null absorb curl where Bradley-Terry rejects on it? | **confirmed** |
 | `harmonic_projected_eps` | Is the size distortion under innocent eps governed by ||P_h eps|| alone rather than by total eps? | **confirmed** |
+| `b1_ladder` | Between the empty and observed fillings, is the chi2 validity floor set by b1 rather than by k? | **inconclusive** |
 
 ## 1. Does it collapse to chi2(b1)?  [GATING]
 
@@ -227,6 +228,60 @@ By ||P_h eps|| = 0.4 the size is 0.22-0.45 and the test is no longer honest.
 Whether a real LLM judge sits below that is not something this run can
 answer -- it is the measurement RAN-30 and the comparator work have to
 supply.
+## 4. Is the chi2 floor a b1 floor?
+
+`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary
+choice: filling a triangle adds a row to D1, so S grows and b1 shrinks,
+monotonically. Probe 1 measured only the endpoints -- which are the two
+pathological ends. This walks between them, filling triangles in canonical
+order and naming each level by the b1 it reaches. b1 depends on (edges,
+triangles) alone, never on the outcomes, so the level is fixed before any
+draw.
+
+At k = 64, 2000 replicates. `fill` is triangles filled of the
+total available; the empty and observed endpoints are marked.
+
+| graph | fill | b1 | drop% | meanT/df | varT/2df | size | chi2 ok |
+|---|---|---|---|---|---|---|---|
+| 0 | 0/15 (empty) | 16 | 0.0% | 1.007 | 1.014 | 0.051 | yes |
+| 0 | 2/15 | 14 | 0.0% | 0.996 | 1.243 | 0.065 | NO |
+| 0 | 5/15 | 11 | 0.0% | 1.022 | 1.161 | 0.068 | NO |
+| 0 | 7/15 | 9 | 0.0% | 1.011 | 1.015 | 0.051 | yes |
+| 0 | 12/15 | 6 | 0.0% | 1.014 | 0.967 | 0.046 | yes |
+| 0 | 14/15 | 4 | 0.1% | 1.034 | 1.065 | 0.049 | yes |
+| 1 | 0/12 (empty) | 13 | 0.0% | 1.000 | 1.004 | 0.043 | yes |
+| 1 | 2/12 | 11 | 0.1% | 1.003 | 1.035 | 0.054 | yes |
+| 1 | 4/12 | 9 | 0.0% | 1.038 | 0.995 | 0.054 | yes |
+| 1 | 7/12 | 7 | 0.0% | 1.008 | 0.984 | 0.054 | yes |
+| 1 | 9/12 | 5 | 0.0% | 1.057 | 1.082 | 0.064 | yes |
+| 1 | 11/12 | 3 | 0.0% | 1.071 | 1.116 | 0.062 | yes |
+| 2 | 0/21 (empty) | 21 | 0.0% | 1.009 | 1.039 | 0.055 | yes |
+| 2 | 4/21 | 17 | 0.0% | 0.994 | 1.733 | 0.052 | NO |
+| 2 | 7/21 | 14 | 0.0% | 0.967 | 1.017 | 0.042 | yes |
+| 2 | 11/21 | 10 | 0.8% | 1.001 | 11.721 | 0.041 | NO |
+| 2 | 15/21 | 7 | 2.7% | 0.943 | 1.021 | 0.046 | yes |
+| 2 | 21/21 (observed) | 3 | 33.0% | 1.002 | 0.999 | 0.045 | yes |
+| 3 | 0/26 (empty) | 22 | 0.0% | 1.009 | 1.015 | 0.054 | yes |
+| 3 | 4/26 | 18 | 0.2% | 1.012 | 1.150 | 0.057 | yes |
+| 3 | 8/26 | 14 | 0.4% | 1.019 | 1.083 | 0.060 | yes |
+| 3 | 13/26 | 9 | 0.0% | 1.002 | 1.176 | 0.058 | NO |
+| 3 | 19/26 | 5 | 0.1% | 1.004 | 1.430 | 0.057 | NO |
+| 3 | 24/26 | 1 | 14.4% | 0.753 | 1.011 | 0.030 | NO |
+
+Of the 1 cells at b1 <= 2, 1 fail the moment check;
+of the 23 cells at b1 >= 3, 6 fail.
+**The b1 reading is not clean here** -- see the table rather than a slogan.
+The cells do not separate on b1 alone at this k, so the filling
+cannot be read as a dial on the data requirement from this run alone;
+the endpoints remain the only characterised levels.
+
+What this does NOT license: choosing a filling to obtain a convenient b1.
+Filling a triangle asserts that a 3-cycle among those items is local
+inconsistency rather than genuine obstruction. That is a claim about the
+domain, and it is the same circularity charged against Bradley-Terry in
+section 2 if it is made to reach a number. What the ladder prices is the
+COST of each admissible choice, not permission to pick one.
+
 
 ## What this run does NOT establish
 
