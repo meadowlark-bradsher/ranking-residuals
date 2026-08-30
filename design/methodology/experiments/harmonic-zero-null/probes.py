@@ -107,7 +107,42 @@ K_GRID = (8, 32, 64, 128, 512)
 # Out-of-window cells are RUN AND SHOWN, not silently skipped -- that is how the
 # low-k failure became visible in the first place -- but they are excluded from
 # verdicts.
-SATURATION_MAX = 0.02
+# The chi2 window is b1-dependent. b1_one_boundary swept extremity at fixed b1 and
+# found the moments hold far further out at high b1 than at low, so a flat limit is
+# two errors at once: too strict at b1 = 22, too loose at b1 = 1.
+#
+# The anchors are the last rung that passed BOTH criteria in that sweep, not the
+# first that failed. At b1 = 1 the drop rate is already 7.9% at 0.030 while the
+# moments still read 0.873, so 0.030 is a truncated sample rather than a clean
+# pass and 0.019 is the last honest rung. At b1 = 22 the moments break at 0.180,
+# leaving 0.120. Taking first-failing instead would admit the very saturations
+# these were measured to fail at.
+#
+# Note WHICH WAY b1 = 1 fails: varT/2df falls BELOW 1 -- 0.873, then 0.724 -- as
+# separated draws are dropped. That is truncation shrinking the variance, not the
+# heavy tail inflating it. At low b1 the binding constraint is separation loss and
+# the moment check only registers it downstream.
+SATURATION_WINDOW = {1: 0.019, 22: 0.120}
+
+
+def saturation_window(b1):
+    """Largest saturation at which chi2(b1) was measured to hold, for this b1.
+
+    TWO measured anchors and a straight line between them. b1_one_boundary swept
+    b1 = 1 and b1 = 22 only, so every b1 in between is INTERPOLATED, not measured,
+    and outside them the nearest anchor is held rather than extrapolated. The sweep
+    also ran at k = 64 alone; using it at other k assumes saturation already
+    absorbs k, which is why saturation is the variable but is not itself tested.
+    Linear rather than log-linear because it is the more conservative of the two
+    fits the anchors admit.
+    """
+    lo_b, hi_b = min(SATURATION_WINDOW), max(SATURATION_WINDOW)
+    lo, hi = SATURATION_WINDOW[lo_b], SATURATION_WINDOW[hi_b]
+    if b1 <= lo_b:
+        return lo
+    if b1 >= hi_b:
+        return hi
+    return lo + (hi - lo) * (b1 - lo_b) / (hi_b - lo_b)
 
 # The moment gate: how far meanT/df and varT/2df may sit from 1 before a cell is
 # not chi2(b1) for practical purposes. Read by b1_ladder, b1_one_boundary,
@@ -123,8 +158,9 @@ MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
 BINOM_ALPHA = 0.01
 
 
-# Where a b1 sweep should sit. Comfortably inside SATURATION_MAX so every level
-# of the ladder is in window and the sweep is not also a window sweep.
+# Where a b1 sweep should sit. Inside the window at EVERY b1 -- including the
+# b1 = 1 anchor, the tightest -- so every level of the ladder is in window and the
+# sweep is not also a window sweep.
 SATURATION_TARGET = 0.01
 
 
@@ -241,7 +277,9 @@ def chi2_collapse(reps=2000):
                     # separation rate at k=8 is not comparable to 'empty'. The
                     # chi2(b1) claim is per-cell, so this does not touch it.
                     "eta_absmax": float(np.max(np.abs(eta))),
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(df),
+                    "in_window": bool(sat <= saturation_window(df)),
                     "p_min": float(min(st.sigmoid(eta).min(),
                                        1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
@@ -284,7 +322,7 @@ def chi2_collapse(reps=2000):
                      "referee-proof claim goes with it.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps,
-                  "saturation_max": SATURATION_MAX,
+                  "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
                   "n_cells_total": len(rows),
                   "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
@@ -614,7 +652,9 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
                     # is comparable to the rest -- previously it carried no curl
                     # term at all and sat at a much smaller ||eta||.
                     "eta_absmax": float(np.max(np.abs(eta))),
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(b1),
+                    "in_window": bool(sat <= saturation_window(b1)),
                     "n_usable": int(len(T)), "n_dropped": dropped,
                     "drop_rate": float(dropped / reps),
                     "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
@@ -657,7 +697,7 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
                   "targets": list(targets), "probe_target": probe_target,
-                  "saturation_max": SATURATION_MAX,
+                  "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
                   "n_cells_total": len(rows),
                   "probe_k": probe_k, "n_low_b1_cells": len(lo),
@@ -870,7 +910,10 @@ def write_results_md():
           "with expected count c contributes ~c when w=0 and ~1/c on the probability-c",
           "event that w=1, so ~1 in expectation but ~1/c in second moment. That is why",
           "meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside",
-          f"the window (sat > {cv['saturation_max']}) are shown but excluded from the",
+          f"the window (sat > its row's b1-dependent limit, "
+          f"{min(cv['saturation_window'].values()):.3f} at the lowest b1 to "
+          f"{max(cv['saturation_window'].values()):.3f} at the highest) are shown "
+          f"but excluded from the",
           f"verdict: {cv['n_cells_in_window']} of {cv['n_cells_total']} cells are in",
           "window.", "",
           f"The verdict is computed from the k = {hi_k} cells: "
@@ -1047,7 +1090,9 @@ def write_results_md():
           "draw.", "",
           f"At k = {pk}, {lv['reps']} replicates. `fill` is triangles filled of the",
           "total available; the empty and observed endpoints are marked. Only in-window",
-          f"cells (saturation <= {lv['saturation_max']}) count toward the reading;",
+          f"cells (saturation <= the b1-dependent window, "
+          f"{min(lv['saturation_window'].values()):.3f} to "
+          f"{max(lv['saturation_window'].values()):.3f}) count toward the reading;",
           f"{lv['n_cells_in_window']} of {lv['n_cells_total']} cells are in window.", "",
           "| graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |",
           "|---|---|---|---|---|---|---|---|---|---|"]
@@ -1120,7 +1165,7 @@ def collapse_spread(reps=2000, n_base=10,
     """Was the 0.02 window calibrated on one draw?
 
     chi2_collapse runs a SINGLE draw per cell -- tag "c1|{filling}|{g}|{k}",
-    carrying no base index -- and SATURATION_MAX was placed against that grid:
+    carrying no base index -- and the flat 0.02 window was placed against it:
     all 25 in-window cells pass both moment checks, every cell failing either is
     out of window, 8 out-of-window cells pass anyway. Principle 2 says a figure
     that moves with the seed ships as a distribution. The window's own
@@ -1177,7 +1222,9 @@ def collapse_spread(reps=2000, n_base=10,
                     continue
                 rows.append({
                     "filling": filling, "graph": g, "k": k, "df": df,
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(df),
+                    "in_window": bool(sat <= saturation_window(df)),
                     "ref_passes": None if ref is None else ref["passes"],
                     "ref_var_ratio": None if ref is None else ref["var_ratio"],
                     "n_base_judged": len(spread),
@@ -1252,7 +1299,7 @@ def collapse_spread(reps=2000, n_base=10,
         "value": {
             "reps": reps, "n_base": n_base, "mtol": mtol, "vtol": vtol,
             "binom_alpha": BINOM_ALPHA,
-            "saturation_max": SATURATION_MAX,
+            "saturation_window": SATURATION_WINDOW,
             "n_cells": len(rows),
             "n_in_window": len(inw),
             "n_in_window_stable": len(inw) - len(flipped),
