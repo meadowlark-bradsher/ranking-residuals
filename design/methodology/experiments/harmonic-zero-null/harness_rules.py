@@ -51,9 +51,37 @@ MIN_BASE_SEEDS = 5
 AUDIT_FOR = {"chi2_collapse": "collapse_spread"}
 
 # Fields that ARE moment ratios, i.e. the quantities whose sampling error scales
-# with 12/df. A row carrying any of these at low df is in scope.
-MOMENT_FIELDS = ("mean_T", "var_T", "mean_ratio", "var_ratio",
-                 "trimmed_mean_ratio")
+# with 12/df. Matched by SHAPE, not by an enumerated list.
+#
+# The first version enumerated exact names and missed collapse_spread entirely:
+# that probe reports ref_var_ratio, var_ratio_med, var_ratio_max and se_var_ratio
+# at row level, and keeps the bare mean_ratio/var_ratio one level down inside each
+# row's "draws" list. None of those matched, so low_df_moment_rows() returned zero
+# for it and the rule contributed nothing. It only LOOKED like it worked because
+# collapse_spread carries n_base = 10 and is discharged as seeded anyway -- a
+# probe of the same shape WITHOUT seeds would have sailed through unflagged, which
+# is precisely the class this rule exists to catch.
+#
+# So: any key whose name contains a moment ratio, or which is a mean_/var_ prefixed
+# measurement. Aggregates (_med, _max, se_, ref_) come along for free.
+MOMENT_SUBSTRINGS = ("mean_ratio", "var_ratio")
+MOMENT_PREFIXES = ("mean_", "var_")
+
+# Reference constants, not measurements: chi2_mean is df and chi2_var is 2*df.
+# They carry no sampling error and must not put a row in scope.
+NOT_MOMENTS = ("chi2_",)
+
+# Rows sometimes nest their per-draw values in a list of dicts (collapse_spread's
+# "draws", seed_spread's "per_seed"). Those inner values are the ones actually
+# carrying the 12/df error, so the scan descends one level to find them.
+NESTED_KEYS_MAX_DEPTH = 1
+
+
+def is_moment_key(key):
+    if key.startswith(NOT_MOMENTS):
+        return False
+    return (any(sub in key for sub in MOMENT_SUBSTRINGS)
+            or key.startswith(MOMENT_PREFIXES))
 
 
 def row_dfs(row):
@@ -66,7 +94,16 @@ def row_dfs(row):
 
 
 def carries_moments(row):
-    return any(row.get(f) is not None for f in MOMENT_FIELDS)
+    """True when this row reports a moment ratio, at its own level or one below."""
+    for key, val in row.items():
+        if is_moment_key(key) and val is not None:
+            return True
+        if isinstance(val, list):
+            for item in val:
+                if isinstance(item, dict) and any(
+                        is_moment_key(k) and v is not None for k, v in item.items()):
+                    return True
+    return False
 
 
 def low_df_moment_rows(result):
@@ -169,6 +206,28 @@ def recorded_constants(result):
     return {k: value[k] for k in GATE_CONSTANTS if k in value}
 
 
+def comparable(v):
+    """A gate constant reduced to a form that survives a round trip through JSON.
+
+    JSON object keys are ALWAYS strings. A constant that is a dict in the module --
+    SATURATION_WINDOW is {1: 0.019, 22: 0.120}, keyed by b1 as an int -- comes back
+    as {"1": 0.019, "22": 0.120}, and a naive != then reports every result stale
+    against the very module that produced it. Every gate constant before this one
+    was a scalar, which is why the comparison looked sound.
+
+    That failure mode is worse than a false alarm. A guard no run can satisfy is a
+    guard someone switches off, and the genuine flag sitting beside it -- here,
+    collapse_spread really was computed under a constant the module has dropped --
+    goes out with the noise. So keys are normalised to strings on both sides
+    before comparing, values left alone.
+    """
+    if isinstance(v, dict):
+        return {str(k): comparable(val) for k, val in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [comparable(x) for x in v]
+    return v
+
+
 def staleness(name, result, current):
     """A sentence when this result was computed under constants the code no
     longer has, or holds a value the code has changed. None when it agrees."""
@@ -180,7 +239,8 @@ def staleness(name, result, current):
         return (f"{name}: records {gone} which the module no longer defines, so it "
                 f"was computed under a gate that has since been replaced. Re-run it.")
     differs = {k: (recorded[k], current[k])
-               for k in recorded if recorded[k] != current[k]}
+               for k in recorded
+               if comparable(recorded[k]) != comparable(current[k])}
     if differs:
         pairs = ", ".join(f"{k}: result {r!r} vs code {c!r}"
                           for k, (r, c) in sorted(differs.items()))

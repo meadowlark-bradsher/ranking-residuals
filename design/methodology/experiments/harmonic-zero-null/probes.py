@@ -107,7 +107,120 @@ K_GRID = (8, 32, 64, 128, 512)
 # Out-of-window cells are RUN AND SHOWN, not silently skipped -- that is how the
 # low-k failure became visible in the first place -- but they are excluded from
 # verdicts.
-SATURATION_MAX = 0.02
+# The chi2 window is b1-dependent. b1_one_boundary swept extremity at fixed b1 and
+# found the moments hold far further out at high b1 than at low, so a flat limit is
+# two errors at once: too strict at b1 = 22, too loose at b1 = 1.
+#
+# The anchors are the last rung that passed, not the first that failed. Taking
+# first-failing would admit the very saturations these were measured to fail at.
+# At b1 = 22 the moments break at 0.180, leaving 0.120.
+#
+# THE LOW ANCHOR IS 0.0017, NOT THE 0.019 THIS LINE FIRST CARRIED, and the reason
+# matters more than the number. 0.019 was the last passing rung of the MATCHED
+# sweep, which scales eta to hit a target at fixed k = 64. The NATURAL grid
+# disagrees: observed|g3|k128 sits at saturation 0.0161 -- inside 0.019 -- and
+# fails 6 of 10 base seeds (binomial p = 0.0045). So 0.019 admitted a cell
+# measured to fail, which is the exact error first-failing anchors are rejected
+# for, arriving by a different route.
+#
+# The two grids disagree because SATURATION DOES NOT ORDER OUTCOMES AT LOW b1.
+# Scaled eta at k = 64 and saturation 0.019 passes; natural eta at k = 128 and
+# saturation 0.0161 -- LOWER -- fails. A quantity that can be smaller on the
+# failing cell than on the passing one is not ranking them. At low b1 the binding
+# constraint is separation, which depends on k and on the flow, and the moment
+# check registers it only downstream.
+#
+# 0.0017 is therefore NOT a claim that saturation orders b1 = 1. It is the
+# largest saturation at b1 = 1 with no measured counterexample above it -- the
+# k = 512 cell, 10/10 seeds -- chosen so the gate admits no cell the audit
+# flagged. It buys that at the cost of one passing cell, observed|g2|k128 at
+# df = 3, which the tightened interpolation also excludes.
+#
+# Every cell collapse_spread flags is out of window under these anchors.
+#
+# Note WHICH WAY b1 = 1 fails: varT/2df falls BELOW 1 -- 0.873, then 0.724 -- as
+# separated draws are dropped. That is truncation shrinking the variance, not the
+# heavy tail inflating it. At low b1 the binding constraint is separation loss and
+# the moment check only registers it downstream.
+# The b1 = 1 entry NO LONGER CLASSIFIES ANYTHING: saturation_window() refuses
+# below SATURATION_ORDERS_AT_OR_ABOVE, so nothing ever reads it as a window. It
+# stays because it is still the interpolation's low ENDPOINT -- the line through
+# to b1 = 22 is drawn from it, so removing it would move every b1 >= 3 window
+# rather than tidying a dead constant. Deleting it is a real change, not cleanup.
+SATURATION_WINDOW = {1: 0.0017, 22: 0.120}
+
+# Below this b1 the saturation axis does not ORDER outcomes, so no window on it
+# is meaningful and saturation_window() refuses rather than returning a number.
+# Measured: at b1 = 1 the two grids invert -- scaled eta at k = 64 and saturation
+# 0.019 passes while natural eta at k = 128 and saturation 0.0161 fails, and
+# 0.0161 is the SMALLER number. A threshold cannot separate cells its own axis
+# does not rank. 3 is where the inversion stops being observed, not a fitted
+# boundary; b1 >= 3 is unaffected by this and keeps the interpolated window.
+SATURATION_ORDERS_AT_OR_ABOVE = 3
+
+
+def saturation_window(b1):
+    """Largest saturation at which chi2(b1) was measured to hold, for this b1.
+
+    TWO measured anchors and a straight line between them. b1_one_boundary swept
+    b1 = 1 and b1 = 22 only, so every b1 in between is INTERPOLATED, not measured,
+    and outside them the nearest anchor is held rather than extrapolated. The sweep
+    also ran at k = 64 alone; using it at other k assumes saturation already
+    absorbs k, which is why saturation is the variable but is not itself tested.
+    Linear rather than log-linear because it is the more conservative of the two
+    fits the anchors admit.
+
+    READ THE LOW END AS A FLOOR, NOT AS A THRESHOLD. Below roughly b1 = 3 this
+    axis stops ORDERING outcomes at all -- not "orders them approximately". The
+    two grids invert there: scaled eta at k = 64 and saturation 0.019 passes,
+    natural eta at k = 128 and saturation 0.0161 fails, and 0.0161 is the smaller
+    number. Whatever decides those cells, it is not saturation; at low b1 the
+    binding constraint is separation, which depends on k and on the flow.
+
+    THIS FUNCTION RETURNS None BELOW b1 = SATURATION_ORDERS_AT_OR_ABOVE. That is a
+    refusal to judge, not a window of zero and not a gap awaiting a number: a cell
+    there is UNCLASSIFIABLE by this criterion and must be reported as such rather
+    than folded in with cells measured to be out. Callers that coerce None to
+    False silently convert "we decline to say" into "we say no", which is the one
+    reading this change exists to prevent.
+
+    So clamping to the low anchor is NOT a conservative approximation of a true
+    boundary, and reading it as one is the wrong inference to draw from a value
+    that looks like a threshold. 0.0017 is the largest saturation at b1 = 1 with
+    no measured counterexample above it, and it earns its place by excluding every
+    cell the audit flagged -- not by locating an edge. If a future measurement
+    finds a failure beneath it, the right response is to lower it again or to
+    refuse at low b1 entirely, NOT to interpolate more finely.
+    """
+    if b1 < SATURATION_ORDERS_AT_OR_ABOVE:
+        return None            # refusal: see SATURATION_ORDERS_AT_OR_ABOVE
+    lo_b, hi_b = min(SATURATION_WINDOW), max(SATURATION_WINDOW)
+    lo, hi = SATURATION_WINDOW[lo_b], SATURATION_WINDOW[hi_b]
+    if b1 <= lo_b:
+        return lo
+    if b1 >= hi_b:
+        return hi
+    return lo + (hi - lo) * (b1 - lo_b) / (hi_b - lo_b)
+
+def _in_window(saturation, b1):
+    """True / False / None -- and None is NOT False.
+
+    None means the cell sits below the b1 at which saturation orders outcomes, so
+    this criterion declines to classify it. Every consumer must keep that distinct
+    from a cell measured to be out of window: `if r["in_window"]` is correct for
+    selecting cells we vouch for, but counting `not r["in_window"]` as "out"
+    silently absorbs the refused ones and reproduces exactly the disappearance
+    this change was made to stop.
+    """
+    w = saturation_window(b1)
+    return None if w is None else bool(saturation <= w)
+
+
+def unclassifiable(rows):
+    """The rows this criterion refused to judge. Named so callers cannot omit it
+    by forgetting it exists."""
+    return [r for r in rows if r.get("in_window") is None]
+
 
 # The moment gate: how far meanT/df and varT/2df may sit from 1 before a cell is
 # not chi2(b1) for practical purposes. Read by b1_ladder, b1_one_boundary,
@@ -117,14 +230,48 @@ SATURATION_MAX = 0.02
 # are a different 0.10 with a different meaning.
 MOMENT_MTOL, MOMENT_VTOL = 0.10, 0.15
 
+
+def moment_ratios_ok(mean_ratio, var_ratio, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """Do a cell's two moment ratios both sit inside the gate?
+
+    The gate is a PAIR and testing half of it silently narrows what a result
+    means. closes_at() tested the variance alone and exported the answer as
+    `b1_1_closes_at`, a name that promises moment closure: it read 0.05 while the
+    write-up said 0.03, and both were right about different gates. At b1 = 1 the
+    MEAN fails first -- at saturation 0.030 the median mean ratio is 0.838
+    against mtol 0.10 while the variance is still 0.873 against vtol 0.15. At
+    b1 = 22 neither fails until 0.180, which is why the control never showed it.
+
+    Callers pass ratios rather than raw moments because the two row shapes in this
+    file disagree: chi2_collapse and b1_ladder carry mean_T with chi2_mean beside
+    it, b1_one_boundary carries pre-divided medians.
+    """
+    return (mean_ratio is not None and var_ratio is not None
+            and abs(mean_ratio - 1) <= mtol and abs(var_ratio - 1) <= vtol)
+
+
+def row_moments_ok(row, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
+    """moment_ratios_ok for the raw-moment row shape.
+
+    chi2_collapse and b1_ladder rows carry mean_T beside chi2_mean rather than a
+    ratio. Three callers were each decoding that shape and re-testing the pair
+    inline, which is the duplication that let closes_at drift to testing one half
+    without anything noticing. One decoder, one predicate.
+    """
+    if row["mean_T"] is None or row["var_T"] is None:
+        return False
+    return moment_ratios_ok(row["mean_T"] / row["chi2_mean"],
+                            row["var_T"] / row["chi2_var"], mtol, vtol)
+
 # Lower-tail level for collapse_spread's per-cell pass-rate test. Deliberately
 # strict: at n_base = 10 it takes a cell failing ~4 of 10 to clear it, so the
 # probe under-reports rather than manufacturing flags out of ordinary scatter.
 BINOM_ALPHA = 0.01
 
 
-# Where a b1 sweep should sit. Comfortably inside SATURATION_MAX so every level
-# of the ladder is in window and the sweep is not also a window sweep.
+# Where a b1 sweep should sit. Inside the window at EVERY b1 -- including the
+# b1 = 1 anchor, the tightest -- so every level of the ladder is in window and the
+# sweep is not also a window sweep.
 SATURATION_TARGET = 0.01
 
 
@@ -241,7 +388,9 @@ def chi2_collapse(reps=2000):
                     # separation rate at k=8 is not comparable to 'empty'. The
                     # chi2(b1) claim is per-cell, so this does not touch it.
                     "eta_absmax": float(np.max(np.abs(eta))),
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(df),
+                    "in_window": _in_window(sat, df),
                     "p_min": float(min(st.sigmoid(eta).min(),
                                        1 - st.sigmoid(eta).max())),
                     "n_usable": int(len(T)), "n_dropped": dropped,
@@ -284,8 +433,9 @@ def chi2_collapse(reps=2000):
                      "referee-proof claim goes with it.",
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps,
-                  "saturation_max": SATURATION_MAX,
+                  "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_unclassifiable": len(unclassifiable(rows)),
                   "n_cells_total": len(rows),
                   "n_cells_at_max_k": len(at_max_k), "n_cells_judged": len(big),
                   "n_cells_excluded_for_separation": len(at_max_k) - len(big),
@@ -621,7 +771,9 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
                     # is comparable to the rest -- previously it carried no curl
                     # term at all and sat at a much smaller ||eta||.
                     "eta_absmax": float(np.max(np.abs(eta))),
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(b1),
+                    "in_window": _in_window(sat, b1),
                     "n_usable": int(len(T)), "n_dropped": dropped,
                     "drop_rate": float(dropped / reps),
                     "mean_T": float(T.mean()) if len(T) else None, "chi2_mean": b1,
@@ -635,11 +787,6 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
     # The claim under test: at a k where the LOW-b1 cells fail, do the HIGH-b1
     # cells on the SAME graph pass? If so the floor is set by b1, not by k, and
     # the filling is a dial on the data requirement rather than a fork.
-    def ok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
     probe_k = 64 if 64 in ks else ks[0]
     # Judge at the target NEAREST THE WINDOW EDGE. A flat pass deep inside the
     # window (0.010) shows no b1 effect at 0.010; it does not show the window
@@ -650,9 +797,11 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
             and r["saturation_target"] == probe_target]
     lo = [r for r in at_k if r["df"] <= 2]
     hi = [r for r in at_k if r["df"] >= 3]
-    rescued = bool(lo and hi and not all(ok(r) for r in lo) and all(ok(r) for r in hi))
+    rescued = bool(lo and hi
+                   and not all(row_moments_ok(r) for r in lo)
+                   and all(row_moments_ok(r) for r in hi))
     verdict = ("confirmed" if rescued
-               else "refuted" if lo and hi and all(ok(r) for r in lo)
+               else "refuted" if lo and hi and all(row_moments_ok(r) for r in lo)
                else "inconclusive")
     return {
         "probe": "b1_ladder",
@@ -664,8 +813,9 @@ def b1_ladder(reps=2000, ks=(32, 64, 128), levels=6, targets=(0.010, 0.019)):
         "verdict": verdict,
         "value": {"alpha": ALPHA, "reps": reps, "ks": list(ks),
                   "targets": list(targets), "probe_target": probe_target,
-                  "saturation_max": SATURATION_MAX,
+                  "saturation_window": SATURATION_WINDOW,
                   "n_cells_in_window": sum(1 for r in rows if r["in_window"]),
+                  "n_cells_unclassifiable": len(unclassifiable(rows)),
                   "n_cells_total": len(rows),
                   "probe_k": probe_k, "n_low_b1_cells": len(lo),
                   "n_high_b1_cells": len(hi), "rows": rows},
@@ -728,8 +878,7 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                 b = float(T.var(ddof=1) / (2 * b1))
                 mr.append(a)
                 vr.append(b)
-                if (abs(a - 1) <= MOMENT_MTOL
-                        and abs(b - 1) <= MOMENT_VTOL):
+                if moment_ratios_ok(a, b):
                     passes += 1
 
             def agg(v):
@@ -755,9 +904,12 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
     # on the median seed. Median, not mean, because one heavy-tailed seed should
     # not move a threshold.
     def closes_at(df):
+        # BOTH moments, via the shared predicate. Testing var_ratio alone made
+        # this export a variance boundary under a moment-closure name.
         bad = [r["saturation_target"] for r in rows
-               if r["df"] == df and r["var_ratio"]
-               and abs(r["var_ratio"]["median"] - 1) > MOMENT_VTOL]
+               if r["df"] == df and r["var_ratio"] and r["mean_ratio"]
+               and not moment_ratios_ok(r["mean_ratio"]["median"],
+                                        r["var_ratio"]["median"])]
         return min(bad) if bad else None
 
     b1_one, b1_ctrl = closes_at(1), closes_at(22)
@@ -789,6 +941,11 @@ def b1_one_boundary(reps=2000, n_base=10, k=64,
                   "b1_22_drops_exceed_5pct_at": d_ctrl,
                   "rows": rows},
     }
+
+
+def _win(v):
+    """Three glyphs for three states. '?' is a refusal, not a near-miss."""
+    return "?" if v is None else ("y" if v else ".")
 
 
 def _spread(xs):
@@ -988,6 +1145,8 @@ def filling_leakage(reps=600, ks=(64, 128), rho=1.0, levels=6, base_seeds=3):
     }
 
 
+
+
 def _f(x, w, p):
     return ("%*.*f" % (w, p, x)) if x is not None else " " * (w - 2) + "--"
 
@@ -1036,9 +1195,7 @@ def write_results_md():
     def moments_ok(k, mtol=MOMENT_MTOL, vtol=MOMENT_VTOL):
         rs = [crow(fl, g, k) for fl in fillings for g in graphs]
         rs = [r for r in rs if r["mean_T"] is not None and r["var_T"] is not None]
-        return bool(rs) and all(abs(r["mean_T"] / r["chi2_mean"] - 1) <= mtol
-                                and abs(r["var_T"] / r["chi2_var"] - 1) <= vtol
-                                for r in rs)
+        return bool(rs) and all(row_moments_ok(r, mtol, vtol) for r in rs)
 
     # Smallest k from which the moments hold at every larger k, and the k below it.
     k_ok = next((kk for kk in ks_grid if all(moments_ok(x) for x in ks_grid if x >= kk)),
@@ -1076,7 +1233,10 @@ def write_results_md():
           "with expected count c contributes ~c when w=0 and ~1/c on the probability-c",
           "event that w=1, so ~1 in expectation but ~1/c in second moment. That is why",
           "meanT/df tracks well nearly everywhere while varT/2df does not. Cells outside",
-          f"the window (sat > {cv['saturation_max']}) are shown but excluded from the",
+          f"the window (sat > its row's b1-dependent limit, "
+          f"{min(cv['saturation_window'].values()):.3f} at the lowest b1 to "
+          f"{max(cv['saturation_window'].values()):.3f} at the highest) are shown "
+          f"but excluded from the",
           f"verdict: {cv['n_cells_in_window']} of {cv['n_cells_total']} cells are in",
           "window.", "",
           f"The verdict is computed from the k = {hi_k} cells: "
@@ -1089,7 +1249,7 @@ def write_results_md():
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['filling']} | {r['graph']} | {r['E']} | {r['df']} | {r['k']} | "
-              f"{r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{r['saturation']:.4f} | {_win(r['in_window'])} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | {_f(vt,0,3).strip()} | "
               f"{_f(r['reject_rate'],0,3).strip()} | {_f(r['ks_p'],0,4).strip()} |"]
     L += ["", f"Reading it: at k >= {k_ok} the first two moments land within a few percent",
@@ -1237,12 +1397,6 @@ def write_results_md():
     lrows = [r for r in lv["rows"] if r["k"] == pk and r["in_window"]]
     lgraphs = sorted({r["graph"] for r in lv["rows"]})
 
-    def lok(r):
-        return (r["mean_T"] is not None
-                and abs(r["mean_T"] / r["chi2_mean"] - 1) <= MOMENT_MTOL
-                and r["var_T"] is not None
-                and abs(r["var_T"] / r["chi2_var"] - 1) <= MOMENT_VTOL)
-
     L += ["## 4. Is the chi2 floor a b1 floor?", "",
           "`observed` and `empty` are the two ENDPOINTS of a lattice, not a binary",
           "choice: filling a triangle adds a row to D1, so S grows and b1 shrinks,",
@@ -1253,7 +1407,9 @@ def write_results_md():
           "draw.", "",
           f"At k = {pk}, {lv['reps']} replicates. `fill` is triangles filled of the",
           "total available; the empty and observed endpoints are marked. Only in-window",
-          f"cells (saturation <= {lv['saturation_max']}) count toward the reading;",
+          f"cells (saturation <= the b1-dependent window, "
+          f"{min(lv['saturation_window'].values()):.3f} to "
+          f"{max(lv['saturation_window'].values()):.3f}) count toward the reading;",
           f"{lv['n_cells_in_window']} of {lv['n_cells_total']} cells are in window.", "",
           "| graph | fill | b1 | sat | win | drop% | meanT/df | varT/2df | size | chi2 ok |",
           "|---|---|---|---|---|---|---|---|---|---|"]
@@ -1263,15 +1419,32 @@ def write_results_md():
         mt = r["mean_T"] / r["chi2_mean"] if r["mean_T"] is not None else None
         vt = r["var_T"] / r["chi2_var"] if r["var_T"] is not None else None
         L += [f"| {r['graph']} | {r['n_triangles_filled']}/{r['n_triangles_total']}{end} | "
-              f"{r['df']} | {r['saturation']:.4f} | {'y' if r['in_window'] else '.'} | "
+              f"{r['df']} | {r['saturation']:.4f} | {_win(r['in_window'])} | "
               f"{_pc(r['drop_rate'])} | {_f(mt,0,3).strip()} | "
               f"{_f(vt,0,3).strip()} | {_f(r['reject_rate'],0,3).strip()} | "
-              f"{'yes' if lok(r) else 'NO'} |"]
+              f"{'yes' if row_moments_ok(r) else 'NO'} |"]
     lo = [r for r in lrows if r["df"] <= 2]
     hi = [r for r in lrows if r["df"] >= 3]
-    lo_bad = [r for r in lo if not lok(r)]
-    hi_bad = [r for r in hi if not lok(r)]
-    L += ["", f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;",
+    # Their predicate, my reporting. row_moments_ok is the point of 7c66230 --
+    # one decoder for the row shapes, so a caller cannot drift to testing half
+    # the gate the way closes_at did. lok() is gone with the other inline copies.
+    lo_bad = [r for r in lo if not row_moments_ok(r)]
+    hi_bad = [r for r in hi if not row_moments_ok(r)]
+    # Cells the criterion REFUSED are not evidence of anything and must not be
+    # reported as a count of zero failures -- "none examined" reads as "none
+    # failed" to anyone skimming, which is how the b1 question disappeared from
+    # its own section.
+    lo_refused = [r for r in unclassifiable(lv["rows"]) if r["k"] == pk
+                  and r["df"] <= 2]
+    L += ["",
+          (f"**No cell at b1 <= 2 is examined here.** {len(lo_refused)} such cells "
+           f"were measured and then REFUSED by the saturation criterion, which "
+           f"declines to judge below b1 = {SATURATION_ORDERS_AT_OR_ABOVE} because "
+           f"the axis does not order outcomes there. That is a refusal, not a pass: "
+           f"the b1 question this section asks is NOT answered at low b1 by this "
+           f"probe. Their moments are in section 1's table, marked as refused."
+           if lo_refused else
+           f"Of the {len(lo)} cells at b1 <= 2, {len(lo_bad)} fail the moment check;"),
           f"of the {len(hi)} cells at b1 >= 3, {len(hi_bad)} fail.",
           ("**The floor is a b1 floor, not a k floor.** On the same graph at the same k,"
            if l["verdict"] == "confirmed" else
@@ -1418,7 +1591,7 @@ def collapse_spread(reps=2000, n_base=10,
     """Was the 0.02 window calibrated on one draw?
 
     chi2_collapse runs a SINGLE draw per cell -- tag "c1|{filling}|{g}|{k}",
-    carrying no base index -- and SATURATION_MAX was placed against that grid:
+    carrying no base index -- and the flat 0.02 window was placed against it:
     all 25 in-window cells pass both moment checks, every cell failing either is
     out of window, 8 out-of-window cells pass anyway. Principle 2 says a figure
     that moves with the seed ships as a distribution. The window's own
@@ -1466,8 +1639,7 @@ def collapse_spread(reps=2000, n_base=10,
                         "base": base, "mean_ratio": mr, "var_ratio": vr,
                         "max_T": float(T.max()),
                         "drop_rate": float(dropped / reps),
-                        "passes": bool(abs(mr - 1) <= mtol
-                                       and abs(vr - 1) <= vtol),
+                        "passes": moment_ratios_ok(mr, vr, mtol, vtol),
                     })
                 ref = next((d for d in draws if d["base"] is None), None)
                 spread = [d for d in draws if d["base"] is not None]
@@ -1475,7 +1647,9 @@ def collapse_spread(reps=2000, n_base=10,
                     continue
                 rows.append({
                     "filling": filling, "graph": g, "k": k, "df": df,
-                    "saturation": sat, "in_window": bool(sat <= SATURATION_MAX),
+                    "saturation": sat,
+                    "window": saturation_window(df),
+                    "in_window": _in_window(sat, df),
                     "ref_passes": None if ref is None else ref["passes"],
                     "ref_var_ratio": None if ref is None else ref["var_ratio"],
                     "n_base_judged": len(spread),
@@ -1515,7 +1689,10 @@ def collapse_spread(reps=2000, n_base=10,
         r["flagged"] = bool(r["binom_p"] < BINOM_ALPHA)
 
     inw = [r for r in rows if r["in_window"]]
-    out = [r for r in rows if not r["in_window"]]
+    # `is False`, not `not r[...]` -- the refused cells are neither in nor out,
+    # and sweeping them into `out` is the conflation this change exists to stop.
+    out = [r for r in rows if r["in_window"] is False]
+    refused = unclassifiable(rows)
     # The shipped claim is about SUFFICIENCY: in-window implies the moments hold.
     # A flagged in-window cell is that claim failing -- it fails at a rate its own
     # df cannot explain, while the single draw the window was placed by passed it.
@@ -1550,9 +1727,25 @@ def collapse_spread(reps=2000, n_base=10,
         "value": {
             "reps": reps, "n_base": n_base, "mtol": mtol, "vtol": vtol,
             "binom_alpha": BINOM_ALPHA,
-            "saturation_max": SATURATION_MAX,
+            "saturation_window": SATURATION_WINDOW,
             "n_cells": len(rows),
             "n_in_window": len(inw),
+            "n_unclassifiable": len(refused),
+            "unclassifiable_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                                     for r in refused],
+            # THE CELLS THAT MOTIVATED THE REFUSAL LIVE HERE NOW. Under the
+            # refusal the b1 = 1 cells stop being classified, so they leave
+            # `flipped` and n_in_window_flagged reads 0 -- which is honest (we
+            # decline to call them in-window) and reads as though the problem went
+            # away. It did not: they still fail their own df's pass rate. Reported
+            # separately so the audit cannot quietly stop carrying the finding
+            # that caused the shape change.
+            "n_refused_and_flagged": sum(1 for r in refused if r["flagged"]),
+            "refused_and_flagged_cells": [
+                f"{r['filling']}|g{r['graph']}|k{r['k']}"
+                f" (sat {r['saturation']:.4f}, {r['n_base_passing']}"
+                f"/{r['n_base_judged']} seeds, binom_p {r['binom_p']:.4f})"
+                for r in refused if r["flagged"]],
             "n_in_window_stable": len(inw) - len(flipped),
             "n_in_window_flagged": len(flipped),
             "flagged_cells": [f"{r['filling']}|g{r['graph']}|k{r['k']}"
