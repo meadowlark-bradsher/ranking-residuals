@@ -359,3 +359,86 @@ def test_a_flag_always_corresponds_to_a_real_disagreement(results, current):
         for key, val in recorded.items():
             assert key in current and hr.comparable(val) == hr.comparable(current[key]), (
                 f"{name} is NOT flagged but its {key} disagrees with the module")
+
+
+# ---------------------------------------------------------------- repo-wide
+#
+# Everything above runs rule 1 over the nine artifacts in THIS experiment's
+# results/ directory. That was the whole of its reach, and the reach was an
+# accident of where the module happened to live: the repository has seventeen
+# result artifacts across three experiments, plus two written outside
+# experiments/ entirely. On the other eight there was no rule -- not a weaker
+# one, none, and silence there reads exactly like a pass.
+#
+# It cost something. boundary_report.json carries four moment ratios at b1 = 1
+# with no base-seed replication, which is precisely the hazard rule 1 exists
+# for, and nothing had ever read it.
+
+import subprocess
+
+_ROOT = Path(__file__).resolve().parents[1]
+
+# Artifacts whose rule-1 violation is known, accepted for now, and owned
+# elsewhere. A ratchet, not an exemption list: the test asserts this set
+# EXACTLY, so closing one without striking it here fails, and a new one
+# appearing fails too.
+#
+#   b1_ladder        as above -- companion audit, RAN-29.
+#   boundary_report  surfaced by generalising the rule. Fixing it means base-seed
+#                    replication on a 2000-rep sweep across four graphs, which is
+#                    a run-cost decision of the same kind as b1_ladder's, so it
+#                    belongs in RAN-35 section 4 rather than being quietly re-run
+#                    by the change that found it.
+REPO_WIDE_KNOWN_GAPS = {"b1_ladder", "boundary_report"}
+
+
+def _all_result_artifacts():
+    """Every result artifact in the tree, from git rather than a list."""
+    out = subprocess.run(["git", "ls-files", "*.json"], cwd=_ROOT,
+                         capture_output=True, text=True, check=True).stdout.split()
+    keep = {}
+    for rel in out:
+        if "checkpoint" in rel:            # an input to a resume, not a result
+            continue
+        if rel.startswith("design/methodology/evidence/"):
+            continue                       # the registry, not a probe result
+        if "/results/" in rel or rel == "boundary_report.json":
+            keep[Path(rel).stem] = json.loads((_ROOT / rel).read_text())
+    return keep
+
+
+def test_the_repo_wide_scan_actually_reads_artifacts():
+    """Guards the vacuous pass: a scan that finds nothing violates nothing."""
+    arts = _all_result_artifacts()
+    assert len(arts) >= 17, (
+        f"found only {len(arts)} result artifacts; the scan has stopped matching "
+        "the tree, so the rule-1 sweep below asserts nothing")
+    readable = [n for n, a in arts.items() if hr.low_df_moment_rows(a)
+                or (a.get("value") or {}).get("rows")]
+    assert readable, "no artifact yielded rows -- the rule is reading none of them"
+
+
+def test_rule_1_over_every_artifact_in_the_repo(results, current):
+    """Rule 1, everywhere -- not only where the module happens to sit.
+
+    Audit discharge is per-experiment, so it is applied where a binding exists
+    and not invented where none does. harmonic-zero-null goes through its own
+    `violations`, which knows collapse_spread discharges chi2_collapse; the
+    other experiments have no AUDIT_FOR, so an unseeded low-df moment verdict
+    there is a violation with nothing to excuse it. Flattening both into one
+    raw scan would report chi2_collapse as violating when its audit is current,
+    which is the false-positive direction that gets a rule switched off.
+    """
+    arts = _all_result_artifacts()
+    flagged = set(hr.violations(results, current))          # audit-aware
+    for n, a in arts.items():
+        if n in results:
+            continue                                        # covered above
+        if hr.low_df_moment_rows(a) and not hr.is_seeded(a):
+            flagged.add(n)
+    assert flagged == REPO_WIDE_KNOWN_GAPS, (
+        f"rule-1 violations across the repo changed.\n"
+        f"  now:      {sorted(flagged)}\n"
+        f"  expected: {sorted(REPO_WIDE_KNOWN_GAPS)}\n"
+        "If one was fixed, strike it from REPO_WIDE_KNOWN_GAPS. If one is new, "
+        "it reaches a verdict on low-df moment ratios from a single draw.")
