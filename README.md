@@ -32,6 +32,16 @@ matplotlib. Outputs land in `runs/`: one JSONL per sweep, `manifest.json`, a flo
 and six figures. Every record carries its full config **and the run budget that produced
 it**, so no number is readable without knowing what paid for it.
 
+If you are learning to drive this rather than maintaining it, start at
+[`design/exercises/`](design/exercises/README.md): ten scripts with known answers, in
+order, from `b₁` and the filling convention through the floor measurement to the guards
+that refuse to fit. The answer key is beside them, and it is explicit about which
+outputs are identities and which are one draw.
+
+```bash
+python design/exercises/ex01_filling_and_b1.py
+```
+
 ## The three sources of harmonic mass
 
 They are kept apart deliberately, because conflating them is how a certificate gets a
@@ -94,6 +104,8 @@ design/
   specs/              the spec (v9) and the v6 changeset that reconciled it to the build
   reference/          hodge.py, the explainers, the canonical comparison note
   methodology/        papers, evidence registry, experiments — see below
+  exercises/          ten runnable exercises + their answer key; teaching only,
+                      nothing here is load-bearing for the build
 ```
 
 ## Evidence and methodology
