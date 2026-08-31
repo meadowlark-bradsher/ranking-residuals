@@ -109,7 +109,8 @@ def structural():
     claim("pm1-closed-form", asserts="The spurious harmonic mass of the +-1 flow of a "
           "total order on the complete graph is exactly (n-2)/(3n), rising with n "
           "toward 1/3.",
-          cited_in=["exercises SOLUTIONS.md, exercise 3",
+          cited_in=["spec 5.1", "spec v10 revision note",
+                    "exercises SOLUTIONS.md, exercise 3",
                     "exercises ex03_pm1_quantization_trap.py, closed_form()"],
           value=cf,
           tol={"kind": "abs", "value": 1e-9},
@@ -117,9 +118,9 @@ def structural():
           note="Generalises pm1-trap, which pins the same computation at n=5 and n=6 "
                "and asserts only that the mass is n-dependent. Same tolerance because "
                "it is the same code path; verify.py prints the observed drift, so the "
-               "headroom is generated rather than quoted here. Not cited in the papers "
-               "or the spec -- spec 5.1 still states the n-dependence as two measured "
-               "points, and promoting it there is a spec revision, not a registry one.")
+               "headroom is generated rather than quoted here. Not cited in the papers: "
+               "the methodology paper's sec 2 still quotes pm1-trap's two points, which "
+               "are instances of this formula and remain correct.")
 
     a = assemble(cfg.with_(n_cplx=0, mode_II="clean_gradient"))
     claim("clean-gradient-zero", asserts="An all-integer value-difference flow reads zero "
