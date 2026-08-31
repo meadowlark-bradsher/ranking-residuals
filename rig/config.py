@@ -101,9 +101,33 @@ class RigConfig:
     edge_density: float = 1.0
     block_scale: tuple[float, float, float] = (1.0, 1.0, 1.0)   # (ii, cc, ic) §5.7
     emit_k: int = 64                    # rows per pair for magnitude/sign blocks; >= 2.
-                                        # 64 keeps the mixed-config round-trip deviation
-                                        # ~2e-3 with no saturated edges; at 8 it is ~4e-2
-                                        # and 5 bridge edges exceed log(2k-1) (§10).
+                                        # Mixed assembly at gamma=2.0, eps=0.2, k=16, all
+                                        # else these defaults (n_int=12, n_cplx=5,
+                                        # edge_density=1.0, base seed 0):
+                                        #   emit_k=64 -> deviation 1.9e-3,  0 saturated
+                                        #   emit_k=8  -> deviation 4.0e-2, 15 saturated,
+                                        #                every one an ic bridge edge over
+                                        #                log(2k-1) (§10).
+                                        # The "5" this note used to carry is the emit_k=16
+                                        # count, not the emit_k=8 one.
+                                        #
+                                        # Stating gamma is what makes the count checkable.
+                                        # mode_II=null_btl feeds theta_gamma straight into
+                                        # the bias_rule bridge, so the 60 ic targets are
+                                        # deterministic in gamma alone: the count does not
+                                        # move with seed, eps or k, but it does move with
+                                        # gamma -- 25/15/15/10 at gamma 1.0/1.5/2.0/3.0.
+                                        # That is why sweeping (gamma,eps,k) at emit_k=8
+                                        # never reproduces 5.
+                                        #
+                                        # The deviations are ONE DRAW -- the ii block is
+                                        # sampled, and emit_k sits in the fingerprint, so
+                                        # each row is its own assembly. Over 20 base seeds
+                                        # (the boxed rule beside the v7 note):
+                                        #   emit_k=64  3.91e-3 +- 3.2e-4, 1.01e-3..7.14e-3
+                                        #   emit_k=8   3.00e-2 +- 1.1e-3, 2.28e-2..4.01e-2
+                                        # Both figures above are the seed=0 draw; at 8 that
+                                        # draw sits at the top of the range.
     reps: int = 16                      # draws averaged per (seed,k) before the OLS fit.
                                         # A budget knob, logged like any other (§9).
     rho: float = 1.5                    # §2.6 resolvability margin in the DERIVED fit
