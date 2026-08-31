@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-08-31 from commit `aca9561`
+Generated 2026-08-31 from commit `faa831d`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -29,7 +29,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | id | asserts | cited in | tolerance | test |
 |---|---|---|---|---|
 | `pm1-trap` | A +-1 sign flow of a perfectly transitive order deposits spurious harmonic mass, and the amount is n-dependent, not a constant. | methodology sec 2, 'Magnitude, not sign' | 1e-09 abs | `test_5_1_pm1_of_a_transitive_order_is_not_a_gradient` |
-| `pm1-closed-form` | The spurious harmonic mass of the +-1 flow of a total order on the complete graph is exactly (n-2)/(3n), rising with n toward 1/3. | exercises SOLUTIONS.md, exercise 3; exercises ex03_pm1_quantization_trap.py, closed_form() | 1e-09 abs | `test_5_1_pm1_mass_has_a_closed_form_in_n` |
+| `pm1-closed-form` | The spurious harmonic mass of the +-1 flow of a total order on the complete graph is exactly (n-2)/(3n), rising with n toward 1/3. | spec 5.1; spec v10 revision note; exercises SOLUTIONS.md, exercise 3; exercises ex03_pm1_quantization_trap.py, closed_form() | 1e-09 abs | `test_5_1_pm1_mass_has_a_closed_form_in_n` |
 | `clean-gradient-zero` | An all-integer value-difference flow reads zero harmonic under both fillings. | methodology sec 3.1 oracle table | 1e-12 abs | `test_8_2_clean_integer_pool_reads_zero_harmonic` |
 | `equal-spaced-complex` | An equal-spaced complex pool is pure harmonic under the empty filling and pure curl under the observed one. | methodology sec 3.1 oracle table; methodology fig 1 | 1e-12 abs | `test_8_3_equal_spaced_complex_only` |
 | `b1-rank-formula` | b1 of a complex-only pool under the empty filling is (m-1)(m-2)/2. | methodology sec 3.1 oracle table | exact | `test_8_4_b1_matches_rank_formula` |

@@ -8,11 +8,11 @@
  },
  "meta": {
   "generated": "2026-08-31",
-  "commit": "aca9561",
+  "commit": "faa831d",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 31,
-  "source_fingerprint": "e9b3c3cc75e8a498"
+  "source_fingerprint": "59e144bc0ed9741c"
  },
  "claims": {
   "pm1-trap": {
@@ -35,6 +35,8 @@
   "pm1-closed-form": {
    "claim": "The spurious harmonic mass of the +-1 flow of a total order on the complete graph is exactly (n-2)/(3n), rising with n toward 1/3.",
    "cited_in": [
+    "spec 5.1",
+    "spec v10 revision note",
     "exercises SOLUTIONS.md, exercise 3",
     "exercises ex03_pm1_quantization_trap.py, closed_form()"
    ],
@@ -54,7 +56,7 @@
    },
    "kind": "exact",
    "test": "tests/test_invariants.py::test_5_1_pm1_mass_has_a_closed_form_in_n",
-   "note": "Generalises pm1-trap, which pins the same computation at n=5 and n=6 and asserts only that the mass is n-dependent. Same tolerance because it is the same code path; verify.py prints the observed drift, so the headroom is generated rather than quoted here. Not cited in the papers or the spec -- spec 5.1 still states the n-dependence as two measured points, and promoting it there is a spec revision, not a registry one."
+   "note": "Generalises pm1-trap, which pins the same computation at n=5 and n=6 and asserts only that the mass is n-dependent. Same tolerance because it is the same code path; verify.py prints the observed drift, so the headroom is generated rather than quoted here. Not cited in the papers: the methodology paper's sec 2 still quotes pm1-trap's two points, which are instances of this formula and remain correct."
   },
   "clean-gradient-zero": {
    "claim": "An all-integer value-difference flow reads zero harmonic under both fillings.",
