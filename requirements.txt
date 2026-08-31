@@ -1,0 +1,17 @@
+# Python 3.12 (measured: 3.12.7). `evidence.json`'s meta block records the
+# interpreter and numpy that produced the shipped numbers; this file is how you
+# rebuild that environment.
+#
+# numpy is pinned EXACTLY and the others are not, because the asymmetry is real:
+# PROVENANCE.md's reproducibility claim is scoped to numpy alone -- "on the same
+# numpy every claim reproduces bit-exactly" -- and `verify.py`'s tolerances are
+# the margin allowed for anything else. Pinning the rest to the versions that
+# happened to be installed would assert a dependency the evidence does not carry.
+numpy==1.26.4
+
+# Floors, not pins. scipy and matplotlib are used for fitting and figures, both
+# of which are checked against evidence.json rather than trusted; pytest runs the
+# suite. None participates in the bit-exactness claim.
+scipy>=1.16.1
+matplotlib>=3.10.6
+pytest>=8.4.1

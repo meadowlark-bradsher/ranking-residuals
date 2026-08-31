@@ -20,6 +20,10 @@ shasum -a 256 hodge.py design/reference/hodge.py
 ## Quick start
 
 ```bash
+pip install -r requirements.txt
+```
+
+```bash
 python -m pytest tests/ -q
 ```
 
@@ -79,6 +83,8 @@ any flow that quantizes away entirely raises rather than returning nothing.
 ```
 hodge.py              THE INSTRUMENT — byte-identical to design/reference/hodge.py
 conftest.py           puts the repo root on sys.path
+requirements.txt      the environment evidence.json's meta block records
+LICENSE               MIT
 envelope_evaluator.py dependency-free closed-form oracle for the harmonic-zero null
 boundary_report.json  its shipped output, fingerprinted to the code that wrote it
 rig/
@@ -177,3 +183,18 @@ subtracting or fitting `c2` removes most or essentially all of it on exact energ
 An independent replication of the exact figure lives in
 [`design/methodology/experiments/bias-of-bias/`](design/methodology/experiments/bias-of-bias/).
 Cite `residual-exact` rather than that directory, so a single number travels.
+
+## `RAN-n` is a private tracker id
+
+The notes under `design/` cite decisions as `RAN-7`, `RAN-28`, and so on. Those are
+ids in a tracker that is not public, and they are **not links** — nothing outside this
+repository resolves them. They are left in place because they are the honest record of
+where a decision was made, and stripping them would leave prose that sounds more
+self-contained than it is.
+
+Most carry their own content: *"RAN-28 on the known-answer rig: is the harmonic-zero
+null a classical score test?"* states the question it names. A handful are bare
+pointers — `cf. RAN-7, RAN-22`, `See RAN-29 acceptance (3)`, `Tracked on RAN-29`,
+`DEFERRED to RAN-31` — and for those the tracker holds context this repository does
+not. Read them as *"this was decided deliberately elsewhere"*, not as a citation you
+are expected to follow.
