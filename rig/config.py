@@ -109,9 +109,13 @@ class RigConfig:
                                         #                every one an ic bridge edge over
                                         #                log(2k-1) (§10).
                                         # The "5" this note used to carry is the emit_k=16
-                                        # count, not the emit_k=8 one.
+                                        # count, not the emit_k=8 one. Both figures are
+                                        # registry-owned and quoted with their claim name,
+                                        # so a value that moves names this note as prose to
+                                        # change.
                                         #
-                                        # Stating gamma is what makes the count checkable.
+                                        # The count is EXACT -- claim `emit-saturation-count`.
+                                        # Stating gamma is what makes it checkable:
                                         # mode_II=null_btl feeds theta_gamma straight into
                                         # the bias_rule bridge, so the 60 ic targets are
                                         # deterministic in gamma alone: the count does not
@@ -120,7 +124,8 @@ class RigConfig:
                                         # That is why sweeping (gamma,eps,k) at emit_k=8
                                         # never reproduces 5.
                                         #
-                                        # The deviations are ONE DRAW -- the ii block is
+                                        # The deviations are ONE DRAW -- claim
+                                        # `emit-roundtrip-deviation`. The ii block is
                                         # sampled, and emit_k sits in the fingerprint, so
                                         # each row is its own assembly. Over 20 base seeds
                                         # (the boxed rule beside the v7 note):

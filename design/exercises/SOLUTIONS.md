@@ -382,27 +382,34 @@ Part 2, mixed config, as `emit_k` grows:
    adds, and what the table cannot show you, is that those two kinds of figure are
    checkable in different senses.
 
-   **The saturation count is exact.** `mode_II` defaults to `null_btl`, so the
-   bridge is handed `theta` directly — and `theta_gamma` takes no `rng`. The 60 `ic`
-   targets are a deterministic function of γ alone: the count does not move with the
-   base seed, with `eps`, or with `k`. It moves only with γ — 25/15/15/10 at
-   γ = 1.0/1.5/2.0/3.0 — which is why γ is the parameter the note has to state to be
-   checkable at all, and why sweeping `(gamma, eps, k)` at `emit_k = 8` never lands
-   on 5. Those 60 targets take 12 distinct magnitudes, five edges apiece, so the
-   column falls in steps of five as the headroom rises past them: 15 above 2.7081,
-   then 5 above 3.4340, then 0.
+   **The saturation count is exact** — claim `emit-saturation-count`. `mode_II`
+   defaults to `null_btl`, so the bridge is handed `theta` directly, and
+   `theta_gamma` takes no `rng`. The 60 `ic` targets are a deterministic function of
+   γ alone: the count does not move with the base seed, with `eps`, or with `k`. It
+   moves only with γ — 25/15/15/10 at γ = 1.0/1.5/2.0/3.0 — which is why γ is the
+   parameter the note has to state to be checkable at all, and why sweeping
+   `(gamma, eps, k)` at `emit_k = 8` never lands on 5. Those 60 targets take 12
+   distinct magnitudes, five edges apiece, so the column falls in steps of five as
+   the headroom rises past them: 15 above 2.7081, then 5 above 3.4340, then 0.
 
-   **The deviations are one draw.** The `ii` block is sampled, and `emit_k` sits
-   inside the config fingerprint, so each row of part 2 is its own assembly rather
-   than one assembly emitted at six budgets — which is the other half of why the
-   deviation column in answer 2 is not monotone. Over 20 base seeds the note records
-   `3.91e-3 ± 3.2e-4` (range `1.01e-3`–`7.14e-3`) at 64 and `3.00e-2 ± 1.1e-3`
-   (range `2.28e-2`–`4.01e-2`) at 8, so the `4.012e-02` you measured at seed 0 sits
-   at the top of its range rather than the middle.
+   **The deviations are one draw** — claim `emit-roundtrip-deviation`. The `ii`
+   block is sampled, and `emit_k` sits inside the config fingerprint, so each row of
+   part 2 is its own assembly rather than one assembly emitted at six budgets —
+   which is the other half of why the deviation column in answer 2 is not monotone.
+   Over 20 base seeds the note records `3.91e-3 ± 3.2e-4` (range
+   `1.01e-3`–`7.14e-3`) at 64 and `3.00e-2 ± 1.1e-3` (range `2.28e-2`–`4.01e-2`) at
+   8, so the `4.012e-02` you measured at seed 0 sits at the top of its range rather
+   than the middle.
 
    Until this was fixed the note claimed 5 at `emit_k = 8` — the `emit_k = 16` count,
    read off one row down — and named no assembly, which is exactly what made a
-   parameter mismatch hard to rule out from the reader's side.
+   parameter mismatch hard to rule out from the reader's side. Both figures are now
+   registry-owned, so `verify.py` re-derives them and a value that moves names this
+   answer and the config note as the prose to change:
+
+   ```bash
+   python design/methodology/evidence/verify.py --fast
+   ```
 
 ### The wrong reading
 
