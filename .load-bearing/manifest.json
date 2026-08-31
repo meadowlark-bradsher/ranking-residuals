@@ -1,0 +1,426 @@
+{
+  "contract": "load-bearing/0.1",
+  "source_tree": "2cc65a23f192e56c174943e4d55dd334536a20af",
+  "source_commit": "bf8e249d761d8a8528753f38a44c45cd81f25181",
+  "generated_by": {
+    "agent": "claude-code",
+    "model": "claude-opus-5",
+    "at": "2026-09-01T01:49:36Z"
+  },
+  "criteria": [
+    {
+      "id": "correctness",
+      "description": "If this region is wrong, a number the papers cite is wrong and nothing downstream notices. Weighted by how far a silent error would travel before anything caught it."
+    },
+    {
+      "id": "provenance",
+      "description": "This region is what makes a result attributable to the code that produced it: fingerprints, tolerances, generated indices. Its failure mode is a figure that still verifies while describing a previous build."
+    },
+    {
+      "id": "trap-density",
+      "description": "This region exists to refuse. It encodes a measured breakpoint the rig has already been burned by, and its job is to fail loudly rather than return a plausible number from outside the window."
+    },
+    {
+      "id": "identity",
+      "description": "What this software is, per its maintainers: a known-answer calibration rig whose whole value is that its answers are checkable. Authored as a single ordering, not computed by PREP.",
+      "composed_of": [
+        "correctness",
+        "provenance",
+        "trap-density"
+      ],
+      "weights": {
+        "correctness": 0.5,
+        "provenance": 0.3,
+        "trap-density": 0.2
+      }
+    }
+  ],
+  "default_criterion": "identity",
+  "members": [
+    {
+      "id": "instrument/unforked",
+      "body_ref": "members/instrument-unforked.md",
+      "anchors": [
+        {
+          "path": "hodge.py",
+          "start": 1,
+          "end": 392,
+          "blob": "fabde70911fa3ec158f24dd179ea2ddae23d91fc",
+          "range_hash": "e6dbf60f0be8539433a9a866dfd1a65417ec1a85b007e4f3485699b2f67a017a"
+        },
+        {
+          "path": "design/reference/hodge.py",
+          "start": 1,
+          "end": 392,
+          "blob": "fabde70911fa3ec158f24dd179ea2ddae23d91fc",
+          "range_hash": "e6dbf60f0be8539433a9a866dfd1a65417ec1a85b007e4f3485699b2f67a017a"
+        }
+      ],
+      "scores": {
+        "correctness": 0.95,
+        "provenance": 0.8,
+        "trap-density": 0.25,
+        "identity": 0.77
+      },
+      "rationale": "Two anchors on one claim: the member is the byte-identity, so either file drifting alone is the event worth catching. Everything else in the manifest reads through this file.",
+      "aspects": [
+        {
+          "id": "byte-identity",
+          "criteria": [],
+          "claim": "hodge.py and design/reference/hodge.py are byte-identical, and git's own SHA-256 is the proof rather than a convention."
+        },
+        {
+          "id": "single-source",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "Every operator, projector and decomposition the rig uses comes from this file; the rig is a data source and never reimplements the decomposition."
+        },
+        {
+          "id": "two-doors",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "analyze_flow and analyze_comparisons are different tests with different default fillings, so the rig always passes filling explicitly and logs it."
+        }
+      ],
+      "metadata": {
+        "spec": [
+          "§6",
+          "§7"
+        ]
+      }
+    },
+    {
+      "id": "regime/preconditions",
+      "body_ref": "members/regime-preconditions.md",
+      "anchors": [
+        {
+          "path": "rig/oracle.py",
+          "start": 13,
+          "end": 23,
+          "blob": "cc7c4bf69166688481ce347782a4a548d66a2421",
+          "range_hash": "9242bd4390bfc67f3e863ca21e77b747330532777cf114ca65e79609370bbaf2"
+        },
+        {
+          "path": "rig/oracle.py",
+          "start": 62,
+          "end": 96,
+          "blob": "cc7c4bf69166688481ce347782a4a548d66a2421",
+          "range_hash": "5dffecfc31b9c9db8a98200f8db4acf2fe4ba9ef53565cf291d2927523ee7714"
+        }
+      ],
+      "scores": {
+        "correctness": 0.85,
+        "provenance": 0.3,
+        "trap-density": 0.95,
+        "identity": 0.71
+      },
+      "rationale": "The highest trap-density region in the repo: three measured breakpoints and the exception that fires on them. Split into two anchors so the thresholds and the gate that reads them fail independently.",
+      "aspects": [
+        {
+          "id": "loud-refusal",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "regime_report with strict=True raises RegimeViolation naming the failed gates; a loud failure is the intended output, because outside the window floor + c/k fits anyway and silently misreports the floor."
+        },
+        {
+          "id": "closed-form",
+          "criteria": [
+            "correctness",
+            "trap-density"
+          ],
+          "claim": "Both bounds are closed-form — saturation is a mean over p**k_min + (1-p)**k_min and mildness is eps squared over gradient energy — so the window is checked before anything is sampled or fitted."
+        },
+        {
+          "id": "necessary-not-sufficient",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "The c-oracle gate is labelled necessary but not sufficient in both code and spec: it passes at beta = 0.25 while the recovered floor is 1.86 times wrong."
+        },
+        {
+          "id": "measured-not-chosen",
+          "criteria": [
+            "provenance"
+          ],
+          "claim": "The three constants are annotated as measured breakpoints rather than preferences, with 0.17 fitting and 0.42 breaking recorded at the saturation bound."
+        }
+      ],
+      "metadata": {
+        "spec": [
+          "§2.6",
+          "§8.5"
+        ]
+      }
+    },
+    {
+      "id": "fit/derived-window",
+      "body_ref": "members/fit-derived-window.md",
+      "anchors": [
+        {
+          "path": "rig/oracle.py",
+          "start": 99,
+          "end": 128,
+          "blob": "cc7c4bf69166688481ce347782a4a548d66a2421",
+          "range_hash": "f064f9527ee24cb1b072d957915d2fdbb2b3b4acde04049a13bf5a3c4265d3ca"
+        }
+      ],
+      "scores": {
+        "correctness": 0.9,
+        "provenance": 0.55,
+        "trap-density": 0.8,
+        "identity": 0.78
+      },
+      "rationale": "One of the three findings the build had to fix, and the one whose docstring already records its own staleness incident. High correctness load because the wrong window returns a floor rather than an error.",
+      "aspects": [
+        {
+          "id": "window-is-derived",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "The window is c_oracle / (rho * floor_target), not the spec's fixed 64, because it is set by the ratio of the variance term to the floor and not by a constant."
+        },
+        {
+          "id": "filling-moves-it",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "On filling='empty' the calibration graph has b1 = 20 and c around 160, so k = 64 leaves the variance term about ten times too large and recovers 0.016 against a true 0.090."
+        },
+        {
+          "id": "rho-has-no-default",
+          "criteria": [
+            "trap-density",
+            "provenance"
+          ],
+          "claim": "rho is required with no default because it is a shipped config field, and the docstring records the v6-to-v7 incident where a default here went stale unnoticed."
+        },
+        {
+          "id": "zero-floor-returns-inf",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "A floor_target of zero returns infinity rather than dividing, because the eps = 0 negative control is judged by whether its CI covers zero and not by this window."
+        }
+      ],
+      "metadata": {
+        "spec": [
+          "§2.6"
+        ],
+        "build_history": "Delta A"
+      }
+    },
+    {
+      "id": "fit/floor-ols",
+      "body_ref": "members/fit-floor-ols.md",
+      "anchors": [
+        {
+          "path": "rig/fit.py",
+          "start": 1,
+          "end": 34,
+          "blob": "a494bb89e87300b15f8c6af9d5ec040bc9a3b475",
+          "range_hash": "371ac225de90545af34eea7f6d0282baf3108f9490dc081d106dbf04983f35d8"
+        }
+      ],
+      "scores": {
+        "correctness": 0.88,
+        "provenance": 0.4,
+        "trap-density": 0.6,
+        "identity": 0.68
+      },
+      "rationale": "The estimator itself. Anchored from line 1 so the module docstring, which carries the measured bias figures, cannot drift away from the code it describes.",
+      "aspects": [
+        {
+          "id": "window-restriction",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "The fit is restricted to k >= fit_k_min before the design matrix is built, because a two-parameter OLS absorbs the O(1/k^2) logit-bias term into the intercept — 0.83x-2.48x bias on the full grid against 0.87x-0.95x on k >= 64."
+        },
+        {
+          "id": "refuses-thin-windows",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "Fewer than two points inside the window raises ValueError, and the message says to extend the k grid upward rather than lower fit_k_min."
+        },
+        {
+          "id": "window-travels-with-the-floor",
+          "criteria": [
+            "provenance"
+          ],
+          "claim": "The result carries n_fit_points, fit_k_min and the actual k_fitted list, so a floor is never readable without the window that produced it."
+        },
+        {
+          "id": "never-a-point-estimate",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "The floor ships with a bootstrap interval across seeds and a separates_from_zero flag, because its job is to be distinguished from zero."
+        }
+      ],
+      "metadata": {
+        "spec": [
+          "§8.5",
+          "§13.1"
+        ]
+      }
+    },
+    {
+      "id": "emit/collapse-guard",
+      "body_ref": "members/emit-collapse-guard.md",
+      "anchors": [
+        {
+          "path": "rig/emit.py",
+          "start": 74,
+          "end": 98,
+          "blob": "f882b5f66207c43a95c1adfa72d01d7fceffcfa4",
+          "range_hash": "14339bb07c65ec64714c3c7e6e55edb849cc4029bdccebed1bc8a3212a377335"
+        }
+      ],
+      "scores": {
+        "correctness": 0.7,
+        "provenance": 0.25,
+        "trap-density": 0.95,
+        "identity": 0.62
+      },
+      "rationale": "Pure trap. Without it a destroyed flow reports a clean zero harmonic reading, which is the most convincing wrong answer the rig can produce.",
+      "aspects": [
+        {
+          "id": "band-vs-destruction",
+          "criteria": [
+            "trap-density",
+            "correctness"
+          ],
+          "claim": "An edge inside the representable band |Y| <= log((k+1)/(k-1)) is ordinary quantization loss reported through the residual; the entire flow quantizing to zero is a different event and raises."
+        },
+        {
+          "id": "fires-only-on-total-loss",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "The guard fires only when the target has energy and the achieved flow has none, so it does not fire on partial loss."
+        },
+        {
+          "id": "names-the-way-out",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "EmissionCollapse reports the location, k, the dead-edge count and the band width, then names the two remedies: the sign path for a plus-minus-one rule, or a larger emit_k."
+        }
+      ],
+      "metadata": {
+        "spec": [
+          "§10",
+          "§5.1"
+        ]
+      }
+    },
+    {
+      "id": "provenance/semantic-fingerprint",
+      "body_ref": "members/provenance-semantic-fingerprint.md",
+      "anchors": [
+        {
+          "path": "rig/provenance.py",
+          "start": 187,
+          "end": 215,
+          "blob": "371f90bce1de812b9ffb307eed1b24c08398d774",
+          "range_hash": "b243d34325cf72857d7b233459b5238bdc35d52db4e845b09d4c03663c5019bc"
+        }
+      ],
+      "scores": {
+        "correctness": 0.55,
+        "provenance": 0.95,
+        "trap-density": 0.45,
+        "identity": 0.65
+      },
+      "rationale": "The mechanism the whole provenance criterion rests on. Its own test suite already pins the sensitive/blind distinction; the member records what that distinction is for.",
+      "aspects": [
+        {
+          "id": "meaning-not-presentation",
+          "criteria": [
+            "provenance"
+          ],
+          "claim": "The hash is taken over a docstring-stripped normalized AST dump, so it is stable across comments, blank lines and reindentation and changes when any body or constant in the closure changes."
+        },
+        {
+          "id": "transitive-closure",
+          "criteria": [
+            "provenance",
+            "correctness"
+          ],
+          "claim": "It walks module-level names from the entry point by repeated reference resolution until a round adds nothing, bounded by _max_depth, so the fingerprint covers everything the entry actually depends on."
+        },
+        {
+          "id": "aliases-are-not-definitions",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "Sibling module aliases are added to the known set so references through them count, but routed to reached rather than the frontier and folded in via _sibling_parts."
+        },
+        {
+          "id": "absent-entry-returns-none",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "A module with no module-level definition by that name returns None rather than hashing an empty closure into a plausible-looking value."
+        }
+      ],
+      "metadata": {
+        "tests": [
+          "tests/test_source_fingerprint.py"
+        ]
+      }
+    },
+    {
+      "id": "evidence/tolerance-and-drift",
+      "body_ref": "members/evidence-tolerance-and-drift.md",
+      "anchors": [
+        {
+          "path": "design/methodology/evidence/verify.py",
+          "start": 84,
+          "end": 119,
+          "blob": "cdd7911d9b61823afed3eb126d4284f23cf14bc2",
+          "range_hash": "d0f21bd0aecdd8e78accf80cda5ed99b70a581f184459f6538bf63110ad4eaa8"
+        }
+      ],
+      "scores": {
+        "correctness": 0.5,
+        "provenance": 0.98,
+        "trap-density": 0.55,
+        "identity": 0.65
+      },
+      "rationale": "The registry's actual comparison. Every cited number in both papers passes through this function, and its failure mode is the quiet one: a green run against a claim set that has moved.",
+      "aspects": [
+        {
+          "id": "conclusion-vs-digits",
+          "criteria": [
+            "provenance"
+          ],
+          "claim": "A failure prints the claim, the stored value, the fresh value and the drift, so a reader can see whether the conclusion moved or only the digits did."
+        },
+        {
+          "id": "structure-before-tolerance",
+          "criteria": [
+            "correctness",
+            "provenance"
+          ],
+          "claim": "Paths present on only one side are collected as a set and returned with infinite drift, rather than allowing a tolerance verdict on the surviving overlap of a restructured claim."
+        },
+        {
+          "id": "generated-index-checked",
+          "criteria": [
+            "provenance",
+            "trap-density"
+          ],
+          "claim": "check_provenance compares the claim ids parsed out of PROVENANCE.md against the registry keys in both directions, because the index is generated and nothing else keeps it current."
+        }
+      ],
+      "metadata": {
+        "registry": "design/methodology/evidence/evidence.json"
+      }
+    }
+  ]
+}
