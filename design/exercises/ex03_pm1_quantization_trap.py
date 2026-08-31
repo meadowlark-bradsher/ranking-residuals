@@ -9,7 +9,8 @@ This is spec 5.1, and it is the reason the rig never emits a sign flow for a
 block whose magnitude is meaningful.
 
 Run:  python design/exercises/ex03_pm1_quantization_trap.py
-Spec: 5.1, 10 (flow encodings).  Claim: pm1-trap (pins n=5 and n=6).
+Spec: 5.1, 10 (flow encodings).
+Claims: pm1-trap (two measured points), pm1-closed-form (the formula below).
 """
 
 import sys
@@ -36,10 +37,14 @@ GRADED_K = 64
 def closed_form(n):
     """Predicted spurious harmonic fraction of the +-1 flow of a total order on K_n.
 
-    DERIVED IN THIS EXERCISE, not taken from the registry -- the shipped claim
-    `pm1-trap` pins two measured points (n=5, n=6) and states only that the mass
-    is n-dependent. See SOLUTIONS.md for the derivation; the check below is what
-    licenses quoting it.
+    Registry claim `pm1-closed-form`, pinned at these same n by
+    tests/test_invariants.py::test_5_1_pm1_mass_has_a_closed_form_in_n. Separate
+    from `pm1-trap`, which records two measured points at the precision the paper
+    prints them; this is an identity at every n. The derivation is in SOLUTIONS.md.
+
+    Written out rather than imported from the registry ON PURPOSE: the exercise's
+    job is to predict the instrument's output and be checked against it, so reading
+    the answer from the file that stores the answer would make the check circular.
     """
     return (n - 2) / (3 * n)
 
@@ -94,8 +99,10 @@ def main():
         print()
 
     print("RECORD")
-    print("  1. Write down h at n=5 and n=6 from part 1. Compare them to claim")
-    print("     `pm1-trap` in design/methodology/evidence/evidence.json.")
+    print("  1. Write down h at n=5 and n=6 from part 1, and the whole (n-2)/(3n)")
+    print("     column. Two registry claims cover this table; find both in")
+    print("     design/methodology/evidence/PROVENANCE.md and say what each adds")
+    print("     that the other does not.")
     print("  2. In log (a) all three encodings give the same fractions; in log (b)")
     print("     they do not. Which of the two changed, the decoder or the data?")
     print("     Then finish the sentence: 'logodds recovers magnitude only when ...'")

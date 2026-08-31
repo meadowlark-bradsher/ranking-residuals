@@ -82,6 +82,45 @@ def structural():
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_invariants.py::test_5_1_pm1_of_a_transitive_order_is_not_a_gradient")
 
+    # The n-dependence above has a closed form, so the mass is not merely "not a
+    # constant" -- it is known at every n and has a limit. The +-1 flow of a total
+    # order on K_n is the all-ones edge vector; least squares against D0 gives
+    # s_i = (2/n).i, hence gradient energy (n^2-1)/3 against a total mass of
+    # n(n-1)/2, so g = 2(n+1)/(3n) and h = (n-2)/(3n) -> 1/3.
+    #
+    # SEPARATE CLAIM RATHER THAN A WIDER pm1-trap, deliberately. pm1-trap's value
+    # shape and its two n are what the methodology paper cites; widening it would
+    # move a published claim to record something the paper does not say. This one
+    # asserts more (an identity at every n, not two measured points) and is cited
+    # somewhere else, which is what makes it its own row in the index.
+    cf = {}
+    for n in (3, 4, 5, 6, 7, 8, 12, 16):
+        e = list(itertools.combinations(range(n), 2))
+        v = np.arange(n, dtype=float)
+        Y = np.sign(np.array([v[j] - v[i] for i, j in e]))
+        got = hodge.analyze_flow(n, e, Y, filling="empty")["fractions"]["harmonic"]
+        # Self-checking in the same sense as pm1-trap above: compared against the
+        # FORMULA, not against whatever the instrument last produced. Recording the
+        # measurement without this assert would let the closed form quietly stop
+        # being true while the claim went on reproducing its own drift.
+        assert abs(got - (n - 2) / (3 * n)) < 1e-9, \
+            f"n={n}: measured {got} vs closed form {(n - 2) / (3 * n)}"
+        cf[str(n)] = got
+    claim("pm1-closed-form", asserts="The spurious harmonic mass of the +-1 flow of a "
+          "total order on the complete graph is exactly (n-2)/(3n), rising with n "
+          "toward 1/3.",
+          cited_in=["exercises SOLUTIONS.md, exercise 3",
+                    "exercises ex03_pm1_quantization_trap.py, closed_form()"],
+          value=cf,
+          tol={"kind": "abs", "value": 1e-9},
+          test="tests/test_invariants.py::test_5_1_pm1_mass_has_a_closed_form_in_n",
+          note="Generalises pm1-trap, which pins the same computation at n=5 and n=6 "
+               "and asserts only that the mass is n-dependent. Same tolerance because "
+               "it is the same code path; verify.py prints the observed drift, so the "
+               "headroom is generated rather than quoted here. Not cited in the papers "
+               "or the spec -- spec 5.1 still states the n-dependence as two measured "
+               "points, and promoting it there is a spec revision, not a registry one.")
+
     a = assemble(cfg.with_(n_cplx=0, mode_II="clean_gradient"))
     claim("clean-gradient-zero", asserts="An all-integer value-difference flow reads zero "
           "harmonic under both fillings.",

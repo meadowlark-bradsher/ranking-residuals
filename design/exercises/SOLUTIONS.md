@@ -122,9 +122,15 @@ On the graded log, `logodds` gives `h = 0.000286`, `signed` gives `0.018236`, an
    ```
 
    The script checks this at `n = 3…16` and the largest disagreement is `5.55e-17`.
-   This is **derived in the exercise**, not a shipped claim: the registry pins the
-   two measured points, and generalising them is what this exercise adds. Quote
-   `pm1-trap` when citing the fact; quote this derivation when citing the formula.
+
+   The formula is registry claim **`pm1-closed-form`**, pinned at those same eight
+   `n` by `test_5_1_pm1_mass_has_a_closed_form_in_n`. It is a separate claim from
+   `pm1-trap` rather than a widening of it: `pm1-trap` records two measured points
+   at the precision the methodology paper prints them, and this one asserts an
+   identity at every `n` to machine precision. Quote `pm1-trap` for "the mass is
+   `n`-dependent", `pm1-closed-form` for the formula. Note that the **spec** has
+   neither — §5.1 still gives the `n`-dependence as two measured points, and
+   changing that is a spec revision, not a registry one.
 
 2. **The data changed, not the decoder.** In the unanimous log every pair has the
    same win rate, so the log-odds of every edge is the same number and the decoded
