@@ -8,7 +8,22 @@
      A vendored copy can drift from its source and nothing here detects
      that: the manifest anchors regions of THIS repo's code, and a member
      over this file would only catch edits to the copy, never divergence
-     from the original. Re-copy when 0.1 is revised. -->
+     from the original. Re-copy when 0.1 is revised.
+
+     THAT HAZARD HAS ALREADY ARRIVED, which is why it was worth naming. Three
+     of the Open items below were decided on 2026-09-01 and the body of this
+     file predates the revision:
+
+       * range_hash normalization -- strip a leading BOM, fold bare CR to LF,
+         keep trailing whitespace. The "Open" list still calls this unpinned.
+       * scores -- required per member, not across the manifest.
+       * state-shaped keys inside `metadata` -- rejected. Invariant 1 stands
+         without a scope qualifier.
+
+     The body is left untouched because a verbatim copy that is quietly patched
+     is no longer a copy of anything. The decisions are recorded in
+     CONTRACT-NOTES.md and CONSUMER-PINS.md; this file is replaced when the
+     upstream document is. -->
 
 # Contract — `.load-bearing/` member manifest
 
