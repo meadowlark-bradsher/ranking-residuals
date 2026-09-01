@@ -61,47 +61,59 @@ is a reason to score, not a reason to reject.
 repo owns the criteria (`correctness`, `provenance`, `trap-density`, and the
 composite `identity`); the skill owns only the format, as the contract intends.
 
-## Divergences from the reference consumer
+## Divergences from the reference consumer — closed 2026-09-01
 
-Found by comparing implementations directly with the PREP session, not by
-reading the contract. Both sides audited their own validator against the pins;
-what follows is what survived that.
+There are none left. Both sides audited their own validator against the pins,
+and every difference that survived that audit has since been decided.
 
-| | this producer | consumer pin | live? |
-|---|---|---|---|
-| trailing whitespace | kept | kept (P2) | agree |
-| CRLF | folded to LF | folded to LF (P2) | agree |
-| leading BOM | stripped | not handled (P2) | latent |
-| bare CR | folded to LF | unmentioned by P2 | latent |
+| | this producer | outcome |
+|---|---|---|
+| trailing whitespace | kept | agreed from the start |
+| CRLF | folded to LF | agreed from the start |
+| leading BOM | stripped | **ratified**; the consumer adopts it |
+| bare CR | folded to LF | **ratified**, and now pinned explicitly |
+| state keys in `metadata` | rejected | **ratified**; P4's carve-out dropped |
+| `scores` scope | across the manifest | **this side was wrong**; now per member |
+| unknown fields (P3) | not checked | **this side was lax**; now closed |
+| `body_ref` escape (P6) | not checked | **this side was lax**; now checked |
 
-Both remaining divergences are latent, checked rather than assumed: every file
-either side anchors today is clean LF with no BOM and no bare CR, so the two
-implementations agree byte for byte on real input. They part company the moment
-someone anchors a file an editor touched on Windows — and they will meet it as a
-hash mismatch with no diff to explain it, which is the argument for pinning
-rather than the merits, which are thin either way. Bare CR especially wants
-pinning explicitly: P2 names only CRLF, and that silence is how this side came
-to fold it without anyone deciding to.
+The four ratified rows landed on this producer's behaviour and the consumer
+changes. That is not a scoreboard worth keeping — the useful part is the shape
+of how each one arose, because they were not the same kind of mistake and only
+one kind was avoidable by being more careful.
 
-**Three things previously recorded here as divergences were not.** `scores`
-scope was this producer's error against P7, now conformed. Rejecting unknown
-fields (P3) and refusing a `body_ref` that escapes (P6) were simply unimplemented
-here — both in the *lax* direction, which is worse than being strict: a typo'd
-key passed this validator silently and was rejected by the consumer, when the
-producer is where a typo should die.
+**Two came from pins held in a document this side did not have** while the
+contract's own text said the matter was open. Nobody was careless; the
+information was not present. The remedy is that the rule belongs in the contract
+rather than in a build order, which is now true of normalization.
 
-The pattern across all of them is the finding, and it is not that anyone was
-careless. Two divergences trace to rules pinned in a document this side did not
-have while the contract's own text said the matter was open. The rest trace to
-reading one line of a specification without reconciling it against the rest of
-the document. The second is harder to catch, because it produces a confident
-justification rather than a visible gap — this document's first draft argued for
-its wrong reading from a `.get` default in its own sort key.
+**Three came from reading one line without reconciling it against the rest of
+the document.** `scores` scope is the clearest: the contract's Open list already
+said "currently optional per member", two sections below the field table that
+was read strictly. P3 and P6 are the same failure with nothing to argue about —
+pins that were simply not implemented, both in the lax direction, so a typo'd
+key passed here and was rejected downstream.
 
-Both remedies are contract-level: state the normalization rule in the contract
-rather than the build order, and say per-member or across-manifest in the
-sentence itself. A live conflict between P4 and invariant 1 is recorded in
-[`CONSUMER-PINS.md`](CONSUMER-PINS.md) and belongs to the same revision.
+That second kind is the harder one, and it does not announce itself. It produces
+a confident justification instead of a visible gap: this document's first draft
+argued for its wrong reading of `scores` from a `.get` default in its own sort
+key, and the argument read well. None of the three was caught by the manifest
+gate, which checks that prose stays attached to code and cannot check prose
+against prose.
+
+**One was decided by measurement rather than argument**, and is the exception
+worth imitating. Both sides believed P4's `metadata` carve-out was wrong on the
+merits, which would ordinarily be two opinions. Instead each validator was
+probed: because P3 closes every object, every state word is already rejected as
+an unknown field wherever it can appear, so P4 changed only the error message and
+never the outcome — except inside `metadata`, the one location it exempted. A
+rule redundant everywhere it applies and disabled where it would matter is not a
+narrower rule but an absent one. Reproduced independently in both
+implementations, which is what settled it.
+
+The decisions themselves are recorded in
+[`CONSUMER-PINS.md`](CONSUMER-PINS.md); [`CONTRACT.md`](CONTRACT.md) is a
+verbatim copy that predates the revision and its header says so.
 
 ## Added on the producer side
 
@@ -178,16 +190,14 @@ anything about behaviour, and no member should be written as though it did.
 
 - **`suggested_terms` on a member.** Not adopted, per the contract's own reading:
   a member is a review unit and a debt event is a surrender record.
-- **Aspect scoping across composites — answered, and it was a bug.** Invariant 7
-  says the judge sees aspects whose `criteria` include the active criterion, and
-  the reference consumer implemented that literally: an aspect scoped to a
-  component does *not* surface under a composite containing it. Its own manifest
-  then showed a composite covering strictly less than either component, with one
-  member getting no aspects at all and silently dropping to prose mode. The
-  agreed fix is the union over the criterion and its declared components,
-  transitively, which is what this repo already writes as if. Nothing here
-  changes; 0.1 still has to say it, because the failure is silent — a member with
-  no matching aspects does not error, it reads as fine.
+- **Aspect scoping across composites — decided 2026-09-01: transitive union.**
+  An aspect scoped to a component criterion surfaces under a composite
+  containing it, transitively. Read literally, invariant 7 made a composite
+  cover strictly *less* than either of its components, and a member could get no
+  aspects at all under the default criterion and drop silently to prose mode.
+  Consumer-side; nothing changes here, which already authors aspects as if this
+  were true. The contract text still needs it written down, because the failure
+  it prevents is silent — a member with no matching aspects does not error.
 - **Overlapping ranges in one file — answered: legal, and deliberate.** The
   consumer hashes each range independently, so two members over one file have
   independent freshness. Used here: `regime/preconditions` and

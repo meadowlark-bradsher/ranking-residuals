@@ -13,6 +13,9 @@ precedence is the build order's own rule, and where this excerpt and
 [`CONTRACT.md`](CONTRACT.md) conflict, the conflict is reported rather than
 resolved silently. One such conflict is live and recorded below.
 
+**P2 and P4 below were superseded on 2026-09-01** and the table is the text as
+excerpted, not as decided. See "Decided since this excerpt" at the end.
+
 | # | Decision | Value in 0.1 |
 |---|---|---|
 | P1 | Where PREP reads a working tree | **CLI only.** `ManifestSource` needs filesystem access; the web route keeps its pasted-diff path and does not learn about manifests in 0.1. |
@@ -39,31 +42,40 @@ this side strips a leading BOM and folds a bare CR, and P2 does neither. Both ar
 latent — no file either side anchors today has a BOM or a bare CR — and this
 producer will conform to whatever 0.1 states.
 
-## P4 conflicts with invariant 1, and the conflict is live
+## Decided since this excerpt — 2026-09-01
 
-P4 scopes state-field rejection to "any depth **outside** `metadata`". Invariant 1
-carries no such qualifier: a manifest "carries no `reviewed`/`understood`/
-`verified`/`known` fields. Any such field is rejected at ingestion, not ignored."
+All three open questions were resolved by the contract's owner, and all three
+landed on this producer's existing behaviour. **No code changed here**; what
+changed is that these stop being divergences and become the rule.
 
-Measured on the consumer side, which is what makes this worth recording rather
-than arguing: because P3 closes every object in the schema, every state word is
-already rejected as an unknown field wherever it can appear. P4 therefore changes
-only the error message and never the outcome — **except inside `metadata`, the one
-location it exempts, where nothing fires at all.** So P4 is redundant everywhere
-it applies and disabled in the only place it would matter, and the exempted
-location is the whole reachable surface.
+**P2 normalization — this side's reading adopted.** Strip a leading BOM, fold
+bare CR to LF along with CRLF, keep trailing whitespace. The two remaining
+divergences recorded in [`CONTRACT-NOTES.md`](CONTRACT-NOTES.md) are closed by
+this; the consumer changes rather than the producer. Bare CR is now pinned
+explicitly, which was the specific silence that let the two implementations part
+company without either side deciding anything.
 
-This producer implements invariant 1 rather than P4: state keys are rejected
-inside `metadata` too. The reasoning is that "opaque" is a claim about PREP not
-*interpreting* metadata — the reading and the judge never see it — not about
-declining to *validate* it at ingestion, and metadata is exactly where a state
-field ends up when a producer is told only "not at the top level."
+**P4's carve-out dropped — invariant 1 stands unqualified.** State-shaped keys
+are rejected inside `metadata` too. This is what this producer already did, and
+the measurement is what settled it rather than either side's argument: because
+P3 closes every object in the schema, every state word is already rejected as an
+unknown field wherever it can appear, so P4 changed only the error message and
+never the outcome — except inside `metadata`, the one location it exempted,
+which is the entire reachable surface. A rule redundant everywhere it applies
+and disabled where it would matter is not a narrower rule, it is an absent one.
+Reproduced independently in both validators before the decision.
 
-Both sides now read it the same way and neither has changed it: it is a contract
-question, the contract wins by the build order's own rule, and 0.1 should either
-delete P4's carve-out or add the qualifier to invariant 1.
+"Opaque" is therefore settled as a claim about PREP not *interpreting* metadata
+— the reading generator and the judge never see it — and not about declining to
+*validate* it at ingestion.
 
-The word list is a smaller version of the same thing. This side carries
-`confidence` and `mastery`; P4 carries `mastered`. After P3 the difference only
-decides which error message a producer sees, so it is worth pinning for message
-quality and is not load-bearing.
+**Composite aspect scope — transitive union.** An aspect scoped to a component
+criterion does surface under a composite containing it, transitively. This is
+consumer-side and changes nothing in this repo, which already authors aspects as
+if it were true. It closes a real defect: read literally, invariant 7 made a
+composite cover strictly *less* than either of its components, and a member
+could end up with no aspects at all under the default criterion and drop
+silently to prose mode.
+
+The contract text itself has not been revised yet, so [`CONTRACT.md`](CONTRACT.md)
+still lists the first two as open. Its header records the gap.
