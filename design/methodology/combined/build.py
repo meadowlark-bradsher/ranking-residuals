@@ -110,8 +110,17 @@ the harmonic space is $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and $\\Ph$ is
 characterisation $\\ker L_1=\\ker D_0^{\\top}\\cap\\ker D_1$, and one standard fact.""",
     "drop the bridge paper's duplicate operator definitions")
 
+# count=3 since the bridge paper's Proposition 2 remark cites it as well; the
+# guard above is what caught that, which is the reason it counts rather than
+# replacing blindly.
 body = must_replace(body, r"\cite[Principle 3]{bradsher2026}",
-                    "Principle~\\ref{prin:nouniversal}", "Principle 3 citation", count=2)
+                    "Principle~\\ref{prin:nouniversal}", "Principle 3 citation", count=3)
+# Both added by that remark. Cross-paper in the standalone bridge note; internal
+# references once the two papers are one document.
+body = must_replace(body, r"\cite[\S2, Observation 1]{bradsher2026}",
+                    "Observation~\\ref{obs:pm1}", "S2 Observation 1 citation")
+body = must_replace(body, r"\cite[\S4]{bradsher2026}",
+                    "\\S\\ref{sec:null}", "S4 citation")
 body = must_replace(body, r"\cite[\S3.2]{bradsher2026}",
                     "\\S\\ref{subsec:bridgepc}", "S3.2 citation", count=2)
 body = must_replace(body, r"\cite[\S5]{bradsher2026}",

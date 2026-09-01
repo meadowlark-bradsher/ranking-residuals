@@ -60,9 +60,9 @@ the rig *measures* -- until they meet on one identity.
 *Source: bridge*
 
 - **Role.** First forcing result. Show that most of the construction had no freedom.
-- **Claim.** The two homogeneous blocks have their Hodge type fixed by their symmetry group -- order forces a gradient, rotation forces a harmonic. The bridge is the one block symmetry does not constrain, and that absence is the entire content of 'incomparability'.
-- **Evidence.** Proposition 1, analytic.
-- **Note.** The payoff sentence of the whole analytic line: the bridge is a modelling choice rather than a derivation, and now it is clear why.
+- **Claim.** The two homogeneous blocks have their Hodge type fixed by their symmetry group -- order forces a gradient, rotation forces a harmonic. The bridge is the one block symmetry does not constrain, and that absence is the entire content of 'incomparability'. A coda says what the first of those rests on: the order forces a gradient through its VALUES, and keeping only the sign of them costs exactly (n-2)/3n.
+- **Evidence.** Propositions 1 and 2, analytic.
+- **Note.** The payoff sentence of the whole analytic line: the bridge is a modelling choice rather than a derivation, and now it is clear why. Proposition 2 is the section's one closed constant -- shape AND value without experiment, because K_n with the empty filling leaves no comparison graph to depend on.
 
 ---
 
