@@ -120,6 +120,8 @@ design/
   lb.py               what "stale" means; shared by the two CLIs and the gate
   verify.py           what is stale and why; --criterion prints an ordering
   refresh.py          --relocate repairs moved anchors; --attest re-hashes changed ones
+  CONTRACT.md         the normative contract, vendored from the PREP side
+  CONSUMER-PINS.md    the consumer's pinned defaults, and one live conflict
   CONTRACT-NOTES.md   what this repo pinned where the contract left a choice
 ```
 

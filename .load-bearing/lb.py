@@ -61,6 +61,21 @@ MANIFEST = LB_DIR / "manifest.json"
 
 FRESH, MOVED, CHANGED, MISSING = "fresh", "moved", "changed", "missing"
 
+#: P3 -- the schema is CLOSED. Every object has a known key set and anything
+#: else is rejected, so a typo (`anchor` for `anchors`, `critera` for
+#: `criteria`) dies at the producer instead of silently passing here and being
+#: rejected by the consumer. `metadata` is the only opaque bag and is not
+#: descended into for unknown keys.
+ALLOWED = {
+    "top": frozenset({"contract", "source_tree", "source_commit", "generated_by",
+                      "criteria", "default_criterion", "members"}),
+    "criterion": frozenset({"id", "description", "composed_of", "weights"}),
+    "member": frozenset({"id", "body", "body_ref", "anchors", "scores",
+                         "rationale", "aspects", "metadata"}),
+    "anchor": frozenset({"path", "start", "end", "blob", "range_hash"}),
+    "aspect": frozenset({"id", "criteria", "claim"}),
+}
+
 #: Invariant 1 -- content, never state. These are the reader's business, and a
 #: manifest that carries them is rejected at ingestion rather than ignored, so
 #: the mistake surfaces at the producer instead of being silently dropped.
@@ -206,6 +221,15 @@ def _criterion_ids(manifest: dict) -> list[str]:
     return [c["id"] for c in manifest.get("criteria", [])]
 
 
+def _unknown(obj, kind: str, where: str) -> list[str]:
+    """Keys outside this object's declared set (P3)."""
+    if not isinstance(obj, dict):
+        return [f"{where}: expected an object, got {type(obj).__name__}"]
+    extra = sorted(set(obj) - ALLOWED[kind])
+    return [f"{where}: unknown field {k!r} (schema is closed; "
+            f"`metadata` is the only opaque bag)" for k in extra]
+
+
 def _state_keys_in(obj) -> list[str]:
     """Every STATE_KEYS key anywhere in a nested structure (invariant 1)."""
     found = []
@@ -228,6 +252,7 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
     per run trains people to fix one error per run.
     """
     errs: list[str] = []
+    errs += _unknown(manifest, "top", "manifest")
 
     contract = manifest.get("contract")
     if not isinstance(contract, str) or "/" not in contract:
@@ -248,6 +273,7 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
         errs.append(f"criteria: duplicate ids in {ids}")
 
     for c in criteria:
+        errs += _unknown(c, "criterion", f"criteria[{c.get('id', '?')}]")
         if not c.get("id"):
             errs.append("criteria: an entry has no id")
             continue
@@ -274,14 +300,20 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
     if len(set(m_ids)) != len(m_ids):
         errs.append(f"members: duplicate ids in {m_ids}")
 
-    # "Required for every criterion if present for any" -- read across the
-    # manifest, which is the strict reading: partial scoring is what would let a
-    # composite be authoritative while a component ordering silently ranked on
-    # absent data.
-    any_scored = any("scores" in m for m in members)
+    # P7, and the contract's "required for every criterion if present for any"
+    # read PER MEMBER, which is the intended reading: a member that scores
+    # anything scores everything, and a member that scores nothing is valid. It
+    # is simply not orderable by criterion -- the consumer's selector filters
+    # such members out rather than ranking them at zero.
+    #
+    # An earlier draft read this across the manifest and rejected a partially
+    # scored manifest. That was wrong, and wrong in the direction that matters:
+    # a producer stricter than the contract refuses input the format intends to
+    # be valid. See CONSUMER-PINS.md.
 
     for m in members:
         mid = m.get("id") or "<no id>"
+        errs += _unknown(m, "member", f"members[{mid}]")
         if not m.get("id"):
             errs.append("members: an entry has no id")
 
@@ -291,7 +323,18 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
                         f"(got {'both' if has_body else 'neither'})")
         if has_ref:
             ref = lb_dir / m["body_ref"]
-            if not ref.is_file():
+            # P6. A body_ref that climbs out reads a file the manifest has no
+            # business naming, and invariant 8 says a manifest is untrusted
+            # input even when this repo wrote it. Resolved rather than
+            # string-matched, so `members/../../x` is caught along with `../x`.
+            try:
+                inside = ref.resolve().is_relative_to(lb_dir.resolve())
+            except (OSError, ValueError):
+                inside = False
+            if pathlib.PurePath(m["body_ref"]).is_absolute() or not inside:
+                errs.append(f"members[{mid}].body_ref {m['body_ref']!r} escapes "
+                            f".load-bearing/; it must resolve inside it")
+            elif not ref.is_file():
                 errs.append(f"members[{mid}].body_ref {m['body_ref']!r} does not resolve")
             elif not ref.read_text().strip():
                 errs.append(f"members[{mid}].body_ref {m['body_ref']!r} is empty")
@@ -301,6 +344,8 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
             errs.append(f"members[{mid}]: anchors required, at least one")
             anchors = []
         for a in anchors:
+            errs += _unknown(a, "anchor",
+                             f"members[{mid}].anchors[{a.get('path', '?')}]")
             missing = [f for f in ("path", "start", "end", "blob", "range_hash")
                        if f not in a]
             if missing:
@@ -311,11 +356,11 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
                             f"non-positive or inverted range "
                             f"{a['start']}-{a['end']}")
 
-        if any_scored:
+        if "scores" in m:
             scores = m.get("scores")
             if not isinstance(scores, dict):
-                errs.append(f"members[{mid}]: scores are present elsewhere in this "
-                            f"manifest, so they are required here too")
+                errs.append(f"members[{mid}].scores must be an object of "
+                            f"criterion id -> number")
             else:
                 for cid in ids:
                     if cid not in scores:
@@ -334,6 +379,7 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
         seen_aspects = set()
         for asp in m.get("aspects", []):
             aid = asp.get("id")
+            errs += _unknown(asp, "aspect", f"members[{mid}].aspects[{aid}]")
             if not aid:
                 errs.append(f"members[{mid}]: an aspect has no id")
             elif aid in seen_aspects:
