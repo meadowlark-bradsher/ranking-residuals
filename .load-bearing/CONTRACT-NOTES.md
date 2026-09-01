@@ -61,10 +61,27 @@ is a reason to score, not a reason to reject.
 repo owns the criteria (`correctness`, `provenance`, `trap-density`, and the
 composite `identity`); the skill owns only the format, as the contract intends.
 
-## Divergences from the reference consumer — closed 2026-09-01
+## Divergences from the reference consumer — audited 2026-09-01
 
-There are none left. Both sides audited their own validator against the pins,
-and every difference that survived that audit has since been decided.
+**This section said "there are none left". That was wrong when it was written,
+and the way it was wrong is worth more than the row it missed.** The `scores`
+row below records P7 scoping scores per member — which made a scoreless member
+legal, which made `verify.py`'s `.get(cid, 0.0)` ordering fallback reachable for
+the first time. The reference consumer filters such members; this side ranked
+them last at `0.00`, asserting a score the manifest does not make. So the PR that
+closed the list and the PR that reopened it were in the same merge train.
+
+Compounding it: the justification for that fallback had already been struck one
+PR earlier, on the correct grounds that the validator made it unreachable. The
+same author then removed that validator rule without returning to the sentence
+struck because of it. **A closure claim is a snapshot, and the change that
+invalidates it may already be merged.** Fixed since; the ordering now excludes
+unscored members and names them, pinned by
+`test_a_scoreless_member_is_not_ranked_at_zero`.
+
+Both sides audited their own validator against the pins, and every difference
+that survived that audit has been decided — as of this writing, and no longer
+asserted as permanent.
 
 | | this producer | outcome |
 |---|---|---|
