@@ -8,11 +8,12 @@
  },
  "meta": {
   "generated": "2026-09-01",
-  "commit": "2fdc055",
+  "commit": "bf200fc",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 33,
-  "source_fingerprint": "2ab305d748c85966"
+  "source_fingerprint": "79110d5854786278",
+  "claims_digest": "79caff98996cd3e8"
  },
  "claims": {
   "pm1-trap": {

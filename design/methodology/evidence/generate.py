@@ -52,6 +52,8 @@ from rig.config import RigConfig
 from rig.graph import assemble
 from rig.sweep import floor_measurement, floor_sweep
 
+import registry          # sibling module; sys.path[0] is this script's dir
+
 HERE = Path(__file__).parent
 CLAIMS: dict = {}
 
@@ -1022,6 +1024,15 @@ if __name__ == "__main__":
     # the tree moves on -- and which is the whole reason evidence.json needed
     # one: it was the largest artifact in the repo with no way to date it.
     provenance.stamp(out, sys.modules[__name__])
+    # The payload digest answers a DIFFERENT question from the fingerprint above.
+    # That one hashes this file's source, so it says whether the code has changed
+    # meaning; it is computed from the module and cannot see the artifact, so a
+    # registry edited by hand beside an unchanged generator round-trips clean.
+    # This one covers `claims` alone and says whether the numbers moved without a
+    # generator run -- the merge-resolved-in-the-registry case, which no test
+    # caught and which a tolerance check cannot catch for the 13 stochastic
+    # claims. See registry.py.
+    out["meta"][registry.DIGEST_KEY] = registry.claims_digest(CLAIMS)
     (HERE / "evidence.json").write_text(json.dumps(out, indent=1, default=float))
     write_provenance(out)
     print(f"  wrote evidence.json: {len(CLAIMS)} claims")

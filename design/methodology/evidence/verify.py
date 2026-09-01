@@ -41,6 +41,7 @@ import numpy as np
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 import generate
+import registry
 
 
 def flatten(v, prefix=""):
@@ -117,8 +118,27 @@ def check_provenance(stored):
               + (f"; lists removed {extra}" if extra else ""))
 
 
+def check_payload(stored):
+    """The payload digest, checked BEFORE any claim is re-run.
+
+    This asks a question the rest of this file cannot. Everything below compares
+    a fresh value against a stored one WITHIN A TOLERANCE, and for the 13
+    stochastic claims that tolerance is wide enough to absorb a different numpy
+    -- so a registry whose numbers came from a merge rather than a generator
+    typically passes it. The digest asks instead whether the stored payload is
+    the one the generator wrote, which is the question a tolerance can never
+    reach. Reported, not fatal: a re-run is more informative than an early exit,
+    and the exit status below already carries the verdict.
+    """
+    problem = registry.check(stored)
+    if problem:
+        print(f"  PAYLOAD {problem}")
+    return problem
+
+
 def main():
     stored = json.loads((HERE / "evidence.json").read_text())
+    payload_problem = check_payload(stored)
     check_provenance(stored)
     generate.CLAIMS = {}
     cfg = generate.structural()
@@ -175,7 +195,7 @@ def main():
     if missing:
         print(f"  {len(missing)} stored claim(s) "
               + ("skipped (--fast)" if fast else "NOT REGENERATED -- renamed or removed?"))
-    return 1 if bad else 0
+    return 1 if (bad or payload_problem) else 0
 
 
 if __name__ == "__main__":
