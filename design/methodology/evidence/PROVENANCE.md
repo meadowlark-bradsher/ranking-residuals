@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-09-01 from commit `002c34f`
+Generated 2026-09-01 from commit `2fdc055`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -29,17 +29,17 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | id | asserts | cited in | tolerance | test |
 |---|---|---|---|---|
 | `pm1-trap` | A +-1 sign flow of a perfectly transitive order deposits spurious harmonic mass, and the amount is n-dependent, not a constant. | methodology sec 2, 'Magnitude, not sign' (as superseded history) | 1e-09 abs | `test_5_1_pm1_of_a_transitive_order_is_not_a_gradient` |
-| `pm1-closed-form` | The spurious harmonic mass of the +-1 flow of a total order on the complete graph is exactly (n-2)/(3n), rising with n toward 1/3. | methodology sec 2, Observation 1; spec 5.1; spec v10 revision note; exercises SOLUTIONS.md, exercise 3; exercises ex03_pm1_quantization_trap.py, closed_form() | 1e-09 abs | `test_5_1_pm1_mass_has_a_closed_form_in_n` |
+| `pm1-closed-form` | The spurious harmonic mass of the +-1 flow of a total order on the complete graph is exactly (n-2)/(3n), rising with n toward 1/3. | methodology sec 2, Observation 1 (The sign artefact); bridge sec 3.1, Proposition 2 (The sign of a gradient is not a gradient); spec 5.1; spec v10 revision note; exercises SOLUTIONS.md, exercise 3; exercises ex03_pm1_quantization_trap.py, closed_form() | 1e-09 abs | `test_5_1_pm1_mass_has_a_closed_form_in_n` |
 | `clean-gradient-zero` | An all-integer value-difference flow reads zero harmonic under both fillings. | methodology sec 3.1 oracle table | 1e-12 abs | `test_8_2_clean_integer_pool_reads_zero_harmonic` |
 | `equal-spaced-complex` | An equal-spaced complex pool is pure harmonic under the empty filling and pure curl under the observed one. | methodology sec 3.1 oracle table; methodology fig 1 | 1e-12 abs | `test_8_3_equal_spaced_complex_only` |
 | `b1-rank-formula` | b1 of a complex-only pool under the empty filling is (m-1)(m-2)/2. | methodology sec 3.1 oracle table | exact | `test_8_4_b1_matches_rank_formula` |
 | `eps-squared-floor` | The injected misspecification gives a budget-independent floor of exactly eps^2. | methodology sec 3.1 oracle table; methodology sec 4; methodology fig 2 | 1e-12 abs | `test_2_5_injected_floor_is_exactly_eps_squared` |
-| `gradient-annihilated` | P_h annihilates D0.theta for every theta, so no latent shape can produce a budget-independent floor. | methodology sec 4, Observation 1; methodology fig 2 | 1e-09 abs | `test_5_6_theta_shape_can_never_produce_a_floor` |
-| `bridge-invariance` | A potential-consistent bridge leaves the harmonic energy equal to the circle block's; a constant bridge does not. | methodology sec 3.2; bridge Theorem 1; bridge sec 8.1 | 1e-09 abs | `test_8_6_three_bridge_behaviours_are_correctly_labelled` |
+| `gradient-annihilated` | P_h annihilates D0.theta for every theta, so no latent shape can produce a budget-independent floor. | methodology sec 4, Observation 2 (The exact null has floor exactly zero); methodology fig 2 | 1e-09 abs | `test_5_6_theta_shape_can_never_produce_a_floor` |
+| `bridge-invariance` | A potential-consistent bridge leaves the harmonic energy equal to the circle block's; a constant bridge does not. | methodology sec 3.2; bridge Theorem 1 (Bridge-invariance); bridge sec 8.1 | 1e-09 abs | `test_8_6_three_bridge_behaviours_are_correctly_labelled` |
 | `surrogate-level-invariance` | Harmonic energy is invariant across the whole admissible bridge class, which is exactly a shift of the surrogate level, under both fillings and across a 2000x range. | bridge sec 8.1 table | 1e-09 abs | `test_bridge_invariance_under_surrogate_level` |
 | `systematic-floors` | Only the potential-consistent bridge satisfies Corollary 1's hypothesis; the zero-centred coins carry a systematic floor. | bridge sec 8.2 table | 1e-09 abs | `test_zero_mean_bridge_leaves_a_persistent_bias` |
 | `spread-scaling` | The persistent bias equals ||P_h (D0 s)|Eb||^2 and is exactly quadratic in the integer scale; at zero spread it is exactly zero. | bridge sec 8.3(i); bridge sec 8.3(ii) | 1e-09 abs | — |
-| `fabricator-family-invisible` | A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0. | bridge sec 8.4, Proposition 3 | 1e-09 abs | — |
+| `fabricator-family-invisible` | A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0. | bridge sec 6.1, Proposition 3 (Gradient families are invisible) | 1e-09 abs | — |
 | `emit-saturation-count` | The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 3 and 4 | exact | `test_8_10_saturation_count_is_exact_in_gamma_and_emit_k` |
 | `filling-dependence` | b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other. | methodology sec 5.3 table | 0.02 rel | — |
 | `c1-cross-term-completes` | The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 2.7% and 5.0%. | methodology sec 5.1; methodology sec 9 | 1e-06 rel | `test_7_c1_equals_variance_plus_cross` |
@@ -53,13 +53,13 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 
 | id | asserts | cited in | tolerance | test |
 |---|---|---|---|---|
-| `thrashing-does-not-wash-out` | The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor. | bridge sec 8.2 table; bridge Remark 5 | 0.05 rel | `test_zero_mean_bridge_leaves_a_persistent_bias` |
+| `thrashing-does-not-wash-out` | The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor. | bridge sec 8.2 table; bridge Remark 6 (A thrashing judge does not wash out) | 0.05 rel | `test_zero_mean_bridge_leaves_a_persistent_bias` |
 | `emit-roundtrip-deviation` | The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 2 and 4 | 0.05 rel | — |
 | `fit-window` | Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it. | methodology sec 5.3; methodology fig 3 | 0.05 rel | — |
 | `delta-method-cross-term` | The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps. | methodology sec 5.1 | 0.05 rel | — |
 | `residual-across-draws` | The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16. | methodology sec 9 table; methodology fig 5; methodology v7 note | 0.5 abs_pct | — |
 | `rho-tradeoff` | The residual falls monotonically as rho falls, because a smaller rho demands a longer tail -- but cells become unfittable as the grid stops reaching the window, so rho and the grid must be tuned together. | methodology sec 9; methodology fig 6 left; methodology v7 note | 0.8 abs_pct | — |
-| `b1-non-monotone` | The b1=0 rate is non-monotone in n with an interior minimum; past it, more items destroy the holes the certificate reads. | methodology sec 10, Observation 2; methodology fig 6 right | 0.02 abs | — |
+| `b1-non-monotone` | The b1=0 rate is non-monotone in n with an interior minimum; past it, more items destroy the holes the certificate reads. | methodology sec 10, Observation 3 (non-monotone in the item count); methodology fig 6 right | 0.02 abs | — |
 | `kahle-finite-n` | The vanishing threshold decays as the theory requires, but the asymptotic exponent is not yet visible at these sizes. | methodology sec 10 footnote | 0.05 abs | — |
 | `guard-blind-spot` | The c-oracle check is necessary but not sufficient: configurations exist that pass it while the floor is badly wrong. | methodology sec 6; methodology fig 4 | 0.1 rel | — |
 | `saturation-gate` | beta=0.3 sits on the saturation gate; 0.25 clears it. | methodology sec 6; spec sec 2.6, Delta E | 0.02 abs | `test_2_6_saturation_gate_rejects_extreme_separation` |

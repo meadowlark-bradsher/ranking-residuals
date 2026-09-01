@@ -105,6 +105,46 @@ for all $v$. The $m$ circle vertices form one $r$-orbit, so the divergence is co
 
 The moral of Proposition~1 is that the part of the construction that ``does not fit in pure mathematics'' fits exactly: it is the block on which the symmetry group acts with no cross-orbit, so no equivariance can pin a flow. A bridge that emerged canonical would contradict (c)---it would present two symmetry-unrelated orbits as related, i.e. present incomparability as a hidden order.
 
+\subsection{What (a) rests on: the order alone does not force a gradient}\label{subsec:sign}
+
+Proposition~1(a) forces a gradient from a total order \emph{through its values}: the potential it supplies is $s$ itself. It is worth recording what is lost if only the order is kept, because the answer is not ``a little'' and it is not ``an unknown amount.'' Discarding magnitude leaves a flow that lies outside $\im D_0$ for every $n\ge3$, by a fraction that is a closed form in $n$ alone.
+
+\begin{proposition}[The sign of a gradient is not a gradient, and the defect is exact]\label{prop:sign}
+Let $G=K_n$ with $n\ge2$ under the empty filling, and let $s:V\to\R$ be injective. Write $\sigma(s)\in\R^E$ for the sign flow, $\sigma(s)_{ij}=\operatorname{sgn}(s_j-s_i)$ on each edge $i<j$. Then
+\[
+\frac{\|\Ph\,\sigma(s)\|^2}{\|\sigma(s)\|^2}=\frac{n-2}{3n}
+=\frac13-\frac{2}{3n},
+\]
+independently of which order $s$ induces. The fraction is strictly increasing in $n$ with supremum $1/3$, and vanishes only at $n=2$.
+\end{proposition}
+
+\begin{proof}
+\emph{Reduction to one flow.} A permutation $\pi$ of $V$ acts on $\R^E$ by the signed permutation $\Pi$ carrying $e_{ij}$ to $\pm e_{\pi(i)\pi(j)}$, the sign recording whether $\pi$ reverses the canonical orientation. $\Pi$ is orthogonal and $D_0\Pi_V=\Pi D_0$, so $\Pi$ preserves $\im D_0$, commutes with $\Ph$, and preserves both norms. Taking $\pi$ to be the rank map of $s$ sends $\sigma(s)$ to the all-ones flow $\mathbf 1$, so it suffices to compute the ratio there.
+
+\emph{Splitting.} The empty filling has $D_1=0$, so $\ker L_1=\ker D_0^{\top}$ and $\R^E=\im D_0\oplus\ker L_1$ orthogonally. Hence $\|\Ph\mathbf 1\|^2=\|\mathbf 1\|^2-\|D_0s^\star\|^2$, where $s^\star$ minimises $\|D_0s-\mathbf 1\|^2=\sum_{i<j}(s_j-s_i-1)^2$.
+
+\emph{The fitted potential.} Differentiating in $s_v$ and separating the edges below and above $v$,
+\[
+\tfrac12\,\partial_{s_v}\textstyle\sum_{i<j}(s_j-s_i-1)^2
+= n\,s_v-\textstyle\sum_u s_u-\bigl(2v-(n-1)\bigr),
+\]
+so in the gauge $\sum_u s_u=0$ the stationary point is $s^\star_v=\bigl(2v-n+1\bigr)/n$: affine in the rank, with slope $2/n$. It is the minimiser because the objective is convex.
+
+\emph{Energies.} Then $s^\star_j-s^\star_i=2(j-i)/n$, and $\sum_{i<j}(j-i)^2=\sum_{d=1}^{n-1}d^2(n-d)=n^2(n^2-1)/12$, so
+\[
+\|D_0s^\star\|^2=\frac{4}{n^2}\cdot\frac{n^2(n^2-1)}{12}=\frac{n^2-1}{3},
+\qquad
+\|\mathbf 1\|^2=\binom n2 .
+\]
+Therefore the gradient fraction is $\tfrac{2(n+1)}{3n}$ and the harmonic fraction is its complement, $\tfrac{n-2}{3n}$; the curl fraction is $0$ because there are no $2$-cells. Monotonicity and the limit read off $\tfrac13-\tfrac2{3n}$, and $n=2$ gives $0$ because $K_2$ has $\ker L_1=0$.
+\end{proof}
+
+\begin{remark}[What the bound does and does not license]
+Two halves, and the second is the useful one. The defect is \emph{bounded}: a sign encoding cannot report more than a third of a perfectly ordered flow as unrankable, however large the pool. It is also bounded \emph{away from zero} at every $n\ge3$ and increasing, so there is no pool size at which the encoding becomes safe --- and a reader who knows only that the mass is ``$n$-dependent'' might reasonably have guessed the opposite. This is the analytic content of the rule that magnitude flows use value-differences or log-odds and never $\pm1$, stated with the same closed form at \cite[\S2, Observation 1]{bradsher2026}. Nothing here bears on the misspecification floor of \cite[\S4]{bradsher2026}: that is an energy on a different comparison graph, and harmonic readings do not transfer across topologies (\cite[Principle 3]{bradsher2026}).
+\end{remark}
+
+Proposition~\ref{prop:sign} is a second instance of this note's thesis, in miniature. The \emph{shape} of the reading---that a sign encoding deposits harmonic mass, bounded, monotone, never zero---is available with no experiment. Unlike the constants of \S\ref{sec:numconf}, so is the value, and the reason is that $K_n$ with the empty filling fixes the topology completely; there is no comparison graph left to depend on.
+
 \section{Bridge-invariance of the harmonic signal}
 
 \begin{theorem}[Bridge-invariance]

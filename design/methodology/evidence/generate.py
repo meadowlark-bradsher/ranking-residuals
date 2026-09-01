@@ -118,7 +118,8 @@ def structural():
     claim("pm1-closed-form", asserts="The spurious harmonic mass of the +-1 flow of a "
           "total order on the complete graph is exactly (n-2)/(3n), rising with n "
           "toward 1/3.",
-          cited_in=["methodology sec 2, Observation 1",
+          cited_in=["methodology sec 2, Observation 1 (The sign artefact)",
+                    "bridge sec 3.1, Proposition 2 (The sign of a gradient is not a gradient)",
                     "spec 5.1", "spec v10 revision note",
                     "exercises SOLUTIONS.md, exercise 3",
                     "exercises ex03_pm1_quantization_trap.py, closed_form()"],
@@ -175,7 +176,8 @@ def structural():
 
     claim("gradient-annihilated", asserts="P_h annihilates D0.theta for every theta, so no "
           "latent shape can produce a budget-independent floor.",
-          cited_in=["methodology sec 4, Observation 1", "methodology fig 2"],
+          cited_in=["methodology sec 4, Observation 2 (The exact null has floor exactly zero)",
+                    "methodology fig 2"],
           value={str(g): float((lambda L: L @ Ph @ L)(D0 @ flows.theta_gamma(n, 0.3, g)))
                  for g in (1.0, 1.5, 2.0, 3.0, 6.0)},
           tol={"kind": "abs", "value": 1e-9},
@@ -198,7 +200,7 @@ def bridge(cfg):
                   for i, e in enumerate(a.edges)]), "empty")["energies"]["harmonic"]
     claim("bridge-invariance", asserts="A potential-consistent bridge leaves the harmonic "
           "energy equal to the circle block's; a constant bridge does not.",
-          cited_in=["methodology sec 3.2", "bridge Theorem 1", "bridge sec 8.1"],
+          cited_in=["methodology sec 3.2", "bridge Theorem 1 (Bridge-invariance)", "bridge sec 8.1"],
           value={"circle_only": circle, "potential_consistent": total, "constant_bridge": const},
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_acceptance.py::test_8_6_three_bridge_behaviours_are_correctly_labelled")
@@ -243,7 +245,8 @@ def bridge(cfg):
         rows[str(R)] = {"bridge_alone": float(np.mean(alone)), "combined": float(np.mean(comb))}
     claim("thrashing-does-not-wash-out", asserts="The bridge block alone decays as 1/R, but the "
           "combined flow converges to the systematic floor, not to the circle floor.",
-          cited_in=["bridge sec 8.2 table", "bridge Remark 5"], value=rows,
+          cited_in=["bridge sec 8.2 table",
+                    "bridge Remark 6 (A thrashing judge does not wash out)"], value=rows,
           tol={"kind": "rel", "value": 0.05}, kind="stochastic",
           test="tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias")
 
@@ -281,7 +284,7 @@ def bridge(cfg):
     en = np.array(en)
     claim("fabricator-family-invisible", asserts="A family of internally-gradient fabricators is "
           "invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
-          cited_in=["bridge sec 8.4, Proposition 3"],
+          cited_in=["bridge sec 6.1, Proposition 3 (Gradient families are invisible)"],
           value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle},
           tol={"kind": "abs", "value": 1e-9},
           note="sd is at machine precision; the claim is exactness, not a small number.")
@@ -684,7 +687,8 @@ def sweeps(cfg):
         plate.append({"n": nn, "rate": z / tot, "mean_b1": float(np.mean(b1s))})
     claim("b1-non-monotone", asserts="The b1=0 rate is non-monotone in n with an interior "
           "minimum; past it, more items destroy the holes the certificate reads.",
-          cited_in=["methodology sec 10, Observation 2", "methodology fig 6 right"],
+          cited_in=["methodology sec 10, Observation 3 (non-monotone in the item count)",
+                    "methodology fig 6 right"],
           value=plate, tol={"kind": "abs", "value": 0.02}, kind="stochastic",
           note="Deterministic mask seeds, so drift comes only from numpy version changes.")
 

@@ -91,10 +91,15 @@ BEATS = {
     claim="The two homogeneous blocks have their Hodge type fixed by their "
           "symmetry group -- order forces a gradient, rotation forces a harmonic. "
           "The bridge is the one block symmetry does not constrain, and that "
-          "absence is the entire content of 'incomparability'.",
-    evidence="Proposition 1, analytic.",
+          "absence is the entire content of 'incomparability'. A coda says what "
+          "the first of those rests on: the order forces a gradient through its "
+          "VALUES, and keeping only the sign of them costs exactly (n-2)/3n.",
+    evidence="Propositions 1 and 2, analytic.",
     note="The payoff sentence of the whole analytic line: the bridge is a "
-         "modelling choice rather than a derivation, and now it is clear why."),
+         "modelling choice rather than a derivation, and now it is clear why. "
+         "Proposition 2 is the section's one closed constant -- shape AND value "
+         "without experiment, because K_n with the empty filling leaves no "
+         "comparison graph to depend on."),
 
 ("M", "Known-answer construction"): dict(
     role="Return to the rig and build the data whose answer is known.",
