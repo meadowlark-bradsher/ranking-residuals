@@ -116,11 +116,22 @@ def main(argv=None) -> int:
         if len(fresh_ids) != len(rows):
             print("  (· marks a stale member: reported, but not eligible for "
                   "selection — invariant 6)")
-        ranked = sorted(manifest["members"],
-                        key=lambda m: m.get("scores", {}).get(cid, 0.0), reverse=True)
+        # A member with no `scores` is legal since P7 scoped scores per member,
+        # so it has no rank under any criterion and is not a candidate. Excluded
+        # rather than defaulted to 0.0: a default would print it as the
+        # worst-scoring member, which is a claim about it that the manifest does
+        # not make. The reference consumer filters these; ranking them last was a
+        # divergence introduced by P7 loosening the validator that had made the
+        # 0.0 fallback unreachable.
+        scored = [m for m in manifest["members"] if cid in m.get("scores", {})]
+        unranked = [m["id"] for m in manifest["members"] if m not in scored]
+        ranked = sorted(scored, key=lambda m: m["scores"][cid], reverse=True)
         for m in ranked:
             eligible = "  " if m["id"] in fresh_ids else " ·"  # stale = not selectable
-            print(f"  {eligible} {m.get('scores', {}).get(cid, 0.0):>5.2f}  {m['id']}")
+            print(f"  {eligible} {m['scores'][cid]:>5.2f}  {m['id']}")
+        if unranked:
+            print(f"  ({len(unranked)} member(s) score nothing under {cid!r} and are "
+                  f"not ranked: {', '.join(sorted(unranked))})")
 
     return 1 if bad else 0
 

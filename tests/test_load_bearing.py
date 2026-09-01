@@ -312,6 +312,39 @@ def test_verify_prints_the_inventory():
         assert path in out.stdout, f"{path} is anchored but absent from the inventory"
 
 
+def test_a_scoreless_member_is_not_ranked_at_zero(tmp_path):
+    """P7 made a scoreless member legal; ordering must exclude it, not rank it last.
+
+    Before this, `--criterion` read scores with `.get(cid, 0.0)`. That fallback was
+    unreachable while the validator required scores on every member, so striking the
+    justification for it was correct at the time. P7 scoped scores per member and made
+    the fallback reachable without anyone revisiting the ordering, and a member the
+    manifest says nothing about started printing as the worst-scoring one -- a claim
+    the manifest does not make, and a divergence from the reference consumer, which
+    filters these. Asserted on the printed output rather than on a helper because the
+    ordering lives in `main()` and the output is what a reader acts on.
+    """
+    shutil.copytree(ROOT / ".load-bearing", tmp_path / ".load-bearing")
+    m = _fixture_manifest(tmp_path)
+    scoreless = json.loads(json.dumps(m["members"][0]))
+    scoreless["id"] = "m/scoreless"
+    del scoreless["scores"]
+    m["members"].append(scoreless)
+    assert lb.validate(m, tmp_path) == [], "the fixture must be legal, or this tests nothing"
+    (tmp_path / ".load-bearing" / "manifest.json").write_text(json.dumps(m, indent=2))
+
+    out = subprocess.run([sys.executable, ".load-bearing/verify.py",
+                          "--criterion", "correctness"],
+                         cwd=tmp_path, capture_output=True, text=True).stdout
+    ordering = out.split("ordering under")[-1]
+    assert "m/one" in ordering, f"the scored member must still rank:\n{out}"
+    ranked = [ln for ln in ordering.splitlines()
+              if "m/scoreless" in ln and ln.strip().startswith(("0", "1", "\u00b7"))]
+    assert not ranked, f"a scoreless member was given a rank:\n{out}"
+    assert "score nothing" in ordering and "m/scoreless" in ordering, (
+        f"it must be reported as unranked, not silently dropped:\n{out}")
+
+
 # ------------------------------------------------------- pinning the invariants
 
 def _fixture_manifest(tmp_path, **over):
