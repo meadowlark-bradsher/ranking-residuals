@@ -85,6 +85,12 @@ def main(argv=None) -> int:
             if a["status"] != lb.FRESH:
                 print(f"           {a['path']}:{a['start']}-{a['end']} — {a['detail']}")
 
+    covered = lb.anchored_paths(manifest)
+    print(f"\nanchored files ({len(covered)}) — THIS IS THE WHOLE COVERAGE SURFACE;")
+    print("a path named only in a body, rationale or metadata is not checked:")
+    for path, ids in sorted(covered.items()):
+        print(f"  {path}  ← {', '.join(sorted(set(ids)))}")
+
     bad = lb.stale(rows)
     if not bad:
         print(f"\nAll {len(rows)} members fresh.")

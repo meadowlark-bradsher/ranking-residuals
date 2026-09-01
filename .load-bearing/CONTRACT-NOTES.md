@@ -81,6 +81,31 @@ inherit nothing that keeps the file honest.
 the manifest is committed, which is exactly why it cannot gate anything.
 `verify.py` prints it as a note. Freshness is per-member, always.
 
+## What counts as coverage
+
+`members[].anchors[].path` and nothing else. A file named in a body, a
+`rationale`, or a `metadata` value is prose or is opaque to PREP; neither is
+compared against anything, and neither makes that file covered.
+
+This is worth stating because it has already been got wrong twice, in both cases
+by scanning a serialized member for a filename and matching one that appeared in
+its prose. `evidence/tolerance-and-drift` is the member that invites it: its body
+discusses `evidence.json` and its `metadata.registry` names the path, but its one
+anchor is `design/methodology/evidence/verify.py:84-119`. The registry's numbers
+are not anchored by anything here.
+
+The error runs in the dangerous direction. Believing the manifest covers a file
+invites skipping a guard that was never present — concluding a stale registry
+would be caught by the gate, when what actually guards it is
+`test_source_fingerprint` round-tripping the generator's semantic fingerprint and
+`verify.py` re-running claims. So `verify.py` prints the anchored-file inventory
+on every run and `lb.anchored_paths` makes it a function, rather than leaving it
+to be inferred from the JSON.
+
+A member is documentation. The gate checks that documentation stays attached to
+the code it describes. It does not read a value, re-run a computation, or assert
+anything about behaviour, and no member should be written as though it did.
+
 ## Left open
 
 - **`suggested_terms` on a member.** Not adopted, per the contract's own reading:
