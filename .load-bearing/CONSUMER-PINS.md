@@ -5,7 +5,24 @@
      ordering, its own test counts) and is deliberately not copied — it would go
      stale here and it governs work this repo does not do. -->
 
-# Consumer-pinned defaults (`load-bearing/0.1`)
+# Consumer-pinned defaults (`load-bearing/0.1`) — SUPERSEDED
+
+**`load-bearing/0.2` folds these into the contract text itself, which is the
+remedy this document exists to argue for.** P2, P3, P4, P6 and P7 are now stated
+in [`CONTRACT.md`](CONTRACT.md) and that is where to read them; P1, P5 and P8
+were always consumer build decisions rather than format rules and this repo
+implements none of them.
+
+Kept rather than deleted, because the record of *how* two implementations
+diverged is the only durable thing here. Every divergence traced to a rule
+pinned in this document while the contract's own text said the matter was open —
+and 0.2's Open list now says outright that resolving an open item by
+implementing it and reasoning backwards from your own code is what produced
+0.1's incompatibilities. Deleting the evidence would leave that warning without
+its case.
+
+Everything below is the text as excerpted from the 0.1-era build order. It is
+history, not a rule.
 
 The contract leaves several things open and says to pin them. These are the pins,
 from the consumer side. **The contract wins on any disagreement** — that
