@@ -324,8 +324,9 @@ you are trying to resolve, and `required_fit_k_min` says so in one line of algeb
 
 ## 7 — does the pipeline reproduce what went in
 
-**Kind: one draw** for the mixed rows (they depend on a sampled assembly); the
-counts and sign paths are exact by construction.
+**Kind: mixed.** The `deviation` and `residual_max` columns are one draw — they
+depend on a sampled assembly — while the `counts` and `sign` paths are exact by
+construction, and so is the `saturated` column (answer 4).
 
 ### Expected
 
@@ -374,13 +375,41 @@ Part 2, mixed config, as `emit_k` grows:
    zero. The `ii` block's 3.4340 is `log(2·16−1)` from the BTL generator at `k = 16`
    and is never counted as saturated, correctly: the `counts` path replays those win
    counts exactly, so it has no headroom problem to report.
-4. `rig/config.py`'s note beside `emit_k = 64` claims two things: deviation "~2e-3"
-   at 64 and "~4e-2" at 8. **Both reproduce** — `1.870e-03` and `4.012e-02`. The
-   same note says "5 bridge edges exceed `log(2k−1)`" at `emit_k = 8`; the measured
-   count at 8 is **15**, and 5 is the `emit_k = 16` figure. The note does not state
-   the `(gamma, eps, k)` of its assembly, but no combination on the default grid
-   gives 5 at `emit_k = 8`, so this is not a parameter mismatch on your side. Report
-   it; do not fix it here.
+4. The note beside `emit_k = 64` states the assembly it was measured on — γ = 2.0,
+   `eps` = 0.2, `k` = 16, otherwise the defaults at base seed 0 — and every figure
+   it quotes is a row of the table above: deviation `1.870e-03` at 64 and
+   `4.012e-02` at 8, with **15** saturated edges at 8 and none at 64. What the note
+   adds, and what the table cannot show you, is that those two kinds of figure are
+   checkable in different senses.
+
+   **The saturation count is exact** — claim `emit-saturation-count`. `mode_II`
+   defaults to `null_btl`, so the bridge is handed `theta` directly, and
+   `theta_gamma` takes no `rng`. The 60 `ic` targets are a deterministic function of
+   γ alone: the count does not move with the base seed, with `eps`, or with `k`. It
+   moves only with γ — 25/15/15/10 at γ = 1.0/1.5/2.0/3.0 — which is why γ is the
+   parameter the note has to state to be checkable at all, and why sweeping
+   `(gamma, eps, k)` at `emit_k = 8` never lands on 5. Those 60 targets take 12
+   distinct magnitudes, five edges apiece, so the column falls in steps of five as
+   the headroom rises past them: 15 above 2.7081, then 5 above 3.4340, then 0.
+
+   **The deviations are one draw** — claim `emit-roundtrip-deviation`. The `ii`
+   block is sampled, and `emit_k` sits inside the config fingerprint, so each row of
+   part 2 is its own assembly rather than one assembly emitted at six budgets —
+   which is the other half of why the deviation column in answer 2 is not monotone.
+   Over 20 base seeds the note records `3.91e-3 ± 3.2e-4` (range
+   `1.01e-3`–`7.14e-3`) at 64 and `3.00e-2 ± 1.1e-3` (range `2.28e-2`–`4.01e-2`) at
+   8, so the `4.012e-02` you measured at seed 0 sits at the top of its range rather
+   than the middle.
+
+   Until this was fixed the note claimed 5 at `emit_k = 8` — the `emit_k = 16` count,
+   read off one row down — and named no assembly, which is exactly what made a
+   parameter mismatch hard to rule out from the reader's side. Both figures are now
+   registry-owned, so `verify.py` re-derives them and a value that moves names this
+   answer and the config note as the prose to change:
+
+   ```bash
+   python design/methodology/evidence/verify.py --fast
+   ```
 
 ### The wrong reading
 

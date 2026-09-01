@@ -14,6 +14,7 @@ not guessed.
 """
 from __future__ import annotations
 
+import collections
 import itertools
 import json
 import subprocess
@@ -46,7 +47,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import hodge
-from rig import fit, flows, moments, oracle, provenance
+from rig import emit, fit, flows, moments, oracle, provenance
 from rig.config import RigConfig
 from rig.graph import assemble
 from rig.sweep import floor_measurement, floor_sweep
@@ -284,6 +285,137 @@ def bridge(cfg):
           value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle},
           tol={"kind": "abs", "value": 1e-9},
           note="sd is at machine precision; the claim is exactness, not a small number.")
+
+
+# ---------------------------------------------------------------- emission (spec 10)
+def emission(cfg):
+    """The round-trip figures quoted beside `emit_k` in rig/config.py.
+
+    TWO CLAIMS FROM THE SAME ASSEMBLIES, kept apart because they are checkable in
+    different senses. The saturation count is an exact function of gamma and
+    emit_k; the deviations are one draw each. That distinction is not decorative:
+    the note beside emit_k carried a saturation count from the emit_k=16 row next
+    to the emit_k=8 deviation, and because the two kinds sat in one sentence, a
+    reader could not tell that only one of them should have been reproducible by
+    varying the assembly.
+    """
+    GAMMA, EPS, K = 2.0, 0.2, 16
+
+    def trip(c, gamma=GAMMA, eps=EPS, k=K):
+        a = assemble(c, gamma=gamma, eps=eps, k=k)
+        lg = emit.emit_assembly(a, "evidence")
+        rt = lg.analyze(c.n_vertices, filling="empty")["fractions"]
+        iv = a.analyze(filling="empty")["fractions"]
+        return a, lg, max(abs(iv[x] - rt[x]) for x in ("gradient", "curl", "harmonic"))
+
+    # ---- saturation: exact ------------------------------------------------
+    # Counted a second way, off the bridge targets, and required to agree. The
+    # emitter's own n_saturated is the number the note quotes, but recording only
+    # that would let the headroom rule and the count drift together and still
+    # verify clean -- the count would go on reproducing its own definition.
+    by_ek = {}
+    for ek in (8, 16, 32, 64):
+        a, lg, _ = trip(cfg.with_(emit_k=ek))
+        direct = int((np.abs(a.blocks["ic"].Y) > np.log(2 * ek - 1) + 1e-12).sum())
+        assert lg.n_saturated == direct, f"emit_k={ek}: emitter {lg.n_saturated} vs headroom {direct}"
+        by_ek[str(ek)] = int(lg.n_saturated)
+    # Against the digits the note prints, in the sense of pm1-trap above: if the
+    # code moves away from the prose, this raises instead of quietly recording
+    # the new number and leaving the prose wrong.
+    assert by_ek == {"8": 15, "16": 5, "32": 0, "64": 0}, by_ek
+
+    # NOT A DRAW, asserted rather than assumed. mode_II defaults to null_btl, so
+    # the bias_rule bridge is handed theta directly and theta_gamma takes no rng.
+    # If a future default makes the bridge sampled, this fails here rather than
+    # starting to record one draw of it under an exact_int tolerance.
+    for ek in (8, 16, 32, 64):
+        seen = {trip(cfg.with_(emit_k=ek, seed=s))[1].n_saturated for s in range(20)}
+        for e in (0.0, 0.1, 0.2, 0.4):
+            for k in (8, 16, 64, 256):
+                seen.add(trip(cfg.with_(emit_k=ek), eps=e, k=k)[1].n_saturated)
+        assert seen == {by_ek[str(ek)]}, f"emit_k={ek} moved with seed/eps/k: {seen}"
+
+    # gamma is the one input it does move with, which is why an emit_k note that
+    # does not state gamma cannot be checked at all -- and why sweeping (gamma,
+    # eps, k) at emit_k=8 never reproduces the 5 the note used to claim.
+    by_gamma = {}
+    for g in cfg.btl.gamma:
+        _, lg, _ = trip(cfg.with_(emit_k=8), gamma=g)
+        by_gamma[str(g)] = int(lg.n_saturated)
+    assert by_gamma == {"1.0": 25, "1.5": 15, "2.0": 15, "3.0": 10}, by_gamma
+    assert 5 not in by_gamma.values(), by_gamma
+
+    # Every saturated edge is a bridge edge. ii is a counts block and the counts
+    # path replays exact win counts, so it reports no saturation -- correctly, and
+    # that is why the count is a bridge property rather than an assembly-wide one.
+    a8, _, _ = trip(cfg.with_(emit_k=8))
+    assert {n: b.encoding for n, b in a8.blocks.items()} == \
+        {"ii": "counts", "cc": "sign", "ic": "magnitude"}
+    mult = sorted(collections.Counter(np.abs(a8.blocks["ic"].Y).round(9)).values())
+
+    claim("emit-saturation-count", asserts="The count of edges whose target exceeds the "
+          "emission headroom log(2*emit_k-1) is exact rather than a draw: under the default "
+          "mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, "
+          "so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, "
+          "0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8.",
+          cited_in=["rig/config.py, the emit_k note",
+                    "exercises SOLUTIONS.md, exercise 7 part-2 table",
+                    "exercises SOLUTIONS.md, exercise 7 answers 3 and 4"],
+          value={"by_emit_k_at_gamma_2": by_ek, "by_gamma_at_emit_k_8": by_gamma,
+                 "ic_block": {"n_edges": int(len(a8.blocks["ic"].Y)),
+                              "n_distinct_magnitudes": len(mult),
+                              "edges_per_magnitude": int(mult[0])}},
+          tol={"kind": "exact_int"},
+          test="tests/test_acceptance.py::test_8_10_saturation_count_is_exact_in_gamma_and_emit_k",
+          note="Invariance over base seeds 0-19, over eps in (0, 0.1, 0.2, 0.4) and over k in "
+               "(8, 16, 64, 256) is enforced by an assert in the generator rather than stored "
+               "as a value: a stored '20 seeds checked' would regenerate as 20 against 20 "
+               "forever and pin nothing. The 60 bridge targets take 12 distinct magnitudes, "
+               "five edges each, so the count falls in steps of five as the headroom clears "
+               "them.")
+
+    # ---- deviation: one draw per emit_k -----------------------------------
+    # emit_k is inside the config fingerprint, so cfg.with_(emit_k=...) reseeds the
+    # assembly: these six rows are six different draws, not one assembly emitted at
+    # six budgets. That is a property of the rig's seeding rather than of the
+    # emitter, and it is the reason the deviation column is not monotone while
+    # residual_max -- the actual per-edge emission error -- is.
+    table = {}
+    for ek in (8, 16, 32, 64, 128, 256):
+        _, lg, dev = trip(cfg.with_(emit_k=ek))
+        table[str(ek)] = {"rows": len(lg), "deviation": float(dev),
+                          "residual_max": float(lg.residual_max)}
+    rmax = [table[str(ek)]["residual_max"] for ek in (8, 16, 32, 64, 128, 256)]
+    assert all(x >= y for x, y in zip(rmax, rmax[1:])), rmax
+
+    spread = {}
+    for ek in (8, 64):
+        d = np.array([trip(cfg.with_(emit_k=ek, seed=s))[2] for s in range(20)])
+        spread[str(ek)] = {"mean": float(d.mean()),
+                           "se": float(d.std(ddof=1) / np.sqrt(len(d))),
+                           "min": float(d.min()), "max": float(d.max()),
+                           "n_base_seeds": int(len(d))}
+        assert abs(d[0] - table[str(ek)]["deviation"]) < 1e-12
+    # The figure the note quotes at emit_k=8 is the TOP of its own 20-seed range,
+    # not the middle of it. That is the whole reason the spread is carried beside
+    # it, so pin it here rather than leave it as a remark in the prose.
+    assert spread["8"]["max"] == table["8"]["deviation"], (spread["8"], table["8"])
+
+    claim("emit-roundtrip-deviation", asserts="The magnitude path round-trips only as "
+          "emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits "
+          "in the config fingerprint, so each row is its own assembly. residual_max falls "
+          "monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 "
+          "is the top of its 20-seed range.",
+          cited_in=["rig/config.py, the emit_k note",
+                    "exercises SOLUTIONS.md, exercise 7 part-2 table",
+                    "exercises SOLUTIONS.md, exercise 7 answers 2 and 4"],
+          value={"seed0": table, "across_base_seeds": spread},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          note="No test, deliberately: the acceptance suite pins the TREND "
+               "(test_8_10_round_trip_residual_vanishes_with_emit_k) and not these digits, "
+               "which are one draw each. Gate a release on residual_max, not on deviation. "
+               "The 20-seed spread is what the emit_k note quotes; the seed-0 rows are what "
+               "exercise 7 prints.")
 
 
 # ---------------------------------------------------------------- estimator behaviour
@@ -853,6 +985,7 @@ def write_provenance(out):
 if __name__ == "__main__":
     cfg = structural()
     bridge(cfg)
+    emission(cfg)
     estimator(cfg)
     residual_mechanism(cfg)
     if "--fast" not in sys.argv:

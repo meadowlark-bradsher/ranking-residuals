@@ -7,12 +7,12 @@
   }
  },
  "meta": {
-  "generated": "2026-08-31",
-  "commit": "93eec10",
+  "generated": "2026-09-01",
+  "commit": "002c34f",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 31,
-  "source_fingerprint": "68bf700d6005d8da"
+  "n_claims": 33,
+  "source_fingerprint": "ccaaffa8703274a5"
  },
  "claims": {
   "pm1-trap": {
@@ -312,6 +312,104 @@
    "kind": "exact",
    "test": null,
    "note": "sd is at machine precision; the claim is exactness, not a small number."
+  },
+  "emit-saturation-count": {
+   "claim": "The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8.",
+   "cited_in": [
+    "rig/config.py, the emit_k note",
+    "exercises SOLUTIONS.md, exercise 7 part-2 table",
+    "exercises SOLUTIONS.md, exercise 7 answers 3 and 4"
+   ],
+   "value": {
+    "by_emit_k_at_gamma_2": {
+     "8": 15,
+     "16": 5,
+     "32": 0,
+     "64": 0
+    },
+    "by_gamma_at_emit_k_8": {
+     "1.0": 25,
+     "1.5": 15,
+     "2.0": 15,
+     "3.0": 10
+    },
+    "ic_block": {
+     "n_edges": 60,
+     "n_distinct_magnitudes": 12,
+     "edges_per_magnitude": 5
+    }
+   },
+   "tolerance": {
+    "kind": "exact_int"
+   },
+   "kind": "exact",
+   "test": "tests/test_acceptance.py::test_8_10_saturation_count_is_exact_in_gamma_and_emit_k",
+   "note": "Invariance over base seeds 0-19, over eps in (0, 0.1, 0.2, 0.4) and over k in (8, 16, 64, 256) is enforced by an assert in the generator rather than stored as a value: a stored '20 seeds checked' would regenerate as 20 against 20 forever and pin nothing. The 60 bridge targets take 12 distinct magnitudes, five edges each, so the count falls in steps of five as the headroom clears them."
+  },
+  "emit-roundtrip-deviation": {
+   "claim": "The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range.",
+   "cited_in": [
+    "rig/config.py, the emit_k note",
+    "exercises SOLUTIONS.md, exercise 7 part-2 table",
+    "exercises SOLUTIONS.md, exercise 7 answers 2 and 4"
+   ],
+   "value": {
+    "seed0": {
+     "8": {
+      "rows": 1056,
+      "deviation": 0.040122110283715234,
+      "residual_max": 0.9416554236225836
+     },
+     "16": {
+      "rows": 1552,
+      "deviation": 0.013106225800952886,
+      "residual_max": 0.4817891581744784
+     },
+     "32": {
+      "rows": 2768,
+      "deviation": 0.0003174725598973499,
+      "residual_max": 0.24414784520845778
+     },
+     "64": {
+      "rows": 4944,
+      "deviation": 0.0018698196636702802,
+      "residual_max": 0.21571842023964738
+     },
+     "128": {
+      "rows": 9520,
+      "deviation": 0.0007836946243808957,
+      "residual_max": 0.07999582390939786
+     },
+     "256": {
+      "rows": 18448,
+      "deviation": 0.0009543963860733293,
+      "residual_max": 0.07999582390939786
+     }
+    },
+    "across_base_seeds": {
+     "8": {
+      "mean": 0.030030851480225884,
+      "se": 0.0010886502011503252,
+      "min": 0.02281736502246015,
+      "max": 0.040122110283715234,
+      "n_base_seeds": 20
+     },
+     "64": {
+      "mean": 0.0039105420433820075,
+      "se": 0.00032285672799826855,
+      "min": 0.001010816007748147,
+      "max": 0.00714341245316201,
+      "n_base_seeds": 20
+     }
+    }
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "No test, deliberately: the acceptance suite pins the TREND (test_8_10_round_trip_residual_vanishes_with_emit_k) and not these digits, which are one draw each. Gate a release on residual_max, not on deviation. The 20-seed spread is what the emit_k note quotes; the seed-0 rows are what exercise 7 prints."
   },
   "fit-window": {
    "claim": "Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it.",

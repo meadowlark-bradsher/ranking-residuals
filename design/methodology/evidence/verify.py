@@ -123,6 +123,7 @@ def main():
     generate.CLAIMS = {}
     cfg = generate.structural()
     generate.bridge(cfg)
+    generate.emission(cfg)
     generate.estimator(cfg)
     generate.residual_mechanism(cfg)
     if "--fast" not in sys.argv:

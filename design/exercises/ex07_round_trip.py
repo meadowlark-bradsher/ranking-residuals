@@ -80,7 +80,8 @@ def main():
     print("  3. Saturation disappears somewhere in the emit_k column. Find the")
     print("     largest |Y| in the mixed assembly and check it against the headroom.")
     print("  4. The shipped default is emit_k=64. Read the note beside it in")
-    print("     rig/config.py and reproduce both figures it quotes.")
+    print("     rig/config.py, reproduce the figures it quotes, and say which of")
+    print("     them is exact and which is one draw.")
 
 
 if __name__ == "__main__":

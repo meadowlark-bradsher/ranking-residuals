@@ -332,6 +332,46 @@ def test_8_10_round_trip_residual_vanishes_with_emit_k(cfg):
     assert devs[-1] < 5e-3, devs
 
 
+def test_8_10_saturation_count_is_exact_in_gamma_and_emit_k(cfg):
+    """n_saturated is NOT a draw, so it may be pinned digit for digit (§10).
+
+    mode_II defaults to null_btl, so the bias_rule bridge is handed theta directly
+    and flows.theta_gamma takes no rng: the count is a function of gamma and emit_k
+    alone. Pinned because rig/config.py quotes it beside the emit_k default, and a
+    quoted count that nothing re-derives is invisible when it is wrong -- that note
+    carried the emit_k=16 count against emit_k=8 until it was measured.
+    """
+    for ek, want in ((8, 15), (16, 5), (32, 0)):
+        c = cfg.with_(emit_k=ek)
+        a = assemble(c, gamma=2.0, eps=0.2, k=16)
+        assert emit_assembly(a, "sat").n_saturated == want, ek
+        # the same number counted straight off the bridge targets: the emitter and
+        # the headroom rule must agree, or one of them has moved
+        direct = int((np.abs(a.blocks["ic"].Y) > np.log(2 * ek - 1) + 1e-12).sum())
+        assert direct == want, (ek, direct)
+        # and it moves with neither the base seed nor the sampling budget
+        for s in (1, 7, 19):
+            got = emit_assembly(assemble(cfg.with_(emit_k=ek, seed=s), gamma=2.0,
+                                         eps=0.2, k=16), "sat").n_saturated
+            assert got == want, (ek, s, got)
+        for k in (8, 256):
+            got = emit_assembly(assemble(c, gamma=2.0, eps=0.2, k=k), "sat").n_saturated
+            assert got == want, (ek, k, got)
+
+    # gamma is the one input it does move with -- which is why a quoted count that
+    # does not state its gamma cannot be checked, and why no (gamma, eps, k) at
+    # emit_k=8 reproduces 5.
+    got = [emit_assembly(assemble(cfg.with_(emit_k=8), gamma=g, eps=0.2, k=16),
+                         "sat").n_saturated for g in (1.0, 1.5, 2.0, 3.0)]
+    assert got == [25, 15, 15, 10], got
+
+    # All of it is bridge: ii is a counts block and the counts path replays exact
+    # win counts, so it has no headroom problem to report.
+    a = assemble(cfg.with_(emit_k=8), gamma=2.0, eps=0.2, k=16)
+    assert {n: b.encoding for n, b in a.blocks.items()} == {
+        "ii": "counts", "cc": "sign", "ic": "magnitude"}
+
+
 # ---------------------------------------------------------------- bridge-invariance
 # These pin the two claims of design/methodology/bridge-invariance.tex that the
 # paper itself flags as wanting a check rather than trust (its Remark 2).
