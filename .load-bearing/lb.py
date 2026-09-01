@@ -174,6 +174,27 @@ def report(manifest: dict, root: pathlib.Path = ROOT) -> list[dict]:
     return [classify_member(m, root) for m in manifest["members"]]
 
 
+def anchored_paths(manifest: dict) -> dict[str, list[str]]:
+    """{path: [member id, ...]} for every anchored file. The coverage surface.
+
+    THIS IS THE ONLY THING THAT MEANS COVERAGE. A path named anywhere else in a
+    member -- in its body, its rationale, or its `metadata` -- is prose or is
+    opaque to PREP, and neither is checked against anything.
+
+    That distinction is not pedantry; it has already been got wrong twice by
+    readers scanning a serialized member for a filename and finding one in the
+    prose. Believing a file is covered when it is not is the dangerous
+    direction: it invites skipping a guard that was never here. So the answer is
+    a function and a printed inventory rather than something a reader has to
+    infer from the JSON.
+    """
+    out: dict[str, list[str]] = {}
+    for m in manifest["members"]:
+        for a in m["anchors"]:
+            out.setdefault(a["path"], []).append(m["id"])
+    return out
+
+
 def stale(rows: list[dict]) -> list[dict]:
     """Everything that is not fresh. MOVED counts: the manifest is wrong."""
     return [r for r in rows if r["status"] != FRESH]

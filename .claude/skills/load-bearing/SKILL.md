@@ -139,6 +139,15 @@ python -m pytest tests/test_load_bearing.py -q
 A new member's anchors need their hashes filled. `--stamp` alone does not do it;
 run `--attest <new-id>` once, which will write because the body is new.
 
+## What a member does not do
+
+It does not enforce anything. A member is documentation, and the gate checks only
+that the documentation stays attached to the code it describes — no member reads
+a value, re-runs a computation, or asserts a behaviour. If a gap needs *detecting*
+rather than *describing*, it wants a test in `tests/`, and writing a member
+instead leaves the gap open while making the manifest look like it covers the
+case.
+
 ## What not to put in a member
 
 Anything about a *reader*: `reviewed`, `understood`, `verified`, `known`,

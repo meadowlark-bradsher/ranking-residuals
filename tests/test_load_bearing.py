@@ -262,6 +262,56 @@ def test_a_missing_final_newline_does_not_change_a_hash(tmp_path):
     assert lb.hash_slice(lb.lines_of(without), 1, 2) == lb.hash_slice(lb.lines_of(with_nl), 1, 2)
 
 
+# ---------------------------------------------------- pinning what coverage is
+#
+# `anchors` is the whole coverage surface. Two readers have already concluded
+# otherwise by finding a filename in a member's prose, and both times the error
+# pointed at the dangerous conclusion -- that a file was guarded when it was not.
+
+def test_only_anchors_count_as_coverage(tmp_path):
+    """A path in body, rationale or metadata does not make a file covered."""
+    m = _fixture_manifest(tmp_path)
+    m["members"][0].update(
+        body="this member discusses design/methodology/evidence/evidence.json at length",
+        rationale="chosen because evidence.json matters",
+        metadata={"registry": "design/methodology/evidence/evidence.json"})
+    covered = lb.anchored_paths(m)
+    assert list(covered) == ["src.py"], covered
+    assert not any("evidence.json" in p for p in covered), (
+        "a path mentioned in prose or metadata is being reported as covered")
+
+
+def test_the_real_manifest_does_not_claim_to_cover_the_registry(tmp_path):
+    """Pins the specific confusion, on the real file rather than a fixture.
+
+    evidence/tolerance-and-drift discusses evidence.json in its body and names it
+    in metadata.registry, and anchors only verify.py. If a later edit anchors the
+    registry, that is a real decision -- but it must not happen by accident, and
+    it changes what CONTRACT-NOTES.md says here.
+    """
+    covered = lb.anchored_paths(lb.load())
+    assert "design/methodology/evidence/verify.py" in covered
+    assert "design/methodology/evidence/evidence.json" not in covered
+
+
+def test_every_anchored_path_is_reported_exactly_once_per_member(tmp_path):
+    """Two anchors in one file report one path, not a duplicated entry."""
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["anchors"].append(_anchor(tmp_path, "src.py", 1, 1))
+    covered = lb.anchored_paths(m)
+    assert covered == {"src.py": ["m/one", "m/one"]}
+    assert len(set(covered["src.py"])) == 1
+
+
+def test_verify_prints_the_inventory():
+    """The inventory is the answer to "what is covered", so it must actually print."""
+    out = subprocess.run([sys.executable, ".load-bearing/verify.py"],
+                         cwd=ROOT, capture_output=True, text=True)
+    assert "COVERAGE SURFACE" in out.stdout
+    for path in lb.anchored_paths(lb.load()):
+        assert path in out.stdout, f"{path} is anchored but absent from the inventory"
+
+
 # ------------------------------------------------------- pinning the invariants
 
 def _fixture_manifest(tmp_path, **over):
