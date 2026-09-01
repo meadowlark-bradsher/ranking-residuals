@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-08-31 from commit `93eec10`
+Generated 2026-09-01 from commit `002c34f`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -17,7 +17,7 @@ python verify.py --fast  # structural claims only, seconds
 
 Every RNG is seeded from a fixed constant, so on the same numpy every claim
 reproduces **bit-exactly** — the last full run showed zero drift on all
-31 claims. The tolerances below are the margin allowed for a
+33 claims. The tolerances below are the margin allowed for a
 different numpy or platform, not slack in the measurement. `exact` claims are
 identities or closed forms and are held to machine precision; `stochastic`
 claims are Monte Carlo and carry a tolerance set from their measured spread.
@@ -40,6 +40,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | `systematic-floors` | Only the potential-consistent bridge satisfies Corollary 1's hypothesis; the zero-centred coins carry a systematic floor. | bridge sec 8.2 table | 1e-09 abs | `test_zero_mean_bridge_leaves_a_persistent_bias` |
 | `spread-scaling` | The persistent bias equals ||P_h (D0 s)|Eb||^2 and is exactly quadratic in the integer scale; at zero spread it is exactly zero. | bridge sec 8.3(i); bridge sec 8.3(ii) | 1e-09 abs | — |
 | `fabricator-family-invisible` | A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0. | bridge sec 8.4, Proposition 3 | 1e-09 abs | — |
+| `emit-saturation-count` | The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 3 and 4 | exact | `test_8_10_saturation_count_is_exact_in_gamma_and_emit_k` |
 | `filling-dependence` | b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other. | methodology sec 5.3 table | 0.02 rel | — |
 | `c1-cross-term-completes` | The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 2.7% and 5.0%. | methodology sec 5.1; methodology sec 9 | 1e-06 rel | `test_7_c1_equals_variance_plus_cross` |
 | `c2-variance-dominated` | The 1/k^2 coefficient is 88-95% the SECOND-ORDER VARIANCE of the logit and only 0.6-2.5% the mean-bias term b'P_h b. The natural expectation that the vector driving the 1/k correction also drives the 1/k^2 one is wrong by two orders of magnitude. | methodology sec 5.3; methodology sec 9 | 0.0001 rel | — |
@@ -53,6 +54,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | id | asserts | cited in | tolerance | test |
 |---|---|---|---|---|
 | `thrashing-does-not-wash-out` | The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor. | bridge sec 8.2 table; bridge Remark 5 | 0.05 rel | `test_zero_mean_bridge_leaves_a_persistent_bias` |
+| `emit-roundtrip-deviation` | The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 2 and 4 | 0.05 rel | — |
 | `fit-window` | Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it. | methodology sec 5.3; methodology fig 3 | 0.05 rel | — |
 | `delta-method-cross-term` | The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps. | methodology sec 5.1 | 0.05 rel | — |
 | `residual-across-draws` | The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16. | methodology sec 9 table; methodology fig 5; methodology v7 note | 0.5 abs_pct | — |
