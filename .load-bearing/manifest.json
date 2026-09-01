@@ -1,11 +1,11 @@
 {
   "contract": "load-bearing/0.1",
-  "source_tree": "2cc65a23f192e56c174943e4d55dd334536a20af",
-  "source_commit": "bf8e249d761d8a8528753f38a44c45cd81f25181",
+  "source_tree": "d3a7a60505878ea656d6ddc49da7b7722442561a",
+  "source_commit": "63bd045527c71d53f0058d5eb6a3bf1d7a3af42d",
   "generated_by": {
     "agent": "claude-code",
     "model": "claude-opus-5",
-    "at": "2026-09-01T01:49:36Z"
+    "at": "2026-09-01T04:17:53Z"
   },
   "criteria": [
     {
@@ -420,6 +420,77 @@
       ],
       "metadata": {
         "registry": "design/methodology/evidence/evidence.json"
+      }
+    },
+    {
+      "id": "evidence/paper-crossrefs",
+      "body_ref": "members/evidence-paper-crossrefs.md",
+      "anchors": [
+        {
+          "path": "tests/test_paper_crossrefs.py",
+          "start": 98,
+          "end": 133,
+          "blob": "2cef6cf51b487b0e74ab4ef777d8f5cd2a823ad0",
+          "range_hash": "e445e5a056e84d5be2dcc17d5c28f2d7148172100eb3fdd4afc9510c1cf5dc02"
+        },
+        {
+          "path": "design/methodology/bridge-invariance.tex",
+          "start": 16,
+          "end": 23,
+          "blob": "0b7c3d1bb5819187bafb6ded65879cd26e72ce7d",
+          "range_hash": "d10495f8db7ad1ce7ee9b61a1b7f7c9f0a60730923df0c1c2aa595bf5af2cbcf"
+        },
+        {
+          "path": "design/methodology/calibration-methodology.tex",
+          "start": 18,
+          "end": 19,
+          "blob": "fd7fdd33d0f538a86abd913561551fa1c308d150",
+          "range_hash": "514d8c707671694c86fcc1271eea05c2bd1d7bf7edc310bdd55075294fda1082"
+        }
+      ],
+      "scores": {
+        "correctness": 0.6,
+        "provenance": 0.8,
+        "trap-density": 0.75,
+        "identity": 0.69
+      },
+      "rationale": "Added after four cited_in references were wrong at once and two of them shipped to main. The region is a checker with nothing behind it: if the counter model drifts from TeX, the checks built on it go green against a wrong baseline. Scored high on provenance because cited_in's whole job is attribution, and its failure mode is the one that criterion names -- a citation that still verifies while describing a previous revision.",
+      "aspects": [
+        {
+          "id": "recomputed-from-source-never-from-output",
+          "criteria": [
+            "provenance",
+            "correctness"
+          ],
+          "claim": "Numbering is recomputed from the .tex sources in document order, never read from a built PDF, which is what lets the check run with no LaTeX toolchain and is also why nothing compares the model against TeX's own output."
+        },
+        {
+          "id": "the-model-rests-on-two-greppable-preamble-properties",
+          "criteria": [
+            "correctness",
+            "trap-density"
+          ],
+          "claim": "It is exact only because every \\newtheorem in both papers is declared without a [section] reset (six in bridge-invariance, two in calibration-methodology) and neither paper uses a starred heading; the anchors cover those preamble blocks so either side moving alone is caught."
+        },
+        {
+          "id": "existence-is-not-identity",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "Checking that Proposition 3 exists passes a reference that names the wrong proposition, which is how gradient-annihilated and b1-non-monotone were wrong by one and shipped to main; the title is matched against the environment at that number."
+        },
+        {
+          "id": "title-required-per-entry-not-counted",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "Every reference naming a numbered environment must carry that environment's title, as a per-entry rule rather than a floor on how many do, because a count neither prevents decay nor binds the next entry added -- the case that produced the defects. sec, fig, table and file references are exempt."
+        }
+      ],
+      "metadata": {
+        "tests": [
+          "tests/test_paper_crossrefs.py"
+        ]
       }
     }
   ]
