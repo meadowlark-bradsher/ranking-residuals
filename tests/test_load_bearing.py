@@ -386,6 +386,75 @@ def test_reader_state_is_rejected_at_ingestion(tmp_path, state_key):
     assert any("invariant 1" in e for e in errs), errs
 
 
+@pytest.mark.parametrize("name", sorted(lb.STATE_KEYS))
+def test_every_reserved_name_is_rejected_including_inside_metadata(tmp_path, name):
+    """0.2 invariant 1: the list is the union of what two implementations had.
+
+    This side carried `confidence` and `mastery`, the consumer carried
+    `mastered`, and each caught a word the other missed. Parametrized over
+    `lb.STATE_KEYS` rather than a literal list so adding a name to the constant
+    without a test is impossible; `metadata` is used because after P3 closed the
+    schema it is the only place a state field can land in an otherwise valid
+    manifest.
+    """
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["metadata"] = {name: "anything"}
+    assert any("invariant 1" in e for e in lb.validate(m, tmp_path))
+
+
+def test_reserved_names_match_case_insensitively(tmp_path):
+    """0.2 says case-insensitive; an exact match would let `Reviewed` through."""
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["metadata"] = {"Reviewed": True, "MASTERED": 1}
+    assert any("invariant 1" in e for e in lb.validate(m, tmp_path))
+
+
+def test_a_criterion_id_may_not_be_a_reserved_name(tmp_path):
+    """0.2 extends invariant 1 to ids, and a criterion id is the worst case.
+
+    It survives into every ordering and is what a reader selects by, so a
+    criterion called `verified` smuggles a judgement through the one field that
+    reaches the selector.
+    """
+    m = _fixture_manifest(tmp_path)
+    m["criteria"][0]["id"] = "verified"
+    m["criteria"][2]["composed_of"] = ["verified", "churn"]
+    m["members"][0]["scores"] = {"verified": 0.5, "churn": 0.5, "identity": 0.5}
+    m["members"][0]["aspects"][0]["criteria"] = ["verified"]
+    assert any("criterion id may not be" in e for e in lb.validate(m, tmp_path))
+
+
+def test_an_aspect_id_may_not_be_a_reserved_name(tmp_path):
+    """`missing_aspects` binds to aspect ids, so a judgement-shaped id is one
+    the judge would hand back as a finding."""
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["aspects"][0]["id"] = "known"
+    assert any("aspect id may not be" in e for e in lb.validate(m, tmp_path))
+
+
+def test_the_shipped_manifest_declares_the_contract_this_reader_speaks():
+    """Re-stamped to 0.2. Pinned so a bump cannot be half-applied."""
+    assert lb.load()["contract"] == lb.CONTRACT == "load-bearing/0.2"
+
+
+@pytest.mark.parametrize("declared,ok", [
+    ("load-bearing/0.2", True),
+    ("load-bearing/0.1", True),      # minor tolerance is the point of the scheme
+    ("load-bearing/1.0", False),
+])
+def test_minors_are_tolerated_and_majors_are_not(tmp_path, declared, ok):
+    """0.2 supersedes 0.1 and both remain readable; a new major does not.
+
+    The consumer deliberately left its own fixture at 0.1 so minor tolerance
+    stays exercised by something real, and this asserts the same property from
+    the producing side.
+    """
+    m = _fixture_manifest(tmp_path)
+    m["contract"] = declared
+    errs = [e for e in lb.validate(m, tmp_path) if "major version" in e]
+    assert (errs == []) is ok, errs
+
+
 def test_a_composite_scored_without_its_components_is_rejected(tmp_path):
     """Invariant 3: the override path has to lead somewhere.
 

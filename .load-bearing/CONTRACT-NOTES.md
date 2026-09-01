@@ -5,9 +5,21 @@ producer side that the contract does not describe. Written to be read back by
 whoever revises the contract: everything here is a decision that wants either
 ratifying into 0.1 or overruling.
 
-The contract itself is vendored at [`CONTRACT.md`](CONTRACT.md) and the
-consumer's pinned defaults at [`CONSUMER-PINS.md`](CONSUMER-PINS.md), so this
-document no longer comments on a specification the repo does not contain. Where
+**This repo now targets `load-bearing/0.2`.** Three of its ten changes came from
+this implementation and the reconciliation that followed: BOM and bare-CR
+handling adopted here, invariant 1 extended to cover `metadata`, and the
+coverage and stale-repair sections folded in from these notes. Two came back the
+other way — the reserved-name list is now the union of both sides' lists, and it
+applies to criterion and aspect ids rather than field names alone.
+
+The version was bumped rather than 0.1 revised in place, which is the right call
+for the reason the format exists: two manifests both claiming 0.1 while meaning
+different things is precisely the failure this document keeps recording. Minors
+are tolerated by both implementations, so nothing broke on the bump.
+
+The contract itself is vendored at [`CONTRACT.md`](CONTRACT.md) — re-copied from 0.2 — and the
+superseded 0.1-era pins at [`CONSUMER-PINS.md`](CONSUMER-PINS.md), kept as the
+record of how two implementations diverged rather than as a rule. Where
 they disagree, the contract wins.
 
 ## Closed from the contract's Open list

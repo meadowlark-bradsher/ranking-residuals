@@ -1,4 +1,4 @@
-"""Reading and checking `.load-bearing/manifest.json` (contract `load-bearing/0.1`).
+"""Reading and checking `.load-bearing/manifest.json` (contract `load-bearing/0.2`).
 
 This module is the shared half: the CLIs (`verify.py`, `refresh.py`) and the
 gate (`tests/test_load_bearing.py`) all import it, so there is exactly one
@@ -52,7 +52,7 @@ import json
 import pathlib
 import subprocess
 
-CONTRACT = "load-bearing/0.1"
+CONTRACT = "load-bearing/0.2"
 CONTRACT_MAJOR = "0"
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -79,8 +79,16 @@ ALLOWED = {
 #: Invariant 1 -- content, never state. These are the reader's business, and a
 #: manifest that carries them is rejected at ingestion rather than ignored, so
 #: the mistake surfaces at the producer instead of being silently dropped.
+#:
+#: 0.2 fixes the list, and it is the union of what two implementations had
+#: independently: this side carried `confidence` and `mastery`, the consumer
+#: carried `mastered`, and each caught a word the other missed. 0.2 also matches
+#: case-insensitively, at any depth INCLUDING inside `metadata`, and applies the
+#: same names to criterion and aspect ids -- an id is a name the ledger binds to,
+#: so a criterion called `verified` smuggles a judgement in through the one field
+#: that survives into every ordering.
 STATE_KEYS = frozenset({"reviewed", "understood", "verified", "known",
-                        "status", "confidence", "mastery"})
+                        "mastered", "status", "confidence", "mastery"})
 
 
 # --------------------------------------------------------------- normalization
@@ -235,7 +243,7 @@ def _state_keys_in(obj) -> list[str]:
     found = []
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if k in STATE_KEYS:
+            if isinstance(k, str) and k.lower() in STATE_KEYS:
                 found.append(k)
             found += _state_keys_in(v)
     elif isinstance(obj, list):
@@ -280,6 +288,9 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
         # Invariant 3 -- a composite must declare what it is made of, and every
         # component must itself be a declared criterion, or the override path
         # the invariant exists to protect leads nowhere.
+        if isinstance(c.get("id"), str) and c["id"].lower() in STATE_KEYS:
+            errs.append(f"criteria[{c['id']}]: a criterion id may not be a "
+                        f"reserved state name (invariant 1 covers ids)")
         for comp in c.get("composed_of", []):
             if comp not in ids:
                 errs.append(f"criteria[{c['id']}].composed_of names {comp!r}, "
@@ -382,6 +393,9 @@ def validate(manifest: dict, lb_dir: pathlib.Path = LB_DIR) -> list[str]:
             errs += _unknown(asp, "aspect", f"members[{mid}].aspects[{aid}]")
             if not aid:
                 errs.append(f"members[{mid}]: an aspect has no id")
+            elif isinstance(aid, str) and aid.lower() in STATE_KEYS:
+                errs.append(f"members[{mid}].aspects[{aid}]: an aspect id may not "
+                            f"be a reserved state name (invariant 1 covers ids)")
             elif aid in seen_aspects:
                 errs.append(f"members[{mid}]: duplicate aspect id {aid!r}")
             seen_aspects.add(aid)
