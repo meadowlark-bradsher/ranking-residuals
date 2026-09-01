@@ -53,11 +53,22 @@ match is a normalised substring, so a citation may abbreviate a long title, and
 neither side needs LaTeX escaped: `Observation 3 (non-monotone in the item count)`
 resolves against `$b_1$ is non-monotone in the item count`.
 
-WHAT IT STILL DOES NOT CHECK. A citation with no parenthetical is checked for
-existence only -- the weaker guarantee, kept because not every reference has a
-sensible short title and a rule nobody can satisfy is a rule that gets switched
-off. It also says nothing about whether the cited passage supports the claim.
-That is review, not a test.
+THE TITLE IS REQUIRED, NOT ENCOURAGED, and that is a second correction. The first
+version of this rule was an erosion guard -- "at least four entries carry both a
+number and a title" -- against six that did. Which means the convention could
+decay by a third without failing, and, worse, that any NEWLY added reference
+could arrive with no title at all and get existence-only checking. That is not a
+hypothetical weakness: existence-only checking is precisely how the two
+methodology defects above came to exist and survive. A floor on a count does not
+protect the next entry; a per-entry rule does. So every reference naming a
+numbered environment must carry its title.
+
+`sec`, `fig`, table and file references are deliberately exempt: they have no
+title to match against, and a rule nobody can satisfy is a rule that gets
+switched off.
+
+WHAT IT STILL DOES NOT CHECK: whether the cited passage supports the claim. That
+is review, not a test.
 
 NUMBERING IS RECOMPUTED FROM THE SOURCE, not read from a built PDF, so the check
 runs with no LaTeX toolchain. That is the whole reason it is cheap enough to keep.
@@ -149,11 +160,13 @@ def test_the_scan_reads_both_papers(numbering):
         "no cited_in entry names a numbered environment; either they all moved to "
         "titles (good, delete this) or the reference pattern stopped matching")
     # Without this the title check below passes by finding nothing to check, which
-    # is the exact shape of the bug it was added to catch.
-    assert sum(1 for _, _, e in cites if _TITLE.search(e) and _REF.search(e)) >= 4, (
-        "fewer than four cited_in entries carry both a number and a title, so "
-        "test_every_cited_title_matches_the_number_beside_it is close to vacuous. "
-        "Either the parenthetical convention was dropped or _TITLE stopped matching")
+    # is the exact shape of the bug it was added to catch. A bare existence claim,
+    # not a floor on a count -- the count version of this let the convention decay
+    # and let new entries in untitled, which is how the defects above happened.
+    assert any(_TITLE.search(e) and _REF.search(e) for _, _, e in cites), (
+        "no cited_in entry carries both a number and a title, so the title check "
+        "is vacuous. Either the parenthetical convention was dropped wholesale or "
+        "_TITLE stopped matching")
 
 
 def test_every_cited_environment_number_exists(numbering):
@@ -197,6 +210,25 @@ def _norm(s):
 _TITLE = re.compile(r"\(([^()]*)\)\s*$")
 
 
+def test_every_numbered_reference_carries_a_title():
+    """A number with no title beside it gets existence-only checking. Forbid it.
+
+    This is the rule the count-based erosion guard could not give. `Observation 1`
+    with nothing beside it is exactly the string that is wrong on main and passes
+    an existence check, so the next entry added that way would inherit the same
+    blind spot rather than the fix.
+    """
+    bad = [f"{cid}: {entry!r}"
+           for cid, _, entry in _citations()
+           if _REF.search(entry) and not _TITLE.search(entry)]
+    assert not bad, (
+        "these cite a numbered environment with no title beside it, so only its "
+        "EXISTENCE can be checked -- and a wrong-but-existing number is the "
+        "failure this file was written for. Add the environment's title in "
+        "parentheses at the end, e.g. `methodology sec 4, Observation 2 (The "
+        "exact null has floor exactly zero)`:\n  " + "\n  ".join(bad))
+
+
 def test_every_cited_title_matches_the_number_beside_it(numbering):
     """`Observation 2 (The exact null...)` must be the observation actually numbered 2.
 
@@ -222,6 +254,43 @@ def test_every_cited_title_matches_the_number_beside_it(numbering):
         "cited_in names a title and a number that disagree. The number is the "
         "part that drifts, so trust the title and re-read the paper:\n  "
         + "\n  ".join(bad))
+
+
+# The three strings a reviewing session planted in `gradient-annihilated` to probe
+# this file adversarially, plus the correct one. The first is what is live on main:
+# under the old rules it PASSED, because it has no title and Observation 1 exists.
+_PROBES = [
+    ("methodology sec 4, Observation 1", "untitled"),
+    ("methodology sec 4, Observation 1 (The exact null has floor exactly zero)",
+     "wrong number"),
+    ("methodology sec 4, Observation 2 (The sign artefact)", "wrong title"),
+    ("methodology sec 4, Observation 2 (The exact null has floor exactly zero)",
+     None),                                                     # the correct one
+]
+
+
+@pytest.mark.parametrize("entry,defect", _PROBES)
+def test_the_checks_catch_every_way_this_reference_has_been_wrong(numbering,
+                                                                  entry, defect):
+    """Pins the detectors against real defects rather than only against the tree.
+
+    Runs the same predicates the tests above run, on a string instead of the
+    registry, so a regex that silently stopped matching fails HERE -- loudly and
+    with a named cause -- instead of turning every check above into a quiet pass.
+    """
+    envs, _ = numbering["methodology"]
+    untitled = bool(_REF.search(entry)) and not _TITLE.search(entry)
+    title = _TITLE.search(entry)
+    mismatched = bool(title) and any(
+        (kind, int(num)) in envs and _norm(title.group(1)) not in _norm(envs[(kind, int(num))])
+        for kind, num in _REF.findall(entry))
+
+    caught = {"untitled": untitled, "wrong number": mismatched,
+              "wrong title": mismatched}.get(defect, untitled or mismatched)
+    if defect is None:
+        assert not caught, f"the correct citation was rejected: {entry!r}"
+    else:
+        assert caught, f"a {defect} citation slipped through: {entry!r}"
 
 
 @pytest.mark.parametrize("kind,number,exists", [
