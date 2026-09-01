@@ -5,6 +5,11 @@ producer side that the contract does not describe. Written to be read back by
 whoever revises the contract: everything here is a decision that wants either
 ratifying into 0.1 or overruling.
 
+The contract itself is vendored at [`CONTRACT.md`](CONTRACT.md) and the
+consumer's pinned defaults at [`CONSUMER-PINS.md`](CONSUMER-PINS.md), so this
+document no longer comments on a specification the repo does not contain. Where
+they disagree, the contract wins.
+
 ## Closed from the contract's Open list
 
 **`range_hash` normalization.** The contract asks for one choice, pinned. This
@@ -24,29 +29,33 @@ it is being asked. `tests/test_load_bearing.py` pins all four so a later change
 is a visible decision and not a silent reinterpretation of every hash already
 written.
 
-**Whether `scores` is required when there is more than one criterion.** Read
-strictly, across the manifest: if any member carries `scores`, every member must
-carry a score for every declared criterion. Validation rejects a partially
-scored manifest.
+**Whether `scores` is required when there is more than one criterion — pinned
+by the consumer as P7, and this producer had it wrong.** The rule is per member:
+a member that carries `scores` must score every declared criterion and every
+component of any composite it scores; a member with no `scores` at all is valid
+and is simply not orderable by criterion.
 
-The argument is that it forces an author to make the judgement rather than omit
-it, and that it keeps a composite ordering and its component orderings ranging
-over the same members, so the override invariant 3 exists to protect compares
-like with like.
+This repo originally read the contract's "required for every criterion if
+present for any" across the whole manifest and rejected a partially scored one.
+That was wrong, and wrong in the direction that matters. **A producer stricter
+than the contract is not being conservative; it is refusing input the format
+intends to be valid.** The consumer's fixture failing this validator was the
+symptom, and it was read here as a fixture problem rather than as the bug it was.
 
-**A justification given here in the first draft has been struck, and the reason
-is worth more than the sentence was.** It read: an unscored member "sorts at zero
-under every criterion — ranked last by silence rather than by judgement." That
-describes `verify.py`'s ordering, whose sort key defaults a missing score to
-`0.0`, and it is unreachable — `lb.validate` rejects a partially scored manifest
-before any ordering runs. So the claim was circular: a failure that exists only
-without the rule, in an implementation that has the rule, generalised to the
-format as though it were a property of the contract. It is a property of one
-`.get` default.
+Two things were available and neither was used. The contract's own Open list
+says "currently optional per member", describing the status quo as the
+per-member rule — so a strict reading of the field table makes it contradict the
+Open item two sections down. And [`CONSUMER-PINS.md`](CONSUMER-PINS.md) P7 states
+it outright; that document simply was not on this side until later. The first of
+those is the one worth learning from: the answer was in the document already
+held, and was missed by reading one table row without reconciling it against the
+rest.
 
-Struck rather than quietly deleted because this document's whole job is to be
-read back by whoever revises 0.1, and a wrong argument for the right rule is the
-kind of thing that gets weighed.
+The rule now implemented is P7 as written. What survives of the original
+argument is smaller and belongs to the author rather than the validator: scoring
+every criterion keeps a composite ordering and its component orderings ranging
+over the same members, so invariant 3's override compares like with like. That
+is a reason to score, not a reason to reject.
 
 **First producer.** `.claude/skills/load-bearing/SKILL.md` in this repo. The
 repo owns the criteria (`correctness`, `provenance`, `trap-density`, and the
@@ -54,41 +63,45 @@ composite `identity`); the skill owns only the format, as the contract intends.
 
 ## Divergences from the reference consumer
 
-Found by comparing implementations with the PREP session directly, not by
-reading the contract. All three are places where 0.1 does not say, so both sides
-resolved it and neither was careless.
+Found by comparing implementations directly with the PREP session, not by
+reading the contract. Both sides audited their own validator against the pins;
+what follows is what survived that.
 
-| | this producer | reference consumer | live? |
+| | this producer | consumer pin | live? |
 |---|---|---|---|
-| leading BOM | stripped | not handled | latent |
-| bare CR | folded to LF | not handled | latent |
-| `scores` scope | across the manifest | per member | **yes** |
+| trailing whitespace | kept | kept (P2) | agree |
+| CRLF | folded to LF | folded to LF (P2) | agree |
+| leading BOM | stripped | not handled (P2) | latent |
+| bare CR | folded to LF | unmentioned by P2 | latent |
 
-The two hash rules are latent because every file either side currently anchors
-is clean LF with no BOM and no bare CR, checked on both sides rather than
-assumed — so the two implementations agree byte for byte on real input today.
-They would diverge the moment anyone anchors a file an editor has touched on
-Windows.
+Both remaining divergences are latent, checked rather than assumed: every file
+either side anchors today is clean LF with no BOM and no bare CR, so the two
+implementations agree byte for byte on real input. They part company the moment
+someone anchors a file an editor touched on Windows — and they will meet it as a
+hash mismatch with no diff to explain it, which is the argument for pinning
+rather than the merits, which are thin either way. Bare CR especially wants
+pinning explicitly: P2 names only CRLF, and that silence is how this side came
+to fold it without anyone deciding to.
 
-`scores` is live. The consumer's `ManifestSelector` filters unscored members out
-rather than ranking them, so a partially scored manifest that this validator
-rejects is one it accepts. The direction is safe — this producer is stricter, so
-anything it emits the consumer will read — but a manifest written against the
-consumer's reading fails here.
+**Three things previously recorded here as divergences were not.** `scores`
+scope was this producer's error against P7, now conformed. Rejecting unknown
+fields (P3) and refusing a `body_ref` that escapes (P6) were simply unimplemented
+here — both in the *lax* direction, which is worse than being strict: a typo'd
+key passed this validator silently and was rejected by the consumer, when the
+producer is where a typo should die.
 
-**What the three have in common is the finding.** Two of them trace to rules
-pinned in a build document this side never had, while the contract's own text
-said the matter was open. The third is worse: the sentence in 0.1 is genuinely
-ambiguous between per-member and across-manifest, and each side disambiguated it
-toward whatever it had already built, then wrote a justification describing its
-own code — the consumer's from its selector, this one's from a sort key. That
-produces confident reasoning on both sides instead of a visible gap, which is
-harder to catch than a missing pin.
+The pattern across all of them is the finding, and it is not that anyone was
+careless. Two divergences trace to rules pinned in a document this side did not
+have while the contract's own text said the matter was open. The rest trace to
+reading one line of a specification without reconciling it against the rest of
+the document. The second is harder to catch, because it produces a confident
+justification rather than a visible gap — this document's first draft argued for
+its wrong reading from a `.get` default in its own sort key.
 
-The remedy is the same for all three and it is a contract change, not a producer
-one: 0.1 should state these rules in its own text rather than leave them to be
-inferred, and the `scores` sentence should say per-member or across-manifest in
-so many words.
+Both remedies are contract-level: state the normalization rule in the contract
+rather than the build order, and say per-member or across-manifest in the
+sentence itself. A live conflict between P4 and invariant 1 is recorded in
+[`CONSUMER-PINS.md`](CONSUMER-PINS.md) and belongs to the same revision.
 
 ## Added on the producer side
 

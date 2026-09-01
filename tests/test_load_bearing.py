@@ -381,18 +381,90 @@ def test_weights_without_composed_of_are_rejected(tmp_path):
     assert any("weights without composed_of" in e for e in lb.validate(m, tmp_path))
 
 
-def test_partial_scoring_across_the_manifest_is_rejected(tmp_path):
-    """"Required for every criterion if present for any", read strictly.
+def test_a_member_may_carry_no_scores_at_all(tmp_path):
+    """P7: scores are optional PER MEMBER, and this test used to assert the opposite.
 
-    A member with no scores beside members that have them would sort at zero
-    under every criterion -- ranked last by silence rather than by judgement.
+    An earlier draft read "required for every criterion if present for any"
+    across the manifest and rejected a partially scored one. The intended
+    reading is per member -- a member that scores anything scores everything, a
+    member that scores nothing is valid and simply is not orderable by
+    criterion. Inverted rather than deleted, because the direction of the old
+    error is the point: a producer stricter than the contract refuses input the
+    format intends to be valid, which is worse than being lax, not safer.
     """
     m = _fixture_manifest(tmp_path)
     second = json.loads(json.dumps(m["members"][0]))
-    second["id"], second["scores"] = "m/two", None
+    second["id"] = "m/two"
     del second["scores"]
     m["members"].append(second)
-    assert any("required here too" in e for e in lb.validate(m, tmp_path))
+    assert lb.validate(m, tmp_path) == []
+
+
+def test_a_member_that_scores_anything_still_scores_everything(tmp_path):
+    """The half of P7 that survives: partial scoring WITHIN a member is rejected."""
+    m = _fixture_manifest(tmp_path)
+    del m["members"][0]["scores"]["churn"]
+    errs = lb.validate(m, tmp_path)
+    assert any("missing criterion" in e for e in errs), errs
+
+
+@pytest.mark.parametrize("mutate,where", [
+    (lambda m: m.update(membrs=[]), "manifest"),
+    (lambda m: m["criteria"][0].update(weight=1), "criteria"),
+    (lambda m: m["members"][0].update(anchor=[]), "members"),
+    (lambda m: m["members"][0]["anchors"][0].update(hash="x"), "anchors"),
+    (lambda m: m["members"][0]["aspects"][0].update(criterion=[]), "aspects"),
+])
+def test_unknown_fields_are_rejected_at_every_level(tmp_path, mutate, where):
+    """P3: the schema is closed, so a typo dies here rather than at the consumer.
+
+    Every case is a plausible near-miss of a real key, because that is what this
+    catches -- `membrs`, `anchor`, `criterion`. Before this, such a manifest
+    validated clean on the producing side and was rejected by PREP, which is
+    exactly backwards: the producer is where a typo should die.
+    """
+    m = _fixture_manifest(tmp_path)
+    mutate(m)
+    errs = lb.validate(m, tmp_path)
+    assert any("unknown field" in e for e in errs), errs
+    assert any(where in e for e in errs), errs
+
+
+def test_metadata_is_not_descended_into_for_unknown_fields(tmp_path):
+    """P3 names `metadata` the one opaque bag; anything may live in it."""
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["metadata"] = {"anything": {"nested": ["at", "all"]}}
+    assert lb.validate(m, tmp_path) == []
+
+
+def test_state_keys_are_still_rejected_inside_metadata(tmp_path):
+    """Invariant 1 over P4's carve-out, and after P3 this is the ONLY place it bites.
+
+    P3 closes every other object, so a state word anywhere else is already
+    rejected as an unknown field and this check only improves the message.
+    Inside `metadata` nothing else fires -- which is precisely why the carve-out
+    is the wrong way round, and why this repo implements the invariant instead.
+    """
+    m = _fixture_manifest(tmp_path)
+    m["members"][0]["metadata"] = {"origin": {"reviewed": True}}
+    assert any("invariant 1" in e for e in lb.validate(m, tmp_path))
+
+
+@pytest.mark.parametrize("ref", [
+    "../escaped.md",
+    "members/../../escaped.md",
+    "/etc/hosts",
+])
+def test_a_body_ref_may_not_escape_the_directory(tmp_path, ref):
+    """P6, and invariant 8: a manifest is untrusted input even when we wrote it.
+
+    Resolved rather than string-matched, so a path that climbs out through a
+    legitimate-looking prefix is caught along with a bare `../`.
+    """
+    m = _fixture_manifest(tmp_path)
+    del m["members"][0]["body"]
+    m["members"][0]["body_ref"] = ref
+    assert any("escapes" in e for e in lb.validate(m, tmp_path))
 
 
 def test_default_criterion_must_be_declared(tmp_path):
