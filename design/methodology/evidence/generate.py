@@ -78,9 +78,60 @@ def structural():
         r[f"n{n}"] = got
     claim("pm1-trap", asserts="A +-1 sign flow of a perfectly transitive order deposits "
           "spurious harmonic mass, and the amount is n-dependent, not a constant.",
-          cited_in=["methodology sec 2, 'Magnitude, not sign'"], value=r,
+          # HISTORICAL as of spec v10: sec 2 now states pm1-closed-form as its
+          # Observation 1 and mentions these two figures only as the quote it
+          # supersedes. They are still asserted here, at the precision the paper
+          # published them to, which is what this claim is for.
+          cited_in=["methodology sec 2, 'Magnitude, not sign' (as superseded history)"],
+          value=r,
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_invariants.py::test_5_1_pm1_of_a_transitive_order_is_not_a_gradient")
+
+    # The n-dependence above has a closed form, so the mass is not merely "not a
+    # constant" -- it is known at every n and has a limit. The +-1 flow of a total
+    # order on K_n is the all-ones edge vector; least squares against D0 gives
+    # s_i = (2/n).i, hence gradient energy (n^2-1)/3 against a total mass of
+    # n(n-1)/2, so g = 2(n+1)/(3n) and h = (n-2)/(3n) -> 1/3.
+    #
+    # SEPARATE CLAIM RATHER THAN A WIDER pm1-trap, deliberately, and the split
+    # earned itself when the paper moved. pm1-trap holds two points at the 5e-4
+    # precision the paper published them to; this one is an identity at every n at
+    # machine precision. spec v10 rewrote sec 2 around the identity, so the two
+    # claims now point at different prose -- pm1-trap at a superseded quote it
+    # still pins, this one at Observation 1. Had they been one claim, that move
+    # would have had to either drop the published figures or restate the identity
+    # at their precision, and neither is true to what each document says.
+    cf = {}
+    for n in (3, 4, 5, 6, 7, 8, 12, 16):
+        e = list(itertools.combinations(range(n), 2))
+        v = np.arange(n, dtype=float)
+        Y = np.sign(np.array([v[j] - v[i] for i, j in e]))
+        got = hodge.analyze_flow(n, e, Y, filling="empty")["fractions"]["harmonic"]
+        # Self-checking in the same sense as pm1-trap above: compared against the
+        # FORMULA, not against whatever the instrument last produced. Recording the
+        # measurement without this assert would let the closed form quietly stop
+        # being true while the claim went on reproducing its own drift.
+        assert abs(got - (n - 2) / (3 * n)) < 1e-9, \
+            f"n={n}: measured {got} vs closed form {(n - 2) / (3 * n)}"
+        cf[str(n)] = got
+    claim("pm1-closed-form", asserts="The spurious harmonic mass of the +-1 flow of a "
+          "total order on the complete graph is exactly (n-2)/(3n), rising with n "
+          "toward 1/3.",
+          cited_in=["methodology sec 2, Observation 1",
+                    "spec 5.1", "spec v10 revision note",
+                    "exercises SOLUTIONS.md, exercise 3",
+                    "exercises ex03_pm1_quantization_trap.py, closed_form()"],
+          value=cf,
+          tol={"kind": "abs", "value": 1e-9},
+          test="tests/test_invariants.py::test_5_1_pm1_mass_has_a_closed_form_in_n",
+          note="Generalises pm1-trap, which pins the same computation at n=5 and n=6 "
+               "and asserts only that the mass is n-dependent. Same tolerance because "
+               "it is the same code path; verify.py prints the observed drift, so the "
+               "headroom is generated rather than quoted here. The methodology paper "
+               "states it as Observation 1 with the derivation; the paper checks the "
+               "fitted potential and gradient energy too, not only the fractions, so a "
+               "change that moved the total mass and the harmonic part together would "
+               "still be caught.")
 
     a = assemble(cfg.with_(n_cplx=0, mode_II="clean_gradient"))
     claim("clean-gradient-zero", asserts="An all-integer value-difference flow reads zero "

@@ -149,12 +149,47 @@ therefore names its filling.\label{fig:filling}}
 
 \paragraph{Magnitude, not sign.} A $\pm 1$ sign flow of even a perfectly
 transitive order is \emph{not} a pure gradient: the quantisation deposits
-spurious harmonic mass. We measured $\harm = 0.200$ at $n=5$ and $\harm=0.2222$
-at $n=6$ on a complete graph under the empty filling. The value is
-$n$-dependent, which is itself worth stating --- an early draft of our
-specification quoted $0.200$ as a constant. Consequently every flow intended to
-represent a magnitude uses value-differences or log-odds; sign encodings are used
-only to read a tournament for triad statistics.
+spurious harmonic mass. On the complete graph the amount is not merely nonzero
+but available in closed form.
+
+\begin{observation}[The sign artefact is $\tfrac{n-2}{3n}$]\label{obs:pm1}
+On $K_n$ under the empty filling, the $\pm 1$ flow of a total order carries
+\begin{equation*}
+  \grad = \frac{2(n+1)}{3n},
+  \qquad
+  \curl = 0,
+  \qquad
+  \harm = \frac{n-2}{3n} \;\longrightarrow\; \frac{1}{3} .
+\end{equation*}
+\end{observation}
+
+Index the items in rank order and the flow is the all-ones edge vector
+$\mathbf{1}$. The normal equations for $\min_s \sum_{i<j}(s_j - s_i - 1)^2$ read
+$n\,s_v = 2v - (n-1)$ in the zero-sum gauge, so the fitted potential is affine in
+the rank with slope $2/n$; since $\sum_{i<j}(j-i)^2 = n^2(n^2-1)/12$, the
+gradient energy is $(n^2-1)/3$ against a total mass of $\binom{n}{2}$. The empty
+filling has no $2$-cells, so what is left over is harmonic.
+
+We checked every step against the instrument rather than only the conclusion:
+the fitted potential, the gradient energy, and the fractions agree at
+$n\in\{3,4,5,6,7,8,12,16\}$ within the $10^{-9}$ tolerance registered for claim
+\texttt{pm1-closed-form}.
+
+Two consequences are worth stating, because neither is visible from a pair of
+measurements. The artefact is bounded --- a sign encoding cannot manufacture
+arbitrary harmonic mass, only up to a third of the flow's energy --- and it is
+bounded \emph{away from zero} for every $n \ge 3$, so there is no pool size at
+which $\pm 1$ becomes safe. It vanishes at $n = 2$ only because $K_2$ has
+$b_1 = 0$ and offers the artefact nowhere to live.
+
+This is the third statement our specification has made about the same quantity:
+an early draft quoted $0.200$ as a constant, a later one corrected it to two
+measured points and the observation that the value is $n$-dependent, and it is
+now the identity above. Each correction was forced by looking at one more $n$,
+which is the cheapest experiment in this paper and was not run for two
+revisions. Consequently every flow intended to represent a magnitude uses
+value-differences or log-odds; sign encodings are used only to read a tournament
+for triad statistics.
 
 \section{Known-answer construction}
 

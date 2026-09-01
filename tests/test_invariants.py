@@ -34,6 +34,52 @@ def test_5_1_pm1_of_a_transitive_order_is_not_a_gradient(n, expected):
     assert h == pytest.approx(expected, abs=5e-4)
 
 
+@pytest.mark.parametrize("n", [3, 4, 5, 6, 7, 8, 12, 16])
+def test_5_1_pm1_mass_has_a_closed_form_in_n(n):
+    """The n-dependence above is exactly (n-2)/(3n) -- claim `pm1-closed-form`.
+
+    The +-1 flow of a total order on K_n is the all-ones edge vector. Least squares
+    against D0 gives s_i = (2/n).i, so the gradient energy is (n^2-1)/3 against a
+    total mass of n(n-1)/2, leaving h = (n-2)/(3n), which rises to 1/3.
+
+    WHY THIS IS NOT test_5_1_pm1_of_a_transitive_order_is_not_a_gradient WITH MORE
+    PARAMETERS. That test holds the instrument to two numbers the papers print, at
+    abs=5e-4 -- the precision the papers quote them to. This one holds it to an
+    identity at machine precision, which is a different assertion and fails for
+    different reasons: a change that moved the mass by 1e-6 would leave the first
+    test green and must not leave this one green.
+
+    The gradient fraction is asserted alongside because h alone cannot distinguish
+    "the harmonic part is right" from "the total mass is wrong by the same factor".
+    """
+    edges = list(itertools.combinations(range(n), 2))
+    Y = np.ones(len(edges))                       # the sign flow of 0 < 1 < ... < n-1
+    fr = hodge.analyze_flow(n, edges, Y, filling="empty")["fractions"]
+
+    assert fr["harmonic"] == pytest.approx((n - 2) / (3 * n), abs=1e-12)
+    assert fr["gradient"] == pytest.approx(2 * (n + 1) / (3 * n), abs=1e-12)
+    assert fr["curl"] == pytest.approx(0.0, abs=1e-12)     # empty filling, no 2-cells
+
+
+def test_5_1_the_closed_form_is_reached_from_a_real_order_not_just_all_ones():
+    """Guards the step the test above takes for granted.
+
+    `np.ones` is the sign flow only because the vertices happen to be indexed in
+    rank order. Build it from values through np.sign, the way spec 5.1 describes
+    the trap, and shuffle the labels: the fraction is a property of the flow, so
+    relabelling must not move it.
+    """
+    n, rng = 9, np.random.default_rng(20260831)
+    order = rng.permutation(n)                   # vertex i has rank order[i]
+    edges = list(itertools.combinations(range(n), 2))
+    val = np.asarray(order, dtype=float)
+    Y = np.sign(np.array([val[j] - val[i] for i, j in edges]))
+
+    assert not np.allclose(Y, 1.0), "the permutation did not relabel anything"
+    h = hodge.analyze_flow(n, edges, Y, filling="empty")["fractions"]["harmonic"]
+    assert h == pytest.approx((n - 2) / (3 * n), abs=1e-12)
+
+
 def test_5_1_rig_never_emits_pm1_for_integer_or_bias_bridge():
     """The rig's I-I and bias-bridge blocks must carry magnitude, never +-1."""
     cfg = RigConfig().validate().with_(mode_II="clean_gradient", bridge_mode="bias_rule")

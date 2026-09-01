@@ -4,9 +4,18 @@ WHY THIS EXISTS. A phrase that wraps across a line break is invisible to a
 line-wise `grep`, and the failure is not that the check goes quiet. On
 2026-08-30 it bit four times -- `design/reports` in the README layout tree,
 `half a percentage point`, `six orders of magnitude`, and one more -- and it is
-live in the tree right now at `design/specs/calibration-rig-spec.md:592-593`,
-where "six orders of" ends 592 and "magnitude" opens 593, inside spec 13.3's own
+live in the tree right now at `design/specs/calibration-rig-spec.md:630-631`,
+where "six orders of" ends 630 and "magnitude" opens 631, inside spec 13.3's own
 explanation of that failure mode.
+
+That citation has drifted twice and this is its second correction: it was written
+as 592-593, was already 614-615 by the time anyone looked again, and the spec's
+v10 note pushed it to 630-631. Which is the module's own subject, one level up --
+a line number in prose is an uncited number, and nothing here can check it, which
+is exactly why `test_prose` pins the RELATION between a line-wise scan and this
+helper rather than any absolute line. Locate it with `unwrap`, not by counting:
+
+    prose.unwrap(SPEC.read_text()).finditer("orders of magnitude")
 
 What the grep actually does there is the sharp part:
 

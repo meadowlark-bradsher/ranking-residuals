@@ -469,6 +469,20 @@ _PINNED_ENTRY_POINTS = (
     "design/methodology/experiments/b1-rate/b1_rate.py",
     "design/methodology/evidence/generate.py",
     "design/methodology/evidence/verify.py",
+    # design/exercises/ -- each is run directly, so each is an entry point and
+    # inherits no setting from a caller. ex06 is deliberately absent: it never
+    # names numpy (rig.fit does), and the scan below matches a literal import, so
+    # listing it would fail the "no longer imports numpy" assertion. Its pin is
+    # still load-bearing and still there, just unwatched by this test.
+    "design/exercises/ex01_filling_and_b1.py",
+    "design/exercises/ex02_three_signatures.py",
+    "design/exercises/ex03_pm1_quantization_trap.py",
+    "design/exercises/ex04_read_a_sweep_record.py",
+    "design/exercises/ex05_floor_recovery.py",
+    "design/exercises/ex07_round_trip.py",
+    "design/exercises/ex08_bridge_attribution.py",
+    "design/exercises/ex09_zeta_blindness.py",
+    "design/exercises/ex10_make_the_guards_fire.py",
 )
 
 _THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
