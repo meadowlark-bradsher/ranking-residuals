@@ -1,11 +1,11 @@
 {
   "contract": "load-bearing/0.1",
-  "source_tree": "d3a7a60505878ea656d6ddc49da7b7722442561a",
-  "source_commit": "63bd045527c71d53f0058d5eb6a3bf1d7a3af42d",
+  "source_tree": "ce2850ad27a90e9d7680695c3416619027a153a5",
+  "source_commit": "bf200fc4799bed8f808f9d9f80258276472700f7",
   "generated_by": {
     "agent": "claude-code",
     "model": "claude-opus-5",
-    "at": "2026-09-01T04:17:53Z"
+    "at": "2026-09-01T04:33:50Z"
   },
   "criteria": [
     {
@@ -380,9 +380,9 @@
       "anchors": [
         {
           "path": "design/methodology/evidence/verify.py",
-          "start": 84,
-          "end": 119,
-          "blob": "cdd7911d9b61823afed3eb126d4284f23cf14bc2",
+          "start": 85,
+          "end": 120,
+          "blob": "fdaa21452888b1b724478fdeec3fd784d3cf789f",
           "range_hash": "d0f21bd0aecdd8e78accf80cda5ed99b70a581f184459f6538bf63110ad4eaa8"
         }
       ],
@@ -490,6 +490,59 @@
       "metadata": {
         "tests": [
           "tests/test_paper_crossrefs.py"
+        ]
+      }
+    },
+    {
+      "id": "registry/payload-digest",
+      "body_ref": "members/registry-payload-digest.md",
+      "anchors": [
+        {
+          "path": "design/methodology/evidence/registry.py",
+          "start": 41,
+          "end": 82,
+          "blob": "f685dafcf791294836c14027790f37309ee1840e",
+          "range_hash": "e8248e0c709c2bed34cef27ac9a08f070dd92c4162e1016261496f7f5918a796"
+        }
+      ],
+      "scores": {
+        "correctness": 0.55,
+        "provenance": 0.95,
+        "trap-density": 0.7,
+        "identity": 0.7
+      },
+      "rationale": "Added with the guard itself. Its failure mode is the quiet one: a check that stopped checking would leave the registry exactly as unguarded as before, and nothing downstream would say so.",
+      "aspects": [
+        {
+          "id": "covers-claims-not-meta",
+          "criteria": [
+            "provenance"
+          ],
+          "claim": "The digest is taken over the claims object alone and never over meta, because generated and commit move when nothing measured has and a whole-file hash would go stale on every regeneration."
+        },
+        {
+          "id": "round-trip-canonicalization",
+          "criteria": [
+            "correctness"
+          ],
+          "claim": "canonical dumps twice so that a producer holding numpy scalars and a reader holding parsed floats canonicalize to identical bytes."
+        },
+        {
+          "id": "absent-is-not-agreement",
+          "criteria": [
+            "trap-density"
+          ],
+          "claim": "A missing meta.claims_digest returns a problem sentence rather than None, matching how rig/provenance.py reads a missing fingerprint: silence is not counted as passing."
+        },
+        {
+          "id": "what-it-does-not-catch",
+          "criteria": [],
+          "claim": "It closes the accidental case — a merge resolved in the registry, a hand-edited value — and does not stop someone who edits a value and recomputes the digest."
+        }
+      ],
+      "metadata": {
+        "tests": [
+          "tests/test_evidence_integrity.py"
         ]
       }
     }
