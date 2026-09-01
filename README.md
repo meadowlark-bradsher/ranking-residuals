@@ -85,6 +85,7 @@ hodge.py              THE INSTRUMENT — byte-identical to design/reference/hodg
 conftest.py           puts the repo root on sys.path
 requirements.txt      the environment evidence.json's meta block records
 LICENSE               MIT
+CLAUDE.md             the working agreement: what "done" requires
 envelope_evaluator.py dependency-free closed-form oracle for the harmonic-zero null
 boundary_report.json  its shipped output, fingerprinted to the code that wrote it
 rig/
@@ -106,12 +107,20 @@ tests/
   test_harness_rules.py       enforces "no verdict on a moment ratio from a low-df cell"
   test_source_fingerprint.py  fingerprint is sensitive to meaning, blind to presentation
   test_readme_layout.py       the layout blocks below name only paths that exist
+  test_load_bearing.py        every .load-bearing/ member still names the code it describes
 design/
   specs/              the spec (v10) and the v6 changeset that reconciled it to the build
   reference/          hodge.py, the explainers, the canonical comparison note
   methodology/        papers, evidence registry, experiments — see below
   exercises/          ten runnable exercises + their answer key; teaching only,
                       nothing here is load-bearing for the build
+.load-bearing/
+  manifest.json       the members: regions that bear load, with anchors and aspects
+  members/            one body per member — raw material, not commentary
+  lb.py               what "stale" means; shared by the two CLIs and the gate
+  verify.py           what is stale and why; --criterion prints an ordering
+  refresh.py          --relocate repairs moved anchors; --attest re-hashes changed ones
+  CONTRACT-NOTES.md   what this repo pinned where the contract left a choice
 ```
 
 ## Evidence and methodology
@@ -147,6 +156,38 @@ cd design/methodology/evidence && python verify.py --fast
 identities and closed forms in seconds, the full pass takes minutes. Because
 `make_figures.py` reads `evidence.json`, **a figure cannot carry a number the evidence
 does not.**
+
+## What bears load
+
+`.load-bearing/manifest.json` names the regions of this repo that bear load, and
+what a correct account of each has to include. Seven members today, scored on
+three criteria the repo chose — `correctness`, `provenance`, `trap-density` — and
+a composite `identity` over them.
+
+Each member is anchored to `path:start-end` plus a SHA-256 of exactly those
+lines, so the manifest cannot quietly stop being about the code it names. That
+is the same trick the layout tree above relies on: the anchors are data wearing a
+description.
+
+```bash
+python .load-bearing/verify.py
+python .load-bearing/verify.py --criterion trap-density
+```
+
+`tests/test_load_bearing.py` fails when a member goes stale, so the suite is
+still the definition of done. A member whose anchored lines merely *moved* is
+repaired in bulk; one whose anchored lines *changed* has to be read and attested
+by name, and attesting without touching the member's body is refused. A manifest
+that is fresh by hash and wrong by meaning would be worse than an openly stale
+one, and that refusal is what keeps the two apart. The write-side procedure is
+[CLAUDE.md](CLAUDE.md); the format is `load-bearing/0.1`, drafted for PREP to
+read, with this repo's choices recorded in
+[`.load-bearing/CONTRACT-NOTES.md`](.load-bearing/CONTRACT-NOTES.md).
+
+Nothing forces coverage. The manifest is a curated map and not an inventory,
+exactly as the layout tree is — `rig/pool.py` and `rig/report.py` are
+deliberately absent — so adding a member when a change makes a new region
+load-bearing is a judgement, not a gap a test reports.
 
 ## Known residual
 
