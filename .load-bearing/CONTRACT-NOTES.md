@@ -26,14 +26,69 @@ written.
 
 **Whether `scores` is required when there is more than one criterion.** Read
 strictly, across the manifest: if any member carries `scores`, every member must
-carry a score for every declared criterion. The loose reading lets a member with
-no scores sit beside members that have them, where it sorts at zero under every
-criterion — ranked last by silence rather than by judgement. Validation rejects
-it.
+carry a score for every declared criterion. Validation rejects a partially
+scored manifest.
+
+The argument is that it forces an author to make the judgement rather than omit
+it, and that it keeps a composite ordering and its component orderings ranging
+over the same members, so the override invariant 3 exists to protect compares
+like with like.
+
+**A justification given here in the first draft has been struck, and the reason
+is worth more than the sentence was.** It read: an unscored member "sorts at zero
+under every criterion — ranked last by silence rather than by judgement." That
+describes `verify.py`'s ordering, whose sort key defaults a missing score to
+`0.0`, and it is unreachable — `lb.validate` rejects a partially scored manifest
+before any ordering runs. So the claim was circular: a failure that exists only
+without the rule, in an implementation that has the rule, generalised to the
+format as though it were a property of the contract. It is a property of one
+`.get` default.
+
+Struck rather than quietly deleted because this document's whole job is to be
+read back by whoever revises 0.1, and a wrong argument for the right rule is the
+kind of thing that gets weighed.
 
 **First producer.** `.claude/skills/load-bearing/SKILL.md` in this repo. The
 repo owns the criteria (`correctness`, `provenance`, `trap-density`, and the
 composite `identity`); the skill owns only the format, as the contract intends.
+
+## Divergences from the reference consumer
+
+Found by comparing implementations with the PREP session directly, not by
+reading the contract. All three are places where 0.1 does not say, so both sides
+resolved it and neither was careless.
+
+| | this producer | reference consumer | live? |
+|---|---|---|---|
+| leading BOM | stripped | not handled | latent |
+| bare CR | folded to LF | not handled | latent |
+| `scores` scope | across the manifest | per member | **yes** |
+
+The two hash rules are latent because every file either side currently anchors
+is clean LF with no BOM and no bare CR, checked on both sides rather than
+assumed — so the two implementations agree byte for byte on real input today.
+They would diverge the moment anyone anchors a file an editor has touched on
+Windows.
+
+`scores` is live. The consumer's `ManifestSelector` filters unscored members out
+rather than ranking them, so a partially scored manifest that this validator
+rejects is one it accepts. The direction is safe — this producer is stricter, so
+anything it emits the consumer will read — but a manifest written against the
+consumer's reading fails here.
+
+**What the three have in common is the finding.** Two of them trace to rules
+pinned in a build document this side never had, while the contract's own text
+said the matter was open. The third is worse: the sentence in 0.1 is genuinely
+ambiguous between per-member and across-manifest, and each side disambiguated it
+toward whatever it had already built, then wrote a justification describing its
+own code — the consumer's from its selector, this one's from a sort key. That
+produces confident reasoning on both sides instead of a visible gap, which is
+harder to catch than a missing pin.
+
+The remedy is the same for all three and it is a contract change, not a producer
+one: 0.1 should state these rules in its own text rather than leave them to be
+inferred, and the `scores` sentence should say per-member or across-manifest in
+so many words.
 
 ## Added on the producer side
 
@@ -110,13 +165,19 @@ anything about behaviour, and no member should be written as though it did.
 
 - **`suggested_terms` on a member.** Not adopted, per the contract's own reading:
   a member is a review unit and a debt event is a surrender record.
-- **Aspect scoping across composites.** Invariant 7 says the judge sees aspects
-  whose `criteria` include the active criterion. It does not say what happens
-  when the active criterion is a *composite*: does an aspect scoped to
-  `correctness` surface under `identity`, which is composed of it? This repo
-  writes aspects as if the answer is yes, and nothing here depends on it, but
-  0.1 should say.
-- **Two members anchoring overlapping ranges in one file.** Allowed here and used
-  (`regime/preconditions` and `fit/derived-window` are adjacent regions of
-  `rig/oracle.py`). Non-overlapping in practice; the contract does not say
-  whether overlap is legal.
+- **Aspect scoping across composites — answered, and it was a bug.** Invariant 7
+  says the judge sees aspects whose `criteria` include the active criterion, and
+  the reference consumer implemented that literally: an aspect scoped to a
+  component does *not* surface under a composite containing it. Its own manifest
+  then showed a composite covering strictly less than either component, with one
+  member getting no aspects at all and silently dropping to prose mode. The
+  agreed fix is the union over the criterion and its declared components,
+  transitively, which is what this repo already writes as if. Nothing here
+  changes; 0.1 still has to say it, because the failure is silent — a member with
+  no matching aspects does not error, it reads as fine.
+- **Overlapping ranges in one file — answered: legal, and deliberate.** The
+  consumer hashes each range independently, so two members over one file have
+  independent freshness. Used here: `regime/preconditions` and
+  `fit/derived-window` are adjacent regions of `rig/oracle.py`. Related and also
+  confirmed: `blob` is never authoritative on its own, so a file edited outside a
+  member's range leaves that member fresh.
