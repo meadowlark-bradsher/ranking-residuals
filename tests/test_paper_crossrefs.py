@@ -10,18 +10,34 @@ silently, in a file the registry does not read.
 
 On 2026-08-31 that happened three times in one afternoon:
 
-  * `fabricator-family-invisible` said `bridge sec 8.4, Proposition 3`. That
-    proposition was Proposition 2, in section 6.1. Both wrong, and wrong before
-    any of that day's edits -- it had drifted at some earlier restructuring and
-    survived every review since.
+  * `fabricator-family-invisible` said `bridge sec 8.4, Proposition 3`. There is
+    no section 8.4 -- that subsection is 6.1 -- and it had drifted at some earlier
+    restructuring and survived every review since. Its `Proposition 3` was wrong
+    too, and then became right without anyone touching it, because the same day's
+    insertion pushed that proposition from 2 to 3. A citation that repairs itself
+    by accident is one nobody will ever re-read.
   * Adding an Observation to methodology section 2 renumbered the other two, so
     `gradient-annihilated` and `b1-non-monotone` pointed one place up the list.
-  * Adding a Proposition to the bridge paper shifted the REMARK counter as well,
-    which is the one nobody predicts, and `thrashing-does-not-wash-out` broke.
+    Both shipped to main and sat there.
+  * Adding section 3.1 to the bridge paper broke
+    `thrashing-does-not-wash-out`'s `Remark 5`. THE MECHANISM IS NOT THE OBVIOUS
+    ONE, and the first draft of this docstring got it wrong: it said a Proposition
+    had shifted the Remark counter. It cannot. Every `\\newtheorem` in these two
+    papers declares its own counter, with no shared `[counter]` argument, so
+    propositions and remarks advance independently -- checkable in the preamble,
+    which is what should have been done before asserting it.
+
+    What actually happened is duller and more useful: that subsection added a
+    proposition AND a remark, and the remark is what moved the remark counter.
+    The lesson is not about LaTeX's counters, it is that an edit renumbers every
+    KIND of environment it introduces, including the ones that came along with the
+    thing you set out to add and that you are therefore not thinking about.
 
 The first of those is the argument for a test rather than more care: it was
 introduced by a person, survived by a person, and was found only because someone
-happened to compile the paper and count.
+happened to compile the paper and count. The third is the argument for a test
+rather than reasoning about it: the wrong mechanism gave the right answer here,
+and would not have next time.
 
 A NUMBER ALONE IS NOT ENOUGH, which the first draft of this file got wrong. It
 checked only that `Proposition 3` exists. But the two methodology citations above
