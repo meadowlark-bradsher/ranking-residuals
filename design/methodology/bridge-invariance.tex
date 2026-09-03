@@ -245,6 +245,34 @@ Zero variance is not a single cell. A deterministic bridge contributes zero harm
 The middle row is not ``partially random.'' Its content is as random as the fresh coin; it differs only in the level at which the randomness is bound. Hence its variance is invisible to replication---$R$ averages sampling noise, not disorder---and visible only to re-drawing the disorder. For a single frozen realisation $\omega$ one observes $\|Y_{cc}+\Ph B(\omega)\|^2$, one draw from a law with mean $\|\Ph Y_{cc}\|^2+\tr(\Ph W\Ph)$; no amount of $R$ moves it toward the mean.
 \end{remark}
 
+\noindent
+The construction is not only an arithmetic convenience. Its components were
+chosen to span the ways a pairwise comparator can fail, and Table~\ref{tab:modes}
+records
+that correspondence, which the integers and roots of unity otherwise hide.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}p{0.235\textwidth}p{0.215\textwidth}p{0.44\textwidth}@{}}
+\toprule
+Synthetic component & Structural reading & Comparator analogy \\
+\midrule
+Gradient block, $D_0s$ on $E_{II}$ & coherent scalar order & judgements as if from one stable score \\
+Curl & local inconsistency & cycles inside a filled triad, which a triad check finds \\
+Harmonic residual & global inconsistency & judgements jointly contradict any scalar order, and no triad check reports it \\
+Annealed coin, $V/R$ & sampling noise & individual calls vary and average out under replication \\
+Quenched coin, $W$ & persistent pair-specific effect & some comparisons stay anomalous however often they are re-asked \\
+Potential-consistent bridge & coherent fabrication & an internally consistent order, not necessarily the intended one \\
+\bottomrule
+\end{tabular}
+\caption{The construction's components read as comparator behaviours.
+\textbf{The right-hand column interprets the synthetic regimes; it is not an
+empirical claim about any language model}, and nothing in this document measures
+a real comparator. It is given because the regimes were chosen to span these
+behaviours, and that choice is otherwise invisible in a construction built from
+integers and roots of unity.\label{tab:modes}}
+\end{table}
+
 \section{One identity behind the apparatus}
 
 Corollary~1 has the same shape as the rig's injected-null model \cite[\S5]{bradsher2026},
@@ -302,6 +330,18 @@ internally consistent way, which is exactly the failure a harmonic reading canno
 see. Detecting it needs a different statistic --- one sensitive to the
 \emph{dispersion} of the fitted gradient across re-instantiations rather than to
 its harmonic residue.
+
+For evaluating a deployed comparator this is the boundary of what structural
+auditing can establish at all, and it is worth stating in those terms. A harmonic
+residual measures incoherence, not correctness. A zero reading is consistent with
+a coherent scalar potential and --- under a filling with a non-trivial curl space
+--- equally consistent with purely local cyclicity that $\Ph$ does not see
+(Definition~1); it is consistent, too, with the fabricator above, whose potential
+is perfectly coherent and re-drawn on every deployment. None of the three says
+the potential is stable, related to the intended criterion, or right. The
+instrument is upstream of all of that: it asks whether one class of global
+inconsistency is present, before external validity or normative agreement is
+considered.
 
 \section{What is purchased without experiment, and what is not}
 

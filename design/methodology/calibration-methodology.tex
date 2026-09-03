@@ -38,7 +38,8 @@
 \noindent
 A rankability certificate based on the Hodge decomposition of a comparison graph
 reports the fraction of comparison ``flow'' that admits no consistent scalar
-ordering. Used as a decision procedure it needs a threshold, and the threshold
+ordering \emph{and} escapes every triangle-local check --- a one-sided reading,
+sufficient for non-rankability but not equivalent to it. Used as a decision procedure it needs a threshold, and the threshold
 cannot be read off the mathematics: on finite, noisy, sparsely sampled data a
 genuinely rankable criterion still deposits harmonic mass. Calibration therefore
 requires knowing what innocent data reads --- which real data cannot tell us,
@@ -100,6 +101,20 @@ instrument recovers those known answers, and calibrate the threshold on
 synthetic nulls whose true value is known by construction. Admit a real judge
 only after that passes.
 \end{principle}
+
+\paragraph{Motivating application.} Pairwise AI evaluators are the setting this
+was built for. A language-model judge may compare candidates consistently on
+individual pairs while the collection of those judgements admits no coherent
+scalar ordering, and that failure has two shapes: local, appearing inside filled
+comparison triads, and global, appearing only around holes in the comparison
+complex. The quantity studied here is the second --- the \emph{harmonic ranking
+residual}, what is left of the ranking residual once gradient and triangle-local
+curl structure have been separated out. Its zero is one-sided: a nonzero residual
+is sufficient evidence that no scalar ordering explains the flow, while a zero
+residual says nothing about the local failure, which a triad-consistency check
+would already have reported. The aim here is metrological rather than normative
+--- to establish when that residual is being measured correctly, before asking
+what it implies about a deployed judge.
 
 \section{Setting and conventions}
 
@@ -236,7 +251,7 @@ Misspecified null floor & $\varepsilon^2$ & $0.010000$, $0.040000$, $0.160000$ \
 Potential-consistent bridge & $=$ C--C floor exactly & $10.0000$ vs.\ $10.0000$ \\
 \bottomrule
 \end{tabular}
-\caption{Known answers and the values the instrument returns.}
+\caption{\label{tab:oracles}Known answers and the values the instrument returns.}
 \end{table}
 
 The equal-spaced complex construction deserves comment. Placing $m$ points at
@@ -565,7 +580,7 @@ absorbed the improvement silently.
 
 \section{Results}\label{sec:results}
 
-The instrument reproduces every known answer (Table 2). The synthetic adversarial
+The instrument reproduces every known answer (Table~\ref{tab:oracles}). The synthetic adversarial
 sweep behaves as predicted: with equal spacing every complex--complex edge
 carries unit harmonic energy under the empty filling, so the systematic floor
 follows $m(m-1)/2$ exactly --- measured $0, 3, 10, 21, 36$ --- while the raw
@@ -739,6 +754,16 @@ thrashes on incomparable pairs deposits variance that washes out with
 replication, one that fabricates a surrogate order deposits none at all. Whether
 a real comparator resembles either is the next question, and it is now the only
 thing standing between this method and its intended use.
+
+Stated as a chain, this document is one stage of several: pairwise judgements,
+then the structural decomposition and its calibration, which is the work here;
+then a statistical test of the harmonic residual against a matched null; then
+whatever stability and external-validity work a deployment demands. The intended
+application is not to certify that a judge is aligned with an evaluation
+criterion, but to make one prerequisite to that assessment measurable --- whether
+its pairwise judgements carry global inconsistencies that cannot be attributed to
+finite sampling or to localised cyclic disagreement. That is structural auditing,
+and every normative question sits downstream of it.
 
 A second gap is narrower but concrete. The rig calibrates its null at the true
 edge probabilities, which it knows by construction; a deployment knows only the
