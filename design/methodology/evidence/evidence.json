@@ -8,12 +8,12 @@
  },
  "meta": {
   "generated": "2026-09-03",
-  "commit": "20b6937",
+  "commit": "d3a5777",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 36,
-  "source_fingerprint": "d1f25baab5eb3481",
-  "claims_digest": "fb12a92a25404c95"
+  "n_claims": 37,
+  "source_fingerprint": "1fb0b128ba25cf97",
+  "claims_digest": "d1f7d2f45168c190"
  },
  "claims": {
   "pm1-trap": {
@@ -1104,6 +1104,63 @@
    "kind": "exact",
    "test": "tests/test_acceptance.py::test_8_8_zeta_misses_the_planted_harmonic",
    "note": null
+  },
+  "fixed-window-fixture": {
+   "claim": "The retired fixed k >= 64 window, run against today's rig, reproduces the SHAPE of the sec 6 incident at the old default separation beta = 0.3: a floor about 12% low -- entirely plausible, and the reason it passed unexamined -- while the c-oracle disagrees by about 27%, which is what flagged it. Past beta = 0.5 the fixed window is worse than the derived one at every separation. The incident's own digits are NOT reproduced and are not recoverable: that run predates Delta A and Delta E and its configuration was never recorded.",
+   "cited_in": [
+    "methodology sec 6"
+   ],
+   "value": {
+    "rows": [
+     {
+      "beta": 0.15,
+      "fixed_floor_x": 1.0391317391729888,
+      "derived_floor_x": 1.030492687981866,
+      "c_fit": 10.06595725373229,
+      "c_oracle": 13.315451826271307,
+      "c_ratio": 0.7559606226708895
+     },
+     {
+      "beta": 0.25,
+      "fixed_floor_x": 0.9100947823996004,
+      "derived_floor_x": 0.9714299443739867,
+      "c_fit": 26.570908827621157,
+      "c_oracle": 19.850030703828565,
+      "c_ratio": 1.3385827570783708
+     },
+     {
+      "beta": 0.3,
+      "fixed_floor_x": 0.8803822741717563,
+      "derived_floor_x": 1.0915741180000278,
+      "c_fit": 26.936719843736995,
+      "c_oracle": 21.209829608549775,
+      "c_ratio": 1.270011138273298
+     },
+     {
+      "beta": 0.5,
+      "fixed_floor_x": 1.5365912060362705,
+      "derived_floor_x": 1.3537319117024,
+      "c_fit": 30.606500403998687,
+      "c_oracle": 49.064459328659964,
+      "c_ratio": 0.6238018480745909
+     },
+     {
+      "beta": 0.7,
+      "fixed_floor_x": 4.321960332857961,
+      "derived_floor_x": 3.3734327128231354,
+      "c_fit": 63.93868976970757,
+      "c_oracle": 238.15266623765916,
+      "c_ratio": 0.26847774068547015
+     }
+    ]
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": "tests/test_acceptance.py::test_retired_fixed_window_reproduces_the_guard_incident",
+   "note": "A FIXTURE, not a recommendation: fit.fit_floor_c still takes fit_k_min, so the v5 estimator is one argument away and nothing had to be resurrected. What is reconstructed is the window RULE applied to the current configuration, which is the honest half -- the run itself cannot be recovered, and hunting the parameter space until three remembered digits reappeared would be selecting a configuration to match a number rather than measuring one."
   },
   "guard-blind-spot": {
    "claim": "The c-oracle check is necessary but not sufficient: configurations exist that pass it while the floor is badly wrong.",

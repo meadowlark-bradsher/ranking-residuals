@@ -376,6 +376,68 @@ def test_8_10_saturation_count_is_exact_in_gamma_and_emit_k(cfg):
 # These pin the two claims of design/methodology/bridge-invariance.tex that the
 # paper itself flags as wanting a check rather than trust (its Remark 2).
 
+def test_retired_fixed_window_reproduces_the_guard_incident(cfg):
+    """The v5 window rule, kept runnable, still shows what §6 says it showed.
+
+    §6 records an incident the paper used to quote digits for: a default separation
+    saturated the clamp, the FIXED k >= 64 window returned a plausible-looking
+    floor, and only the c-oracle disagreeing revealed it. Those digits are gone --
+    the run predates Delta A and Delta E and its configuration was never recorded.
+
+    What survives is the rule, because `fit_floor_c` still takes `fit_k_min`: pin it
+    instead of deriving it and you have the v5 estimator. This asserts the STRUCTURE
+    of the incident rather than its numbers -- at the old default beta = 0.3 the
+    fixed window's floor is close enough to the oracle to pass a reading eye, while
+    the c-ratio is far enough from 1 for the guard to fire. If those two ever stop
+    pointing opposite ways, §6's argument for keeping a necessary-but-not-sufficient
+    guard has lost its example.
+    """
+    from dataclasses import replace
+    c = cfg.with_(n_int=12, n_cplx=0, seeds=12, reps=16,
+                  btl=replace(cfg.btl, beta=0.30,
+                              k=(8, 16, 32, 64, 128, 256, 512, 1024)))
+    eps, gamma = 0.3, 2.0
+    ks = np.array(c.btl.k, float)
+    floors, cfits, coracles = [], [], []
+    for s in range(c.seeds):
+        mask = flows.sample_sparse_graph(c.n_int, c.btl.p, np.random.default_rng(
+            c.derive_seed("floor_mask", gamma, eps, s)))
+        if len(mask) < 3:
+            continue
+        D0, D1 = hodge.build_operators(c.n_int, mask,
+                                       hodge.triangles_for_filling(mask, "observed"))
+        _, _, Ph = hodge.hodge_projectors(D0, D1)
+        try:
+            hu = flows.harmonic_unit(D0, D1)
+        except ValueError:
+            continue
+        th = flows.latent_potential(c.n_int, c.btl, gamma,
+                                    np.random.default_rng(c.derive_seed("theta", s)))
+        pe = 1.0 / (1.0 + np.exp(-flows.misspecified_latent(D0, th, eps, hu)))
+        coracles.append(oracle.c_oracle(Ph, pe))
+        dr = np.random.default_rng(c.derive_seed("draws", gamma, eps, s))
+        en = []
+        for k in c.btl.k:
+            w = dr.binomial(k, np.broadcast_to(pe, (c.reps, len(pe))))
+            Y = flows.logodds_from_counts(w, k)
+            en.append(float(np.mean(np.einsum("ij,jk,ik->i", Y, Ph, Y))))
+        r = fit.fit_floor_c(ks, en, c.btl.fit_k_min)     # PINNED, not derived
+        floors.append(r["floor"]); cfits.append(r["c"])
+
+    assert len(floors) >= 5, f"only {len(floors)} usable seeds; the fixture is too thin to read"
+    floor_x = float(np.median(floors)) / eps ** 2
+    c_ratio = float(np.median(cfits)) / float(np.median(coracles))
+
+    # the floor looks fine -- this is why it passed unexamined
+    assert 0.75 < floor_x < 1.25, (
+        f"fixed-window floor is {floor_x:.2f}x the oracle; §6's point is that it looked "
+        "PLAUSIBLE, and an obviously wrong floor would not have needed the guard")
+    # and the guard fires anyway -- this is the whole argument for keeping it
+    assert abs(c_ratio - 1.0) > 0.15, (
+        f"c_ratio is {c_ratio:.2f}, too close to 1: the guard no longer catches what the "
+        "floor hides here, so §6 has lost its worked example")
+
+
 def test_gradient_fabricators_are_invisible_in_every_moment(cfg):
     """Proposition 3: a family of internally-gradient fabricators moves no moment.
 

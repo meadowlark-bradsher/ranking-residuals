@@ -918,6 +918,78 @@ def sweeps(cfg):
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_acceptance.py::test_8_8_zeta_misses_the_planted_harmonic")
 
+    # THE RETIRED WINDOW RULE, kept runnable as a fixture.
+    #
+    # sec 6 records an incident: a default separation saturated the clamp, the fixed
+    # k >= 64 window returned an entirely plausible floor, and only the c-oracle
+    # disagreeing revealed the fit as misspecified. The paper used to print that
+    # run's digits. They are NOT RECOVERABLE -- the run predates both Delta A
+    # (deriving the window) and Delta E (moving the default separation), and its
+    # configuration was never recorded. Searching the parameter space until three
+    # remembered digits reappeared would be choosing a configuration to match a
+    # number, which is the failure this registry exists to prevent.
+    #
+    # What IS recoverable is the RULE. This is floor_measurement's seed loop with
+    # the window pinned at fit_k_min instead of derived from c_oracle -- the v5
+    # estimator, applied to today's rig. It reproduces the incident's SHAPE at the
+    # old default beta = 0.3, which is the part worth citing.
+    def _fixed_window(cfgf, gamma, epsf, filling="observed"):
+        nf = cfgf.n_int; ksf = np.array(cfgf.btl.k, float)
+        fl, cs, cors = [], [], []
+        for sd in range(cfgf.seeds):
+            mk = flows.sample_sparse_graph(nf, cfgf.btl.p, np.random.default_rng(
+                cfgf.derive_seed("floor_mask", gamma, epsf, sd)))
+            if len(mk) < 3:
+                continue
+            d0f, d1f = hodge.build_operators(nf, mk, hodge.triangles_for_filling(mk, filling))
+            _, _, Pf = hodge.hodge_projectors(d0f, d1f)
+            try:
+                huf = flows.harmonic_unit(d0f, d1f)
+            except ValueError:
+                continue
+            thf = flows.latent_potential(nf, cfgf.btl, gamma,
+                                         np.random.default_rng(cfgf.derive_seed("theta", sd)))
+            pef = 1.0 / (1.0 + np.exp(-flows.misspecified_latent(d0f, thf, epsf, huf)))
+            cors.append(oracle.c_oracle(Pf, pef))
+            dr = np.random.default_rng(cfgf.derive_seed("draws", gamma, epsf, sd))
+            enf = []
+            for kk in cfgf.btl.k:
+                wq = dr.binomial(kk, np.broadcast_to(pef, (cfgf.reps, len(pef))))
+                Yq = flows.logodds_from_counts(wq, kk)
+                enf.append(float(np.mean(np.einsum("ij,jk,ik->i", Yq, Pf, Yq))))
+            ff = fit.fit_floor_c(ksf, enf, cfgf.btl.fit_k_min)   # PINNED: the whole point
+            fl.append(ff["floor"]); cs.append(ff["c"])
+        return (float(np.median(fl)), float(np.median(cs)), float(np.median(cors)))
+
+    G1024 = (8, 16, 32, 64, 128, 256, 512, 1024)   # the v5 grid, before v6 extended it
+    fixrows = []
+    for beta_f in (0.15, 0.25, 0.30, 0.50, 0.70):
+        cf = base.with_(n_int=12, n_cplx=0, seeds=24, reps=16,
+                        btl=replace(base.btl, beta=beta_f, k=G1024))
+        flr, cft, cor = _fixed_window(cf, 2.0, 0.3)
+        dv = floor_measurement(cf, 2.0, 0.3, strict=False)
+        fixrows.append({"beta": beta_f, "fixed_floor_x": flr / 0.09,
+                        "derived_floor_x": dv["floor_over_oracle"],
+                        "c_fit": cft, "c_oracle": cor, "c_ratio": cft / cor})
+    claim("fixed-window-fixture", asserts="The retired fixed k >= 64 window, run against "
+          "today's rig, reproduces the SHAPE of the sec 6 incident at the old default "
+          "separation beta = 0.3: a floor about 12% low -- entirely plausible, and the "
+          "reason it passed unexamined -- while the c-oracle disagrees by about 27%, which "
+          "is what flagged it. Past beta = 0.5 the fixed window is worse than the derived "
+          "one at every separation. The incident's own digits are NOT reproduced and are "
+          "not recoverable: that run predates Delta A and Delta E and its configuration was "
+          "never recorded.",
+          cited_in=["methodology sec 6"],
+          value={"rows": fixrows},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          test="tests/test_acceptance.py::test_retired_fixed_window_reproduces_the_guard_incident",
+          note="A FIXTURE, not a recommendation: fit.fit_floor_c still takes fit_k_min, so the "
+               "v5 estimator is one argument away and nothing had to be resurrected. What is "
+               "reconstructed is the window RULE applied to the current configuration, which "
+               "is the honest half -- the run itself cannot be recovered, and hunting the "
+               "parameter space until three remembered digits reappeared would be selecting a "
+               "configuration to match a number rather than measuring one.")
+
     guard = {}
     for name, (rho, grid) in {"historical": (3.0, G4), "current": (1.5, base.btl.k)}.items():
         pts = []

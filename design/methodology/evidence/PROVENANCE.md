@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-09-03 from commit `20b6937`
+Generated 2026-09-03 from commit `d3a5777`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -17,7 +17,7 @@ python verify.py --fast  # structural claims only, seconds
 
 Every RNG is seeded from a fixed constant, so on the same numpy every claim
 reproduces **bit-exactly** — the last full run showed zero drift on all
-36 claims. The tolerances below are the margin allowed for a
+37 claims. The tolerances below are the margin allowed for a
 different numpy or platform, not slack in the measurement. `exact` claims are
 identities or closed forms and are held to machine precision; `stochastic`
 claims are Monte Carlo and carry a tolerance set from their measured spread.
@@ -64,6 +64,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | `rho-tradeoff` | The residual falls monotonically as rho falls, because a smaller rho demands a longer tail -- but cells become unfittable as the grid stops reaching the window, so rho and the grid must be tuned together. | methodology sec 9; methodology fig 6 left; methodology v7 note | 0.8 abs_pct | — |
 | `b1-non-monotone` | The b1=0 rate is non-monotone in n with an interior minimum; past it, more items destroy the holes the certificate reads. | methodology sec 10, Observation 3 (non-monotone in the item count); methodology fig 6 right | 0.02 abs | — |
 | `kahle-finite-n` | The vanishing threshold decays as the theory requires, but the asymptotic exponent is not yet visible at these sizes. | methodology sec 10 footnote | 0.05 abs | — |
+| `fixed-window-fixture` | The retired fixed k >= 64 window, run against today's rig, reproduces the SHAPE of the sec 6 incident at the old default separation beta = 0.3: a floor about 12% low -- entirely plausible, and the reason it passed unexamined -- while the c-oracle disagrees by about 27%, which is what flagged it. Past beta = 0.5 the fixed window is worse than the derived one at every separation. The incident's own digits are NOT reproduced and are not recoverable: that run predates Delta A and Delta E and its configuration was never recorded. | methodology sec 6 | 0.05 rel | `test_retired_fixed_window_reproduces_the_guard_incident` |
 | `guard-blind-spot` | The c-oracle check is necessary but not sufficient: configurations exist that pass it while the floor is badly wrong. | methodology sec 6; methodology fig 4 | 0.1 rel | — |
 | `saturation-gate` | beta=0.3 sits on the saturation gate; 0.25 clears it. | methodology sec 6; spec sec 2.6, Delta E | 0.02 abs | `test_2_6_saturation_gate_rejects_extreme_separation` |
 | `residual-exact` | With Monte Carlo removed (exact binomial energies) the two-parameter floor is under-read by +0.36% over 20 base seeds with a standard error of 0.002 pt. The shipped +-0.09 pt band is therefore almost entirely reps=16 sampling noise, not base-seed variation: the underlying quantity is near-deterministic. | methodology sec 9 table; methodology fig 5; methodology v8 note | 0.02 abs | — |

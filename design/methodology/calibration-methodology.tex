@@ -486,16 +486,22 @@ is not.
 \paragraph{A guard may be necessary without being sufficient.} The delta-method
 prediction \eqref{eq:coracle} is a genuine misspecification detector. It caught a
 default separation parameter of ours that saturated the clamp --- $\beta = 0.3$,
-which sits on the saturation gate that $0.25$ clears. The floor it returned was
-an entirely plausible number, close enough to the oracle to pass unexamined, and
-only the disagreement between the fitted and the predicted $c$ revealed the fit
-as misspecified rather than informative. \emph{The digits from that incident are
-not quoted here.} They were measured before the window became derived and before
-the default moved, so no configuration the rig can now build reproduces them, and
-a number no re-run can reach is exactly what this document asks nobody to print.
-The blind spot itself does reproduce: the guard reads
-$c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 0.95$ at a separation where the floor is
-still $1.11\times$ too high. It is necessary and not
+which sits on the saturation gate that $0.25$ clears. That run's own digits are
+gone: it predates both the derived window and the change of default, and its
+configuration was never recorded. \emph{The rule survives, though,} because the
+estimator still takes its window as a parameter rather than deriving it
+internally --- so the retired rule is one argument away and is kept as a fixture.
+Pinned back to $k \geq 64$ on the present rig, it reproduces the incident's shape
+at the same $\beta = 0.3$: the floor returns at $0.88\times$ the oracle, close
+enough to read as correct, which is exactly why it passed unexamined --- while
+the fitted and predicted $c$ disagree by $27\%$, which is what did not. The
+derived window on that same cell returns $1.09\times$. Past $\beta = 0.5$ the
+retired rule is worse at every separation, reaching $4.3\times$ at $\beta = 0.7$,
+where the guard reads $0.27$ and is impossible to miss.
+
+The converse is the harder case, and it is why this guard is necessary without
+being sufficient: it reads $c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 0.95$ at a
+separation where the floor is still $1.11\times$ too high. It is necessary and not
 sufficient, and we say so wherever it appears. Reporting it as \emph{the} gate
 would have licensed exactly the errors it cannot see. Figure~\ref{fig:guard}
 shows the blind spot as a region rather than an anecdote, and shows that
