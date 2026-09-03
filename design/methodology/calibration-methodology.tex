@@ -116,6 +116,13 @@ would already have reported. The aim here is metrological rather than normative
 --- to establish when that residual is being measured correctly, before asking
 what it implies about a deployed judge.
 
+Pairwise comparison models arise in AI evaluation, preference learning, and
+psychometric measurement. In each setting, a scalar latent score explains only
+the gradient component of the observed comparison flow. The present work
+concerns the residual structure that remains, and specifically its harmonic
+component: globally inconsistent comparison structure not attributable to filled
+local cycles.
+
 \section{Setting and conventions}
 
 Two conventions are load-bearing and are fixed in advance rather than discovered
@@ -787,6 +794,15 @@ choose independently of the filling: with no $2$-cells the curl space is trivial
 paragraph draws disappears. The choice of filling and the choice of null are one
 decision, not two --- which is Principle~\ref{prin:nouniversal} again, reaching a
 quantity we did not anticipate it would reach.
+
+The immediate motivating case is a language-model comparator, but the measurement
+problem is not AI-specific. Bradley--Terry~\cite{bradley1952} and related
+paired-comparison generalised linear models posit a scalar latent ordering, while
+comparative psychometric models make closely related measurement assumptions. The
+calibrated harmonic residual therefore suggests a general diagnostic for
+departures from scalar comparative structure. Whether the same machinery is
+useful for item-response-theory model checking, test linking, or scale drift is
+an empirical question left for future work.
 
 \begin{thebibliography}{9}
 \bibitem{jiang2011}
