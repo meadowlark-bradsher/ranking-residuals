@@ -53,7 +53,7 @@ Throughout we work in the flow space $\R^E$ of the union graph and fix the empty
 
 Let $G=(V,E)$ be the union graph. Its vertices split into an integer block $V_{\Z}$ carrying real values $\{s_i\}$ (a total order, the
 regime the paired-comparison literature has assumed since~\cite{kendall1940} and
-modelled since~\cite{bradley1952}) and a circle block $V_{\C}$ of $m$ points at angles $2\pi k/m$ (no order: the equal spacing is chosen so the modulus surrogate is constant and cannot smuggle one in)\footnote{That $\C$ admits no field order is a pleasant way to say this, but it is not what does the work; Proposition~1(b)'s $\Z/m$-equivariance is. The construction would behave identically on any $m$-point set carrying a free $\Z/m$ action and no invariant order.}. Its edges split into three blocks: integer--integer ($E_{II}$), circle--circle ($E_{CC}$), and bridge ($E_b$, joining the two).
+modelled since~\cite{bradley1952}) and a circle block $V_{\C}$ of $m$ points at angles $2\pi k/m$ (no order: the equal spacing is chosen so the modulus surrogate is constant and cannot smuggle one in)\footnote{That $\C$ admits no field order is a pleasant way to say this, but it is not what does the work; Proposition~\ref{prop:hodgetype}(b)'s $\Z/m$-equivariance is. The construction would behave identically on any $m$-point set carrying a free $\Z/m$ action and no invariant order.}. Its edges split into three blocks: integer--integer ($E_{II}$), circle--circle ($E_{CC}$), and bridge ($E_b$, joining the two).
 
 Write $D_0\in\R^{E\times V}$ for the coboundary (gradient) operator, in the
 formulation of~\cite{jiang2011}, and $D_1$ for the triangle coboundary, with the fundamental identity $D_1D_0=0$. The graph Helmholtzian is
@@ -62,7 +62,7 @@ L_1=D_0D_0^{\top}+D_1^{\top}D_1;
 \]
 the harmonic space is $\ker L_1=\ker D_0^{\top}\cap\ker D_1$, and $\Ph$ is the orthogonal projector onto it. We use one standard fact repeatedly.
 
-\begin{lemma}[Gradients are harmonic-free]
+\begin{lemma}[Gradients are harmonic-free]\label{lem:gradfree}
 $\im D_0\perp\ker L_1$, so $\Ph D_0=0$, under any filling.
 \end{lemma}
 \begin{proof}
@@ -85,10 +85,10 @@ where $s$ is the global potential (integer values on $V_{\Z}$; a common surrogat
 
 The two homogeneous blocks have no freedom: their Hodge type is a consequence of their symmetry group. The bridge is the block that has neither symmetry, and that absence is the whole content of ``incomparability.''
 
-\begin{proposition}[Hodge type from symmetry]
+\begin{proposition}[Hodge type from symmetry]\label{prop:hodgetype}
 Under the empty filling:
 \begin{enumerate}
-\item[(a)] \textbf{Order $\Rightarrow$ gradient.} The total order supplies a canonical potential (the values $s_i$), and translation homogeneity $s\mapsto s+c$ leaves the flow of differences invariant. The integer--integer flow is $D_0s$ restricted to $E_{II}$, hence lies in $\im D_0$: pure gradient, zero harmonic (Lemma~1) and, since $D_1D_0=0$, zero curl.
+\item[(a)] \textbf{Order $\Rightarrow$ gradient.} The total order supplies a canonical potential (the values $s_i$), and translation homogeneity $s\mapsto s+c$ leaves the flow of differences invariant. The integer--integer flow is $D_0s$ restricted to $E_{II}$, hence lies in $\im D_0$: pure gradient, zero harmonic (Lemma~\ref{lem:gradfree}) and, since $D_1D_0=0$, zero curl.
 
 \item[(b)] \textbf{Rotation $\Rightarrow$ harmonic.} The circle block is invariant under the cyclic group $\Z/m$ acting by $k\mapsto k+1$, and the rotational rule is $\Z/m$-equivariant. Equivariance makes the divergence constant along the single vertex orbit; since divergences sum to zero over any graph, the constant is zero. Thus $Y_{cc}\in\ker D_0^{\top}$, which under the empty filling is the harmonic space: pure harmonic.
 
@@ -103,13 +103,13 @@ Under the empty filling:
 for all $v$. The $m$ circle vertices form one $r$-orbit, so the divergence is constant on them; it is zero on integer vertices, which $Y_{cc}$ does not touch. As $\sum_v(D_0^{\top}Y)_v=0$ identically, the constant vanishes. For (c), a group element fixing the two populations setwise and acting within them relates no bridge edge to an edge of another type by an orbit map, so the equivariance conditions on $B$ are vacuous beyond antisymmetry; the solution set has the dimension of $E_b$ modulo that.
 \end{proof}
 
-The moral of Proposition~1 is that the part of the construction that ``does not fit in pure mathematics'' fits exactly: it is the block on which the symmetry group acts with no cross-orbit, so no equivariance can pin a flow. A bridge that emerged canonical would contradict (c)---it would present two symmetry-unrelated orbits as related, i.e. present incomparability as a hidden order.
+The moral of Proposition~\ref{prop:hodgetype} is that the part of the construction that ``does not fit in pure mathematics'' fits exactly: it is the block on which the symmetry group acts with no cross-orbit, so no equivariance can pin a flow. A bridge that emerged canonical would contradict (c)---it would present two symmetry-unrelated orbits as related, i.e. present incomparability as a hidden order.
 
 \subsection{What (a) rests on: the order alone does not force a gradient}\label{subsec:sign}
 
-Proposition~1(a) forces a gradient from a total order \emph{through its values}: the potential it supplies is $s$ itself. It is worth recording what is lost if only the order is kept, because the answer is not ``a little'' and it is not ``an unknown amount.'' Discarding magnitude leaves a flow that lies outside $\im D_0$ for every $n\ge3$, by a fraction that is a closed form in $n$ alone.
+Proposition~\ref{prop:hodgetype}(a) forces a gradient from a total order \emph{through its values}: the potential it supplies is $s$ itself. It is worth recording what is lost if only the order is kept, because the answer is not ``a little'' and it is not ``an unknown amount.'' Discarding magnitude leaves a flow that lies outside $\im D_0$ for every $n\ge3$, by a fraction that is a closed form in $n$ alone.
 
-\begin{proposition}[The sign of a gradient is not a gradient, and the defect is exact]\label{prop:sign}
+\begin{proposition}[The sign of a gradient is not a gradient, and the defect is exact]\label{prop:signdefect}\label{prop:sign}
 Let $G=K_n$ with $n\ge2$ under the empty filling, and let $s:V\to\R$ be injective. Write $\sigma(s)\in\R^E$ for the sign flow, $\sigma(s)_{ij}=\operatorname{sgn}(s_j-s_i)$ on each edge $i<j$. Then
 \[
 \frac{\|\Ph\,\sigma(s)\|^2}{\|\sigma(s)\|^2}=\frac{n-2}{3n}
@@ -139,7 +139,7 @@ so in the gauge $\sum_u s_u=0$ the stationary point is $s^\star_v=\bigl(2v-n+1\b
 Therefore the gradient fraction is $\tfrac{2(n+1)}{3n}$ and the harmonic fraction is its complement, $\tfrac{n-2}{3n}$; the curl fraction is $0$ because there are no $2$-cells. Monotonicity and the limit read off $\tfrac13-\tfrac2{3n}$, and $n=2$ gives $0$ because $K_2$ has $\ker L_1=0$.
 \end{proof}
 
-\begin{remark}[What the bound does and does not license]
+\begin{remark}[What the bound does and does not license]\label{rem:boundlicense}
 Two halves, and the second is the useful one. The defect is \emph{bounded}: a sign encoding cannot report more than a third of a perfectly ordered flow as unrankable, however large the pool. It is also bounded \emph{away from zero} at every $n\ge3$ and increasing, so there is no pool size at which the encoding becomes safe --- and a reader who knows only that the mass is ``$n$-dependent'' might reasonably have guessed the opposite. This is the analytic content of the rule that magnitude flows use value-differences or log-odds and never $\pm1$, stated with the same closed form at \cite[\S2, Observation 1]{bradsher2026}. Nothing here bears on the misspecification floor of \cite[\S4]{bradsher2026}: that is an energy on a different comparison graph, and harmonic readings do not transfer across topologies (\cite[Principle 3]{bradsher2026}).
 \end{remark}
 
@@ -147,7 +147,7 @@ Proposition~\ref{prop:sign} is a second instance of this note's thesis, in minia
 
 \section{Bridge-invariance of the harmonic signal}
 
-\begin{theorem}[Bridge-invariance]
+\begin{theorem}[Bridge-invariance]\label{thm:bridgeinv}
 For the flow~\eqref{eq:glue}, if the bridge flow is a global gradient, $B\in\im D_0$, then under any filling
 \[
 \|\Ph Y\|^2=\|\Ph Y_{cc}\|^2,
@@ -155,7 +155,7 @@ For the flow~\eqref{eq:glue}, if the bridge flow is a global gradient, $B\in\im 
 independent of $B$. Under the empty filling this equals $\|Y_{cc}\|^2$, the full intrinsic circle harmonic energy. The class $\{B\in\im D_0\}$ is proper: a constant bridge against a non-constant integer block lies outside it, and yields $\|\Ph Y\|^2>\|\Ph Y_{cc}\|^2$ whenever $\Ph B_{\mathrm{const}}\neq0$.
 \end{theorem}
 \begin{proof}
-By linearity $\Ph Y=\Ph D_0s+\Ph Y_{cc}+\Ph B$. The first term is zero by Lemma~1; the third is zero because $B\in\im D_0$ and Lemma~1 again. Hence $\Ph Y=\Ph Y_{cc}$ for every such $B$, and the energy follows. Under the empty filling $Y_{cc}$ is harmonic (Proposition~1(b)), so $\Ph Y_{cc}=Y_{cc}$ and the value is $\|Y_{cc}\|^2$.
+By linearity $\Ph Y=\Ph D_0s+\Ph Y_{cc}+\Ph B$. The first term is zero by Lemma~\ref{lem:gradfree}; the third is zero because $B\in\im D_0$ and Lemma~\ref{lem:gradfree} again. Hence $\Ph Y=\Ph Y_{cc}$ for every such $B$, and the energy follows. Under the empty filling $Y_{cc}$ is harmonic (Proposition~\ref{prop:hodgetype}(b)), so $\Ph Y_{cc}=Y_{cc}$ and the value is $\|Y_{cc}\|^2$.
 
 Properness: a constant bridge assigns $c$ to each edge $(i,\gamma)$, so $B_{\mathrm{const}}=D_0\psi$ would require $\psi(\gamma)-\psi(i)=c$ for all $i$, forcing $\psi$ constant on $V_{\Z}$. But the shared gradient already fixes $D_0s$ with $s$ non-constant on $V_{\Z}$; no single potential is constant on the integers and equal to $s$ there. The non-gradient residual
 \[
@@ -168,19 +168,19 @@ The hypothesis is not decoration, and it is not $b_1>0$. Over sparse glued confi
 
 Two remarks locate what the proof does and does not use.
 
-\begin{remark}[The invariance is filling-independent; only its value is not]
-Theorem~1 kills $B$ under any filling, because Lemma~1 never touches $D_1$. Filling enters only in identifying $\|\Ph Y_{cc}\|^2$: empty filling gives $\|Y_{cc}\|^2$ (all of it harmonic); the observed filling reclassifies part of $Y_{cc}$ as curl, lowering the value but not disturbing the invariance. This is the analytic form of the rig's statement that filling is a modelling choice, not a property of the data.
+\begin{remark}[The invariance is filling-independent; only its value is not]\label{rem:fillingindep}
+Theorem~\ref{thm:bridgeinv} kills $B$ under any filling, because Lemma~\ref{lem:gradfree} never touches $D_1$. Filling enters only in identifying $\|\Ph Y_{cc}\|^2$: empty filling gives $\|Y_{cc}\|^2$ (all of it harmonic); the observed filling reclassifies part of $Y_{cc}$ as curl, lowering the value but not disturbing the invariance. This is the analytic form of the rig's statement that filling is a modelling choice, not a property of the data.
 \end{remark}
 
-\begin{remark}[Why $Y_{cc}$ stays harmonic after gluing]
+\begin{remark}[Why $Y_{cc}$ stays harmonic after gluing]\label{rem:yccglue}
 The subtle step is that $Y_{cc}$ remains divergence-free on the enlarged graph. It is divergence-free on $E_{CC}$ by construction and identically zero on $E_b$; adding bridge edges therefore changes its divergence at no vertex, so it stays in the cycle space and, under the empty filling, stays fully harmonic. This is precisely the identity the rig confirms when the potential-consistent bridge reads the circle block's energy exactly ($10.0=10.0$ in \cite[\S3.2]{bradsher2026}): that measurement is the check on this step, and is the one place I would re-run the construction rather than trust the prose.
 \end{remark}
 
 \section{The three bridge modes are three covariance sources}\label{sec:modes}
 
-Theorem~1 is a first-moment statement. Its randomised companion turns the three bridge modes into one formula, and reads the rig's whole classification off the second moment.
+Theorem~\ref{thm:bridgeinv} is a first-moment statement. Its randomised companion turns the three bridge modes into one formula, and reads the rig's whole classification off the second moment.
 
-\begin{corollary}[Moment decomposition]
+\begin{corollary}[Moment decomposition]\label{cor:moments}
 Let $B$ be random with $\mathbb{E}[B]\in\im D_0$. Then under any filling
 \[
 \mathbb{E}\,\|\Ph Y\|^2
@@ -200,7 +200,7 @@ Expand
 +2\langle\Ph Y_{cc},\Ph B\rangle
 +\|\Ph B\|^2.
 \]
-Taking expectations, $\mathbb{E}[\Ph B]=\Ph\mathbb{E}[B]=0$ by Lemma~1, so the cross term vanishes; and
+Taking expectations, $\mathbb{E}[\Ph B]=\Ph\mathbb{E}[B]=0$ by Lemma~\ref{lem:gradfree}, so the cross term vanishes; and
 \[
 \mathbb{E}\|\Ph B\|^2
 =
@@ -212,7 +212,7 @@ Taking expectations, $\mathbb{E}[\Ph B]=\Ph\mathbb{E}[B]=0$ by Lemma~1, so the c
 \]
 \end{proof}
 
-The floor is Theorem~1's invariant; the bridge can only add through the trace. What kind of addition it makes is set by where the stochasticity enters---the quenched/annealed distinction, not a gradient from ``random'' to ``deterministic.''
+The floor is Theorem~\ref{thm:bridgeinv}'s invariant; the bridge can only add through the trace. What kind of addition it makes is set by where the stochasticity enters---the quenched/annealed distinction, not a gradient from ``random'' to ``deterministic.''
 
 \begin{center}
 \small
@@ -237,11 +237,11 @@ floor of $10.00$ and stays there. \S\ref{sec:numconf} gives the measurement and
 \S\ref{subsec:property} locates the cause. A reader who stops here should carry
 away that a zero-centred coin is \emph{not} the annealed case.
 
-\begin{remark}[``Deterministic'' is two corners, not one]
-Zero variance is not a single cell. A deterministic bridge contributes zero harmonic only if it is a gradient (the potential-consistent surrogate); the constant surrogate is also deterministic but, by Theorem~1's properness clause, sits at a fixed harmonic bias---the rig's $57.7$ against the invariant $10.0$. The map therefore has four corners on two independent axes, $\{\text{gradient},\text{non-gradient}\}\times\{\text{annealed},\text{quenched},\text{none}\}$, and \cite[\S3.2]{bradsher2026} exists to keep the two deterministic corners apart.
+\begin{remark}[``Deterministic'' is two corners, not one]\label{rem:twocorners}
+Zero variance is not a single cell. A deterministic bridge contributes zero harmonic only if it is a gradient (the potential-consistent surrogate); the constant surrogate is also deterministic but, by Theorem~\ref{thm:bridgeinv}'s properness clause, sits at a fixed harmonic bias---the rig's $57.7$ against the invariant $10.0$. The map therefore has four corners on two independent axes, $\{\text{gradient},\text{non-gradient}\}\times\{\text{annealed},\text{quenched},\text{none}\}$, and \cite[\S3.2]{bradsher2026} exists to keep the two deterministic corners apart.
 \end{remark}
 
-\begin{remark}[The persistent coin is fully random, then frozen]
+\begin{remark}[The persistent coin is fully random, then frozen]\label{rem:frozencoin}
 The middle row is not ``partially random.'' Its content is as random as the fresh coin; it differs only in the level at which the randomness is bound. Hence its variance is invisible to replication---$R$ averages sampling noise, not disorder---and visible only to re-drawing the disorder. For a single frozen realisation $\omega$ one observes $\|Y_{cc}+\Ph B(\omega)\|^2$, one draw from a law with mean $\|\Ph Y_{cc}\|^2+\tr(\Ph W\Ph)$; no amount of $R$ moves it toward the mean.
 \end{remark}
 
@@ -275,7 +275,7 @@ integers and roots of unity.\label{tab:modes}}
 
 \section{One identity behind the apparatus}
 
-Corollary~1 has the same shape as the rig's injected-null model \cite[\S5]{bradsher2026},
+Corollary~\ref{cor:moments} has the same shape as the rig's injected-null model \cite[\S5]{bradsher2026},
 \[
 \mathbb{E}\,\|\Ph Y\|^2
 =
@@ -292,8 +292,8 @@ because $\tr(\Ph\Sigma)=\tr(\Ph\Sigma\Ph)$ for the idempotent $\Ph$. Both are in
 \end{equation}
 the bias-plus-variance decomposition of harmonic energy under the projector. The systematic floor is whatever survives infinite data---misspecification $\varepsilon^2$ for the null, the circle signal $\|\Ph Y_{cc}\|^2$ for the bridge, an adversarial cyclic field in deployment. The variance term is whatever resampling can reach, with the covariance source naming the regime: sampling noise $\Sigma/k$, quenched disorder $W$, annealed disorder $V/R$. The six-cell grid $\{\text{systematic},\text{sampling}\}\times\{\text{gradient},\text{curl},\text{harmonic}\}$ is the row-and-column structure of~\eqref{eq:biasvar}: the first factor is which term of~\eqref{eq:biasvar}, the second is which subspace $\Ph$ is replaced by. Every named corruption is one entry.
 
-\begin{definition}[The certified quantity]
-The signal the certificate detects is the harmonic energy that survives the closure of every available limit: $R\to\infty$ (anneal sampling and annealed disorder), re-instantiation of the quenched disorder (average $W$ out), and gradient-neutralisation of the bridge (set $\mathbb{E}[B]\in\im D_0$). By Corollary~1 and~\eqref{eq:biasvar} this is $\|\Ph\mathbb{E}_{\infty}[Y]\|^2$, the systematic floor alone. Under the empty filling, where the curl space is trivial and every non-gradient flow reads as harmonic, rankability fails exactly when it is nonzero. Under a filling with a non-trivial curl space the biconditional loses a direction: a nonzero floor remains \emph{sufficient} for non-rankability, but a zero floor is not sufficient for rankability, because a pure curl admits no scalar potential and $\Ph$ does not see it. The rig's own oracle row exhibits the gap --- an equal-spaced complex pool reads pure harmonic under the empty filling and pure curl, with zero harmonic, under the observed one (\texttt{equal-spaced-complex}). What the quantity certifies in general is therefore the harmonic ranking \emph{residual}: the non-rankability that survives a triad-consistency check, which is the failure the certificate exists to catch and the one a curl reading would already have reported.
+\begin{definition}[The certified quantity]\label{def:certified}
+The signal the certificate detects is the harmonic energy that survives the closure of every available limit: $R\to\infty$ (anneal sampling and annealed disorder), re-instantiation of the quenched disorder (average $W$ out), and gradient-neutralisation of the bridge (set $\mathbb{E}[B]\in\im D_0$). By Corollary~\ref{cor:moments} and~\eqref{eq:biasvar} this is $\|\Ph\mathbb{E}_{\infty}[Y]\|^2$, the systematic floor alone. Under the empty filling, where the curl space is trivial and every non-gradient flow reads as harmonic, rankability fails exactly when it is nonzero. Under a filling with a non-trivial curl space the biconditional loses a direction: a nonzero floor remains \emph{sufficient} for non-rankability, but a zero floor is not sufficient for rankability, because a pure curl admits no scalar potential and $\Ph$ does not see it. The rig's own oracle row exhibits the gap --- an equal-spaced complex pool reads pure harmonic under the empty filling and pure curl, with zero harmonic, under the observed one (\texttt{equal-spaced-complex}). What the quantity certifies in general is therefore the harmonic ranking \emph{residual}: the non-rankability that survives a triad-consistency check, which is the failure the certificate exists to catch and the one a curl reading would already have reported.
 \end{definition}
 
 \subsection{A strict limit: perfect fabricators are invisible at every level}
@@ -301,10 +301,10 @@ The signal the certificate detects is the harmonic energy that survives the clos
 \S\ref{subsec:invar} shows that one potential-consistent bridge is invisible. The
 stronger statement bounds what the certificate can ever do, and costs nothing extra.
 
-\begin{proposition}[Gradient families are invisible under re-instantiation]
+\begin{proposition}[Gradient families are invisible under re-instantiation]\label{prop:fabricators}
 Let $B$ be random with $B(\omega)\in\im D_0$ for \emph{every} realisation, not
 merely in mean. Then $\mathbb{E}[B]\in\im D_0$ and $B-\mathbb{E}[B]\in\im D_0$
-pointwise, so $\operatorname{range}\Cov(B)\subseteq\im D_0$ and, by Lemma~1,
+pointwise, so $\operatorname{range}\Cov(B)\subseteq\im D_0$ and, by Lemma~\ref{lem:gradfree},
 \[
 \|\Ph\mathbb{E}[Y]\|^2=\|\Ph Y_{cc}\|^2,
 \qquad
@@ -315,7 +315,7 @@ moment, not only the first.
 \end{proposition}
 
 The consequence is a genuine limit, not a gap in the calibration. Re-instantiation
-is the one limit that separates quenched disorder from signal (Remark~4), and it
+is the one limit that separates quenched disorder from signal (Remark~\ref{rem:twocorners}), and it
 does not separate this. A judge that invents a \emph{different but internally
 consistent} order on each re-instantiation --- a family of perfect fabricators ---
 is indistinguishable from a judge with no bridge at all, at every level of
@@ -353,7 +353,7 @@ auditing can establish at all, and it is worth stating in those terms. A harmoni
 residual measures incoherence, not correctness. A zero reading is consistent with
 a coherent scalar potential and --- under a filling with a non-trivial curl space
 --- equally consistent with purely local cyclicity that $\Ph$ does not see
-(Definition~1); it is consistent, too, with the fabricator above, whose potential
+(Definition~\ref{def:certified}); it is consistent, too, with the fabricator above, whose potential
 is perfectly coherent and re-drawn on every deployment. None of the three says
 the potential is stable, related to the intended criterion, or right. The
 instrument is upstream of all of that: it asks whether one class of global
@@ -362,27 +362,27 @@ considered.
 
 \section{What is purchased without experiment, and what is not}
 
-\begin{proposition}[Shape is analytic; constants are topological]
-The invariance (Theorem~1), the constant-bridge floor (its properness clause), and the $1/R$ decay (Corollary~1, fresh coin) are theorems of the construction, independent of any run. The values $\|\Ph Y_{cc}\|^2$ and $\tr(\Ph\Cov(B)\Ph)$ are functionals of $\Ph$, hence of the comparison graph and filling. No universal value exists.
+\begin{proposition}[Shape is analytic; constants are topological]\label{prop:shapeanalytic}
+The invariance (Theorem~\ref{thm:bridgeinv}), the constant-bridge floor (its properness clause), and the $1/R$ decay (Corollary~\ref{cor:moments}, fresh coin) are theorems of the construction, independent of any run. The values $\|\Ph Y_{cc}\|^2$ and $\tr(\Ph\Cov(B)\Ph)$ are functionals of $\Ph$, hence of the comparison graph and filling. No universal value exists.
 \end{proposition}
 \begin{proof}
 The first sentence is the content of the cited results, none of which references data. For the second, $\Ph$ is determined by $(G,\text{filling})$ through $L_1$, and both quantities are quadratic in $\Ph$; changing $G$ changes $\Ph$ and hence both. This is \cite[Principle 3]{bradsher2026} applied to~\eqref{eq:biasvar}.
 \end{proof}
 
-So the perspective pays out exactly where structure is at stake and not where a number is. One need not run the rig to know that the signal is bridge-invariant, that the constant bridge floors at a fixed bias, that fresh-coin variance decays as $1/R$, or that a frozen judge's cyclicity does not---these follow from~\eqref{eq:biasvar} and Lemma~1. One must still compute $\tr(\Ph\Cov(Y)\Ph)$ on the deployment's own topology to place the null, and~\eqref{eq:biasvar} says why it cannot be inherited.
+So the perspective pays out exactly where structure is at stake and not where a number is. One need not run the rig to know that the signal is bridge-invariant, that the constant bridge floors at a fixed bias, that fresh-coin variance decays as $1/R$, or that a frozen judge's cyclicity does not---these follow from~\eqref{eq:biasvar} and Lemma~\ref{lem:gradfree}. One must still compute $\tr(\Ph\Cov(Y)\Ph)$ on the deployment's own topology to place the null, and~\eqref{eq:biasvar} says why it cannot be inherited.
 
 The same identity marks the boundary of identifiability. Separating quenched noise from genuine signal requires the re-instantiation limit---but a single deployed judge is its disorder, so that limit is unavailable from replication and the two are operationally one failure to a downstream ranking. The distinction re-enters only under independent re-instantiation: fresh judges, varied pair sets, a re-drawn comparison graph. That is the analytic reason a matched null must be built by resampling the topology, not by replicating counts on a fixed one---the covariance in~\eqref{eq:biasvar} that carries the quenched term is a property of the graph, and only a new graph resamples it.
 
 \section{Numerical confirmation, and one correction to the mapping}\label{sec:numconf}
 
 Everything above is analytic, so the rig cannot confirm it --- but it can check
-the steps the proofs identify as load-bearing, and Remark~2 names one
-explicitly. Doing so confirms Theorem~1 in a stronger form than stated, and
+the steps the proofs identify as load-bearing, and Remark~\ref{rem:fillingindep} names one
+explicitly. Doing so confirms Theorem~\ref{thm:bridgeinv} in a stronger form than stated, and
 corrects how \S\ref{sec:modes}'s table maps onto the rig's implemented modes.
 
 \subsection{Theorem 1 holds across the whole admissible class}\label{subsec:invar}
 
-Theorem~1 admits $B\in\im D_0$ supported on $E_b$. That class is smaller and more
+Theorem~\ref{thm:bridgeinv} admits $B\in\im D_0$ supported on $E_b$. That class is smaller and more
 concrete than it looks: $D_0\psi$ must vanish on $E_{II}$ and $E_{CC}$, so $\psi$
 is constant on each block, so $B$ is \emph{constant} on the bridge. The admissible
 class is exactly a shift of the surrogate level. Sweeping that shift over three
@@ -403,13 +403,13 @@ $500.0$& $502.50$ & $10.000000$ & $0.000000$ \\
 \end{center}
 
 The harmonic energy is invariant to machine precision while the bridge's own
-energy changes by a factor of $155$. Remark~1 is visible in the same table: the
+energy changes by a factor of $155$. Remark~\ref{rem:boundlicense} is visible in the same table: the
 invariance holds under both fillings, while its \emph{value} does not.
 
 \subsection{The rig's coin modes fall outside Corollary 1's hypothesis}
 \label{subsec:hypothesis}
 
-Corollary~1 requires $\mathbb{E}[B]\in\im D_0$, where $B$ is the bridge residual
+Corollary~\ref{cor:moments} requires $\mathbb{E}[B]\in\im D_0$, where $B$ is the bridge residual
 relative to the global potential of~\eqref{eq:glue}. The rig's fresh and persistent coins are
 centred on zero, so their mean \emph{total} bridge flow is $0$ and hence
 \[
@@ -424,7 +424,7 @@ $\|\Ph\mathbb{E}[Y]\|^2$ confirm it:
 \small
 \begin{tabular}{@{}lrl@{}}
 \toprule
-Bridge mode & $\|\Ph\mathbb{E}[Y]\|^2$ & Corollary~1 hypothesis \\
+Bridge mode & $\|\Ph\mathbb{E}[Y]\|^2$ & Corollary~\ref{cor:moments} hypothesis \\
 \midrule
 Deterministic gradient & $10.0000$  & satisfied ($\mathbb{E}[B]=0$) \\
 Fresh coin             & $57.7273$  & violated \\
@@ -457,13 +457,13 @@ converges to $57.7273$ --- precisely the bias a \emph{constant} bridge leaves,
 because the two residuals differ by a constant and constants on $E_b$ lie in
 $\im D_0$.
 
-The correction is to the identification, not to the mathematics. Corollary~1's
+The correction is to the identification, not to the mathematics. Corollary~\ref{cor:moments}'s
 fresh-coin row describes a coin centred on the potential-consistent surrogate; a
 coin centred on zero is a different object, namely that coin plus a
 constant-bridge bias. A judge that flails on incomparable pairs is modelled by
 the latter.
 
-\begin{remark}[A thrashing judge does not wash out]
+\begin{remark}[A thrashing judge does not wash out]\label{rem:thrashing}
 This sharpens the reference lines the rig exists to provide. Replication anneals
 the flailing judge's \emph{variance} and leaves its \emph{bias}: at
 $R=2048$ the combined harmonic energy is still $57.75$ against a circle floor of
@@ -482,7 +482,7 @@ large persistent signal.'' That reading misplaces the cause, and correcting it
 changes what the reference line actually warns about.
 
 The excess over the circle floor has a closed form. Since
-$\mathbb{E}[B]=-(D_0s)|_{E_b}$, Corollary~1 gives
+$\mathbb{E}[B]=-(D_0s)|_{E_b}$, Corollary~\ref{cor:moments} gives
 \begin{equation}
 \mathbb{E}\,\|\Ph Y\|^2-\|\Ph Y_{cc}\|^2
 \;\longrightarrow\;
