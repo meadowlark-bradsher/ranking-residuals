@@ -7,13 +7,13 @@
   }
  },
  "meta": {
-  "generated": "2026-09-01",
-  "commit": "bf200fc",
+  "generated": "2026-09-03",
+  "commit": "bbd6627",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 33,
-  "source_fingerprint": "79110d5854786278",
-  "claims_digest": "79caff98996cd3e8"
+  "source_fingerprint": "d776cf2877527a26",
+  "claims_digest": "9f8d08d296536b21"
  },
  "claims": {
   "pm1-trap": {
@@ -668,6 +668,7 @@
   "residual-across-draws": {
    "claim": "The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
    "cited_in": [
+    "methodology sec 7, the reporting-discipline example",
     "methodology sec 9 table",
     "methodology fig 5",
     "methodology v7 note"

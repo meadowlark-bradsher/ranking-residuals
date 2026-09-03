@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-09-01 from commit `bf200fc`
+Generated 2026-09-03 from commit `bbd6627`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -57,7 +57,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | `emit-roundtrip-deviation` | The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 2 and 4 | 0.05 rel | — |
 | `fit-window` | Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it. | methodology sec 5.3; methodology fig 3 | 0.05 rel | — |
 | `delta-method-cross-term` | The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps. | methodology sec 5.1 | 0.05 rel | — |
-| `residual-across-draws` | The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16. | methodology sec 9 table; methodology fig 5; methodology v7 note | 0.5 abs_pct | — |
+| `residual-across-draws` | The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16. | methodology sec 7, the reporting-discipline example; methodology sec 9 table; methodology fig 5; methodology v7 note | 0.5 abs_pct | — |
 | `rho-tradeoff` | The residual falls monotonically as rho falls, because a smaller rho demands a longer tail -- but cells become unfittable as the grid stops reaching the window, so rho and the grid must be tuned together. | methodology sec 9; methodology fig 6 left; methodology v7 note | 0.8 abs_pct | — |
 | `b1-non-monotone` | The b1=0 rate is non-monotone in n with an interior minimum; past it, more items destroy the holes the certificate reads. | methodology sec 10, Observation 3 (non-monotone in the item count); methodology fig 6 right | 0.02 abs | — |
 | `kahle-finite-n` | The vanishing threshold decays as the theory requires, but the asymptotic exponent is not yet visible at these sizes. | methodology sec 10 footnote | 0.05 abs | — |

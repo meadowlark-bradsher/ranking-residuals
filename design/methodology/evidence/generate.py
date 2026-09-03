@@ -644,7 +644,9 @@ def sweeps(cfg):
     r = np.array(ratios)
     claim("residual-across-draws", asserts="The residual is real but small, and any single run "
           "lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
-          cited_in=["methodology sec 9 table", "methodology fig 5", "methodology v7 note"],
+          cited_in=["methodology sec 7, the reporting-discipline example",
+                    "methodology sec 9 table", "methodology fig 5",
+                    "methodology v7 note"],
           value={"ratios": ratios, "coverage": covs,
                  "mean": float(r.mean()), "se": float(r.std(ddof=1) / np.sqrt(len(r))),
                  "residual_pct": float(100 * (1 - r.mean())),

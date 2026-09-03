@@ -506,11 +506,17 @@ value is a draw, not the quantity.
 We arrived at this by getting the same number wrong three times. A residual bias
 was reported as ``$\sim$10\%'', then ``3--6\%'', then ``$\sim$2.0--2.4\%'';
 coverage of the oracle by the confidence interval as ``16/20'', then ``15/16''.
-Each was a single draw, each was superseded by the next, and each \emph{looked}
-settled because nothing in the output marked it as variable. Re-measured over
-$20$ independent base seeds the residual was $1.6\% \pm 0.2\%$ and coverage was
-\emph{typically} $13/16$ --- so ``15/16'', reported twice as the result, had been
-the best of twenty draws.
+Not all of that movement was the seed --- the first two straddle the fit window
+becoming derived (\S\ref{sec:estimation}), so the estimator moved underneath them
+--- but each was a point quoted from a single draw, and each \emph{looked} settled
+because nothing in the output marked it as variable. Re-measured over $20$
+independent base seeds at the configuration then current ($\rho = 3.0$, grid to
+$4096$), the residual was $1.6\% \pm 0.2\%$ and coverage \emph{typically}
+$13/16$, so ``15/16'' had been the best of twenty draws. At the shipped
+configuration ($\rho = 1.5$, grid to $16384$; Table~\ref{tab:rho}) the same two
+quantities are $+0.43\% \pm 0.09\%$ and a median of $15/16$, which makes the
+point a second time: neither figure survives being quoted without the
+configuration that produced it.
 
 \begin{figure}[h]
 \centering
@@ -518,10 +524,11 @@ the best of twenty draws.
 \caption{Twenty independent base seeds of the same quantity, with the three
 figures we successively reported as \emph{the} result marked below. Each was a
 legitimate draw; none was the quantity. The spread is wide enough that a single
-run supports almost any of them --- but the spread is Monte Carlo. The same
-quantity computed with exact energies is $+0.3624\% \pm 0.0024\%$, a per-draw
-range of $0.046$ pt against the $1.685$ pt plotted here. The three figures are
-draws from the sampling law, not from the estimator.\label{fig:draws}}
+run supports almost any of them. The same quantity computed with exact energies
+is $+0.3635\% \pm 0.0020\%$, a per-draw range of $0.034$ pt against the $1.685$
+pt plotted here. The first two figures straddle the fit window becoming derived,
+so part of their separation is the estimator; the rest is the sampling
+law.\label{fig:draws}}
 \end{figure}
 
 The mechanism that exposed it is worth stating because it recurs: adding one
@@ -562,7 +569,7 @@ The instrument reproduces every known answer (Table 2). The synthetic adversaria
 sweep behaves as predicted: with equal spacing every complex--complex edge
 carries unit harmonic energy under the empty filling, so the systematic floor
 follows $m(m-1)/2$ exactly --- measured $0, 3, 10, 21, 36$ --- while the raw
-harmonic \emph{fraction} over the same sweep moves only $0.004$ to $0.092$,
+harmonic \emph{fraction} over the same sweep moves only $0.0008$ to $0.0047$,
 diluted by blocks of differing per-edge energy. We therefore state the
 monotonicity claim on the floor and report the fraction alongside, so the
 confound stays visible rather than being quietly resolved in our favour.
@@ -591,7 +598,7 @@ $\rho = 1.5$, grid to $16384$  & $+0.43\% \pm 0.09\%$ & median $15/16$ & $0.00$ 
 \caption{Over $20$ independent base seeds; per-draw spread tightened from
 $(-0.7\%, +3.4\%)$ to $(-0.52\%, +1.16\%)$. These are \emph{sampled} figures at
 $\texttt{reps}=16$, which is what the two levers were tuned against; the same
-quantity on exact energies is $+0.3624\% \pm 0.0024\%$, and the text below
+quantity on exact energies is $+0.3635\% \pm 0.0020\%$, and the text below
 accounts for the difference.\label{tab:rho}}
 \end{table}
 
@@ -606,8 +613,9 @@ Two facts fix what $c_2$ is. The mean bias $b$ that completes the $O(k^{-1})$
 coefficient in \eqref{eq:c1} is nearly irrelevant here: expanding both the mean
 and the variance to second order gives
 $c_2 = \langle b,\Ph b\rangle + 2\varepsilon\langle h,b_2\rangle + \sum_e
-(\Ph)_{ee}\,v_2(p_e)$, and the composition is $95$--$99\%$ the third term, with
-$\langle b,\Ph b\rangle$ contributing about $1\%$. The expectation that whatever
+(\Ph)_{ee}\,v_2(p_e)$, and on both calibration topologies the composition is
+$88$--$95\%$ the third term, with $\langle b,\Ph b\rangle$ contributing
+$0.6$--$2.5\%$. The expectation that whatever
 drives the $1/k$ correction also drives the $1/k^2$ one is wrong by two orders of
 magnitude. The term that does drive it is the second-order \emph{variance} of the
 logit, in closed form
@@ -620,7 +628,7 @@ confirmed against exact binomial moments and independently by a third-order delt
 method, in which the $2/(pq)$ piece is the near-boundary $g'g'''$ tail.
 
 Computed with exact energies over $20$ base seeds --- no Monte Carlo --- the
-residual is $+0.3624\% \pm 0.0024\%$. Two consequences follow. First, the shipped
+residual is $+0.3635\% \pm 0.0020\%$. Two consequences follow. First, the shipped
 $\pm 0.09$ pt band was almost entirely $\texttt{reps}=16$ sampling noise rather
 than base-seed variation: the underlying quantity is near-deterministic, and its
 standard error is some forty times narrower than the sampled figure it explains.
