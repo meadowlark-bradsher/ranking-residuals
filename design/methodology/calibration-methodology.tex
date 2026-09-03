@@ -37,8 +37,10 @@
 \begin{abstract}
 \noindent
 A rankability certificate based on the Hodge decomposition of a comparison graph
-reports the fraction of comparison ``flow'' that admits no consistent scalar
-ordering \emph{and} escapes every triangle-local check --- a one-sided reading,
+reports the \emph{harmonic ranking residual}: the globally cyclic component of
+the comparison ``flow'', what remains once the gradient a scalar ordering explains
+and the curl a triangle-local check reports have both been removed --- a
+one-sided reading,
 sufficient for non-rankability but not equivalent to it. Used as a decision procedure it needs a threshold, and the threshold
 cannot be read off the mathematics: on finite, noisy, sparsely sampled data a
 genuinely rankable criterion still deposits harmonic mass. Calibration therefore
@@ -820,6 +822,21 @@ decision, not two --- which is Principle~\ref{prin:nouniversal} again, reaching 
 quantity we did not anticipate it would reach.
 
 \subsection{Future work}
+
+The residual calibrated here is one of three, and the three are different
+failures. A comparison flow that admits no single scalar order can fail
+\emph{locally}, as curl --- which a triad-consistency check reports, and which
+\S\ref{sec:problem} keeps as a separate diagnostic, since a zero harmonic
+reading does not exclude it; \emph{globally}, as the harmonic residual this
+document calibrates; or \emph{not at all within any one instantiation} while
+failing across them --- a comparator whose judgements are a coherent gradient
+every time and a different gradient each time, invisible to any harmonic reading
+and visible only to the dispersion of the fitted gradient across
+re-instantiations. A fuller structural audit would characterise all three
+jointly: the curl residual, the harmonic residual, and cross-instantiation
+gradient stability. Only the second has a matched null of the kind built here.
+The first has classical diagnostics but no calibration against a null that knows
+its own topology; the third has, so far, only the argument that it is needed.
 
 The immediate motivating case is a language-model comparator, but the measurement
 problem is not AI-specific. Bradley--Terry~\cite{bradley1952} and related
