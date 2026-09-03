@@ -3,12 +3,12 @@
   "historical_residual_estimates": {
    "v5 (~10%)": 0.9,
    "v6 (3-6%)": 0.955,
-   "v6b (~2.6%)": 0.974
+   "v6b (~2.0-2.4%)": 0.978
   }
  },
  "meta": {
   "generated": "2026-09-03",
-  "commit": "5c6035c",
+  "commit": "017de32",
   "numpy": "1.26.4",
   "python": "3.12",
   "n_claims": 37,

@@ -1279,8 +1279,19 @@ if __name__ == "__main__":
     # reported as "the" result before the quantity was characterised across seeds.
     # They belong with the evidence because Figure 5 plots them, but they are not
     # claims -- nothing regenerates them, so they sit outside `claims`.
+    # The three figures spec §13.1 records having reported in turn, as the LABEL,
+    # against their position on the ratio axis as the VALUE. The convention is that
+    # the label is the figure as it was published and the value is its midpoint:
+    # 10% -> 0.90, 3-6% -> 4.5% -> 0.955, 2.0-2.4% -> 2.2% -> 0.978.
+    #
+    # BOTH MOVE TOGETHER OR NEITHER DOES. make_figures draws the label as the
+    # marker's text and the value as its x-position, so a label and value that
+    # disagree put a number on Figure 5 that the marker beside it contradicts --
+    # which is what happened here: the label read `~2.6%` and sat at 0.974 while
+    # §7's prose, the README and spec §13.1 all said 2.0-2.4%. Three documents
+    # against one plotting constant.
     annotations = {"historical_residual_estimates":
-                   {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.6%)": 0.974}}
+                   {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.0-2.4%)": 0.978}}
     out = {"annotations": annotations,
            "meta": {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     "commit": sha, "numpy": np.__version__,
