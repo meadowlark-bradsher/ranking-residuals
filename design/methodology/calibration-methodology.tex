@@ -620,9 +620,10 @@ monotonicity claim on the floor and report the fraction alongside, so the
 confound stays visible rather than being quietly resolved in our favour.
 
 The triad statistic behaves as the certificate's motivation requires. On a
-$4$-cycle beside a transitive triangle, the coefficient of consistency sees only
-the triple it can, finds it perfectly transitive, and reports $1.0$ --- while a
-third of the flow's energy is harmonic and unrankable.
+$4$-cycle beside a transitive triangle, the coefficient of
+consistency~\cite{kendall1940} sees only the triple it can, finds it perfectly
+transitive, and reports $1.0$ --- while a third of the flow's energy is harmonic
+and unrankable.
 
 Tuning the resolvability margin $\rho$ closed most of the remaining bias. The
 residual falls monotonically as $\rho$ falls, because a smaller $\rho$ demands a
@@ -826,6 +827,17 @@ calibrated harmonic residual therefore suggests a general diagnostic for
 departures from scalar comparative structure. Whether the same machinery is
 useful for item-response-theory model checking, test linking, or scale drift is
 an empirical question left for future work.
+
+The present calibration treats the comparison complex as fixed independently of
+the measured flow. In adaptive comparison systems this assumption fails: earlier
+judgements may determine which comparisons are collected later, making the
+eventual projector $\Ph$ itself data-dependent. This raises both a
+selective-inference problem --- when loops or residual directions are discovered
+from the same data on which they are tested --- and a design problem --- how to
+choose comparisons so that local and global ranking residuals remain
+identifiable. Recent orthogonalization approaches to data-dependent hypothesis
+testing offer one possible route for the former; outcome-adaptive acquisition
+requires separate treatment.
 
 \begin{thebibliography}{9}
 \bibitem{jiang2011}
