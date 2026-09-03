@@ -228,6 +228,11 @@ stands regardless of where the window falls:
 
 Drop the low-`k` points; do not model the term.
 
+Those three rows are **the v5 measurement, retained**. The configuration that produced them
+was not recorded and they do not reproduce; the same comparison measured on the current rig
+is `0.99x–2.30x` on the full grid against `0.92x–1.00x` on the window, and belongs to the
+`fit-window-bias-range` claim. The verdict is unchanged — it is the digits that moved.
+
 **Upper bound — clamp saturation.** At extreme separation `p_e -> 0/1`, wins saturate at 0
 or `k`, the clamp forces `Y = ∓log(2k−1)` — a distortion that GROWS as `log(2k)`, breaking
 the model.
@@ -290,19 +295,27 @@ Report `saturation`, `eps²/‖D0θ‖²`, `c_fit / c_oracle`, `fit_k_required`,
 6. **Misspecification (`eps`)** — §2.5, **the floor axis**. Known oracle `floor = eps²`; `eps = 0` is the negative control whose floor CI must cover 0. Primary output: **fitted floor vs `eps`, with CI.**
 
 ```yaml
-n_int: 8
+n_int: 12                      # Delta E, v6. NOT 8: at 8 under filling='empty' assemble()
+                               # raises on 1.75% of seeds; 12 takes that to 0.0%. (The b1=0
+                               # rate it was proposed to fix only goes 28.8% -> 10.8% and
+                               # plateaus -- adopt 12 for the raise, not the stated reason.)
 n_cplx: 5
 mode_II: null_btl              # clean_gradient | null_btl
+rho: 1.5                       # §2.6 resolvability margin. OPTIMISED in v7; moves with k.
+                               # A RigConfig field, NOT a BTL one -- it was nested under
+                               # `btl:` here while the code has always read cfg.rho
 btl:
   beta: 0.25                   # §2.6. NOT 0.3: at 0.3 the saturation gate rejects 43.5%
                                # of masks and strict=True raises (v6, Delta E)
-  rho: 1.5                     # §2.6 resolvability margin. OPTIMISED in v7; moves with k
   p: 0.45
   k: [8,16,...,8192,16384]     # SAMPLING grid (k_min >= 8, §2.6). Top end is set by rho:
                                # a smaller rho needs a longer tail to reach its window
-  fit_k_min: 64                # FITTING window -- floor fitted on k >= 64 ONLY (§2.6).
-                               # Not a tuning knob: below this the O(1/k^2) bias of §7
-                               # is absorbed into the intercept (0.83x-2.48x floor bias).
+  fit_k_min: 64                # A FLOOR on the derived window, not the window (Delta A,
+                               # §2.6): required_fit_k_min = c_oracle/(rho*floor) governs,
+                               # and this is the lower bound it may not go under. Not a
+                               # tuning knob -- below it the O(1/k^2) bias of §7 is absorbed
+                               # into the intercept (0.99x-2.30x floor bias on the full grid
+                               # against 0.92x-1.00x on the window; `fit-window-bias-range`).
   theta_shape: gamma           # gamma | random   (gamma is the primary probe, §2.4)
   gamma: [1.0, 1.5, 2.0, 3.0]  # 1.0 == symmetric NEGATIVE CONTROL
   standardize_theta: true      # REQUIRED: match std to the gamma=1 reference (§2.4)

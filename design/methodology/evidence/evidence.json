@@ -3,17 +3,17 @@
   "historical_residual_estimates": {
    "v5 (~10%)": 0.9,
    "v6 (3-6%)": 0.955,
-   "v6b (~2.6%)": 0.974
+   "v6b (~2.0-2.4%)": 0.978
   }
  },
  "meta": {
-  "generated": "2026-09-01",
-  "commit": "bf200fc",
+  "generated": "2026-09-03",
+  "commit": "017de32",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 33,
-  "source_fingerprint": "79110d5854786278",
-  "claims_digest": "79caff98996cd3e8"
+  "n_claims": 37,
+  "source_fingerprint": "874ccccd08351b1e",
+  "claims_digest": "fe6a9efdfac4fc8f"
  },
  "claims": {
   "pm1-trap": {
@@ -82,7 +82,8 @@
    "claim": "An equal-spaced complex pool is pure harmonic under the empty filling and pure curl under the observed one.",
    "cited_in": [
     "methodology sec 3.1 oracle table",
-    "methodology fig 1"
+    "methodology fig 1",
+    "bridge sec 6, Definition 1 (The certified quantity)"
    ],
    "value": {
     "empty_harmonic": 1.0,
@@ -228,6 +229,26 @@
    "test": "tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias",
    "note": null
   },
+  "properness-hypothesis": {
+   "claim": "Theorem 1's properness clause needs Ph B_const != 0, and b1 > 0 does not supply it. Across sparse glued configurations under the observed filling, EVERY failure of the strict inequality has Ph B_const = 0 -- all of the b1 = 0 cases, where Ph annihilates every flow, and a minority of the b1 > 0 cases, where the non-gradient residual lies in im D1^T. No configuration with Ph B_const != 0 fails.",
+   "cited_in": [
+    "bridge sec 4, Theorem 1 (Bridge-invariance)"
+   ],
+   "value": {
+    "fail_b1_zero": 291,
+    "fail_b1_pos": 24,
+    "fail_with_nonzero_Ph_B": 0,
+    "total": 600,
+    "b1_pos": 309,
+    "b1_zero": 291
+   },
+   "tolerance": {
+    "kind": "exact_int"
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "Counts, not a rate: the ensemble is a fixed grid of (n_int, m, keep, seed) with deterministic masks, so these regenerate exactly. The claim is the ZERO in fail_with_nonzero_Ph_B rather than the proportions around it. The complete glued graph is deliberately absent -- under `observed` it is always b1 = 0, so an ensemble that included it would report a failure rate rather than a condition."
+  },
   "thrashing-does-not-wash-out": {
    "claim": "The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor.",
    "cited_in": [
@@ -298,22 +319,44 @@
    "note": "A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured."
   },
   "fabricator-family-invisible": {
-   "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
+   "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: range Cov(B) lies inside im D0, so tr(P_h Cov(B) P_h) is zero and both terms of the bias-variance identity are blind to the family. Measured on the operator, not only on the energy: the covariance's leakage out of im D0 is machine epsilon RELATIVE to its own spectral norm, no single realisation has nonzero harmonic part, and every energy sits within 1.4e-12 of the circle floor -- which bounds every central moment at once, not just the second.",
    "cited_in": [
     "bridge sec 6.1, Proposition 3 (Gradient families are invisible)"
    ],
    "value": {
     "mean": 9.999999999999833,
     "sd": 2.631344073992009e-13,
-    "circle_floor": 10.0
+    "circle_floor": 10.0,
+    "max_Ph_B_realisation": 5.656547841279204e-14,
+    "tr_Ph_cov_Ph": 3.2314514929841934e-14,
+    "cov_leakage_relative": 5.890100257180081e-16,
+    "energy_max_dev_from_floor": 1.3713474800169934e-12
    },
    "tolerance": {
     "kind": "abs",
     "value": 1e-09
    },
    "kind": "exact",
-   "test": null,
-   "note": "sd is at machine precision; the claim is exactness, not a small number."
+   "test": "tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+   "note": "Leakage is stored RELATIVE to ||Cov(B)||_2 rather than as the raw operator norm: the raw pair would put a value of order 291 under a 1e-9 absolute tolerance, which asks a different question than the one the proposition poses. energy_max_dev_from_floor is the useful single number -- it dominates every central moment of the energy, so 'invisible in every moment' is bounded by one measurement rather than by reporting moments one at a time. Its negative control is a SEPARATE claim, fabricator-mean-only-control, because the control's numbers are order 1 and would drag this claim's absolute tolerance up with them -- one tolerance per scale, or the machine zeros stop being asserted as machine zeros."
+  },
+  "fabricator-mean-only-control": {
+   "claim": "The negative control for fabricator-family-invisible. A family that is gradient only IN MEAN leaves the AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot tell the two apart. The operator measurements can: adding a zero-mean harmonic jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to 7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four machine zeros beside it could not be shown capable of failing.",
+   "cited_in": [
+    "bridge sec 6.1, Proposition 3 (Gradient families are invisible)"
+   ],
+   "value": {
+    "cov_leakage_relative": 0.0038485383236545145,
+    "mean_energy": 10.948597108968722,
+    "excess_over_floor": 0.9485971089687215
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 1e-06
+   },
+   "kind": "stochastic",
+   "test": "tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+   "note": "Same seed and same 2000 draws as fabricator-family-invisible, plus the one perturbation the first moment cannot see. Stochastic rather than exact because the jitter is a draw, though a deterministically seeded one."
   },
   "emit-saturation-count": {
    "claim": "The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8.",
@@ -457,6 +500,100 @@
    "test": null,
    "note": null
   },
+  "fit-window-bias-range": {
+   "claim": "Across the separations sec 2.6 admits, fitting the full k grid recovers the floor at between 0.99x and 1.97x of its true value, while the k >= 64 window holds 0.94x to 1.01x. The full-grid error grows with beta and shrinks with gamma, so it is a range over the operating region and not a constant.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "rig/fit.py, the module docstring"
+   ],
+   "value": {
+    "rows": [
+     {
+      "beta": 0.15,
+      "gamma": 1.0,
+      "full_grid_x": 1.096529722992655,
+      "windowed_x": 0.9784615088818676
+     },
+     {
+      "beta": 0.15,
+      "gamma": 2.0,
+      "full_grid_x": 1.0738087805768357,
+      "windowed_x": 1.0014405363439711
+     },
+     {
+      "beta": 0.15,
+      "gamma": 6.0,
+      "full_grid_x": 0.9885392690242321,
+      "windowed_x": 0.9858763355304722
+     },
+     {
+      "beta": 0.2,
+      "gamma": 1.0,
+      "full_grid_x": 1.4684364498560112,
+      "windowed_x": 0.9632715303756954
+     },
+     {
+      "beta": 0.2,
+      "gamma": 2.0,
+      "full_grid_x": 1.3901767137324281,
+      "windowed_x": 0.9770026943114712
+     },
+     {
+      "beta": 0.2,
+      "gamma": 6.0,
+      "full_grid_x": 1.2193874592300524,
+      "windowed_x": 0.9733946340811847
+     },
+     {
+      "beta": 0.25,
+      "gamma": 1.0,
+      "full_grid_x": 1.8579860892681135,
+      "windowed_x": 0.9239086193080859
+     },
+     {
+      "beta": 0.25,
+      "gamma": 2.0,
+      "full_grid_x": 1.7261510846351171,
+      "windowed_x": 0.9287009270114475
+     },
+     {
+      "beta": 0.25,
+      "gamma": 6.0,
+      "full_grid_x": 1.4730203728131606,
+      "windowed_x": 0.957558631669747
+     },
+     {
+      "beta": 0.3,
+      "gamma": 1.0,
+      "full_grid_x": 2.2996721287733375,
+      "windowed_x": 0.9330488486184106
+     },
+     {
+      "beta": 0.3,
+      "gamma": 2.0,
+      "full_grid_x": 2.0708056792975627,
+      "windowed_x": 0.9357652017729101
+     },
+     {
+      "beta": 0.3,
+      "gamma": 6.0,
+      "full_grid_x": 1.775497096083248,
+      "windowed_x": 0.994030983790128
+     }
+    ],
+    "full_grid_min": 0.9885392690242321,
+    "full_grid_max": 2.2996721287733375,
+    "windowed_min": 0.9239086193080859,
+    "windowed_max": 1.0014405363439711
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Supersedes the unowned 0.83x-2.48x / 0.87x-0.95x figures that stood in sec 5.3 and rig/fit.py. Those were measured on a sweep whose configuration was not recorded and do not reproduce here; the CONCLUSION they were quoted for -- the full grid biases the intercept, the window does not -- reproduces intact, which is why the fix is a re-measurement rather than a retraction."
+  },
   "filling-dependence": {
    "claim": "b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other.",
    "cited_in": [
@@ -465,12 +602,15 @@
    "value": {
     "observed": {
      "b1": 2,
-     "c_oracle": 18.072197533376897
+     "c_oracle": 18.072197533376897,
+     "floor_at_k64": 0.08421886815956191
     },
     "empty": {
      "b1": 20,
-     "c_oracle": 160.44875095871674
-    }
+     "c_oracle": 160.44875095871674,
+     "floor_at_k64": 0.046771767030582695
+    },
+    "true_floor": 0.09
    },
    "tolerance": {
     "kind": "rel",
@@ -668,6 +808,7 @@
   "residual-across-draws": {
    "claim": "The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
    "cited_in": [
+    "methodology sec 7, the reporting-discipline example",
     "methodology sec 9 table",
     "methodology fig 5",
     "methodology v7 note"
@@ -963,6 +1104,112 @@
    "kind": "exact",
    "test": "tests/test_acceptance.py::test_8_8_zeta_misses_the_planted_harmonic",
    "note": null
+  },
+  "fixed-window-fixture": {
+   "claim": "The retired fixed k >= 64 window was ADEQUATE for the configuration it was written against and became wrong when that configuration moved. At the pinned v5 defaults (n_int = 8) it recovers the floor at 0.98x-1.20x across every separation. At today's defaults (n_int = 12) the same rule reads 0.88x at beta = 0.3 -- plausible enough to pass unexamined, which is the sec 6 incident's shape -- while the c-oracle disagrees by 27%, and it degrades to 4.3x by beta = 0.7. A bigger graph carries a bigger variance term, so Delta E's n_int 8 -> 12 is part of why Delta A's derived window was needed. The incident's OWN digits are not reproduced and cannot be: a0b508b, the first commit carrying a rig, already derives the window, so that run predates the repository.",
+   "cited_in": [
+    "methodology sec 6"
+   ],
+   "value": {
+    "config_v5": {
+     "n_int": 8,
+     "n_cplx": 5,
+     "beta": 0.3,
+     "p": 0.45,
+     "fit_k_min": 64,
+     "reps": 16,
+     "seeds": 64,
+     "k_max": 1024,
+     "filling": "observed",
+     "source": "a0b508b:rig/config.py"
+    },
+    "at_v5_defaults": [
+     {
+      "beta": 0.15,
+      "fixed_floor_x": 1.0339249963094055,
+      "c_fit": 4.733512308208388,
+      "c_oracle": 4.393513160358411,
+      "c_ratio": 1.0773866232876472
+     },
+     {
+      "beta": 0.25,
+      "fixed_floor_x": 1.024529986922824,
+      "c_fit": 7.159136763705578,
+      "c_oracle": 5.725729933163954,
+      "c_ratio": 1.2503448201842702
+     },
+     {
+      "beta": 0.3,
+      "fixed_floor_x": 1.025043034501587,
+      "c_fit": 7.634357785075545,
+      "c_oracle": 6.531678166306622,
+      "c_ratio": 1.1688202619132473
+     },
+     {
+      "beta": 0.5,
+      "fixed_floor_x": 0.9770921980231687,
+      "c_fit": 17.660803223456853,
+      "c_oracle": 14.539874304359568,
+      "c_ratio": 1.2146462103982234
+     },
+     {
+      "beta": 0.7,
+      "fixed_floor_x": 1.2010547047344335,
+      "c_fit": 18.263467728638464,
+      "c_oracle": 23.953821959275928,
+      "c_ratio": 0.7624448307117053
+     }
+    ],
+    "at_current_defaults": [
+     {
+      "beta": 0.15,
+      "fixed_floor_x": 1.0391317391729888,
+      "derived_floor_x": 1.030492687981866,
+      "c_fit": 10.06595725373229,
+      "c_oracle": 13.315451826271307,
+      "c_ratio": 0.7559606226708895
+     },
+     {
+      "beta": 0.25,
+      "fixed_floor_x": 0.9100947823996004,
+      "derived_floor_x": 0.9714299443739867,
+      "c_fit": 26.570908827621157,
+      "c_oracle": 19.850030703828565,
+      "c_ratio": 1.3385827570783708
+     },
+     {
+      "beta": 0.3,
+      "fixed_floor_x": 0.8803822741717563,
+      "derived_floor_x": 1.0915741180000278,
+      "c_fit": 26.936719843736995,
+      "c_oracle": 21.209829608549775,
+      "c_ratio": 1.270011138273298
+     },
+     {
+      "beta": 0.5,
+      "fixed_floor_x": 1.5365912060362705,
+      "derived_floor_x": 1.3537319117024,
+      "c_fit": 30.606500403998687,
+      "c_oracle": 49.064459328659964,
+      "c_ratio": 0.6238018480745909
+     },
+     {
+      "beta": 0.7,
+      "fixed_floor_x": 4.321960332857961,
+      "derived_floor_x": 3.3734327128231354,
+      "c_fit": 63.93868976970757,
+      "c_oracle": 238.15266623765916,
+      "c_ratio": 0.26847774068547015
+     }
+    ]
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": "tests/test_acceptance.py::test_retired_fixed_window_reproduces_the_guard_incident",
+   "note": "A FIXTURE, not a recommendation. Two things are pinned and they are pinned differently: the RULE is reconstructed (fit.fit_floor_c still takes fit_k_min, so the v5 estimator is one argument away), while the CONFIG is recovered from a0b508b:rig/config.py rather than inferred -- an earlier attempt at this guessed n_cplx = 0 and filling = 'observed' and had both wrong. What remains unrecoverable is the incident's run, and hunting the parameter space until its three remembered digits reappeared would be selecting a configuration to match a number rather than measuring one."
   },
   "guard-blind-spot": {
    "claim": "The c-oracle check is necessary but not sufficient: configurations exist that pass it while the floor is badly wrong.",

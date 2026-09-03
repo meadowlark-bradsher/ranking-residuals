@@ -38,7 +38,8 @@
 \noindent
 A rankability certificate based on the Hodge decomposition of a comparison graph
 reports the fraction of comparison ``flow'' that admits no consistent scalar
-ordering. Used as a decision procedure it needs a threshold, and the threshold
+ordering \emph{and} escapes every triangle-local check --- a one-sided reading,
+sufficient for non-rankability but not equivalent to it. Used as a decision procedure it needs a threshold, and the threshold
 cannot be read off the mathematics: on finite, noisy, sparsely sampled data a
 genuinely rankable criterion still deposits harmonic mass. Calibration therefore
 requires knowing what innocent data reads --- which real data cannot tell us,
@@ -100,6 +101,27 @@ instrument recovers those known answers, and calibrate the threshold on
 synthetic nulls whose true value is known by construction. Admit a real judge
 only after that passes.
 \end{principle}
+
+\paragraph{Motivating application.} Pairwise AI evaluators are the setting this
+was built for. A language-model judge may compare candidates consistently on
+individual pairs while the collection of those judgements admits no coherent
+scalar ordering, and that failure has two shapes: local, appearing inside filled
+comparison triads, and global, appearing only around holes in the comparison
+complex. The quantity studied here is the second --- the \emph{harmonic ranking
+residual}, what is left of the ranking residual once gradient and triangle-local
+curl structure have been separated out. Its zero is one-sided: a nonzero residual
+is sufficient evidence that no scalar ordering explains the flow, while a zero
+residual says nothing about the local failure, which a triad-consistency check
+would already have reported. The aim here is metrological rather than normative
+--- to establish when that residual is being measured correctly, before asking
+what it implies about a deployed judge.
+
+Pairwise comparison models arise in AI evaluation, preference learning, and
+psychometric measurement. In each setting, a scalar latent score explains only
+the gradient component of the observed comparison flow. The present work
+concerns the residual structure that remains, and specifically its harmonic
+component: globally inconsistent comparison structure not attributable to filled
+local cycles.
 
 \section{Setting and conventions}
 
@@ -236,7 +258,7 @@ Misspecified null floor & $\varepsilon^2$ & $0.010000$, $0.040000$, $0.160000$ \
 Potential-consistent bridge & $=$ C--C floor exactly & $10.0000$ vs.\ $10.0000$ \\
 \bottomrule
 \end{tabular}
-\caption{Known answers and the values the instrument returns.}
+\caption{\label{tab:oracles}Known answers and the values the instrument returns.}
 \end{table}
 
 The equal-spaced complex construction deserves comment. Placing $m$ points at
@@ -392,7 +414,8 @@ mask is drawn once per seed; only the Bernoulli outcomes vary with $k$.
 
 The $O(k^{-2})$ term in \eqref{eq:model} is not negligible at small $k$, and a
 two-parameter fit absorbs it into the intercept. Fitting the full grid biases the
-floor by factors of $0.83$ to $2.48$ depending on separation --- on the graph of
+floor by factors of $0.99$ to $2.30$ across the separations \S\ref{sec:guards}
+admits, against $0.92$ to $1.00$ on the window --- on the graph of
 Figure~\ref{fig:window} an intercept of $0.186$ against a true floor of $0.090$,
 where the windowed fit gives $0.084$. Adding $c_2/k^2$ as a \emph{free} third
 parameter is worse, not better --- on sampled energies it is poorly conditioned
@@ -416,8 +439,8 @@ graph:
 \toprule
 \textbf{Filling} & $b_1$ & $c$ & \textbf{floor at $k\!\geq\!64$} & \textbf{true} \\
 \midrule
-observed & $2$  & $18$  & $0.0807$ & $0.090$ \\
-empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
+observed & $2$  & $18$  & $0.0842$ & $0.090$ \\
+empty    & $20$ & $160$ & $0.0468$ & $0.090$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -447,7 +470,7 @@ filling dependence --- both fillings recover given a grid that reaches the
 requirement --- and removed most of a residual bias we had been carrying as an
 unexplained constant.
 
-\section{Guard discipline}
+\section{Guard discipline}\label{sec:guards}
 
 Three rules govern how the estimator fails.
 
@@ -462,12 +485,34 @@ is not.
 
 \paragraph{A guard may be necessary without being sufficient.} The delta-method
 prediction \eqref{eq:coracle} is a genuine misspecification detector. It caught a
-default separation parameter of ours that saturated the clamp: the fitted floor
-read $0.2591$ against a true $0.0900$ --- an entirely plausible number --- and
-only the disagreement between fitted $c=9.44$ and predicted $c=70.07$ revealed
-the fit as misspecified rather than informative. But the same guard reads
-$c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 1.01$, essentially exact, at a separation
-where the floor is still $1.86\times$ too high. It is necessary and not
+default separation parameter of ours that saturated the clamp --- $\beta = 0.3$,
+which sits on the saturation gate that $0.25$ clears. That run's own digits are
+gone, and the reason is sharper than a lost note: the first commit to carry a rig
+at all already derives the window, so the incident predates the repository.
+\emph{The rule survives, though,} because the estimator still takes its window as
+a parameter rather than deriving it internally --- and the configuration v5
+shipped with is recorded even where that run is not. Both are pinned as a
+fixture.
+
+Run at the v5 defaults, the retired rule is \emph{adequate}: it recovers the
+floor at $0.98$--$1.20\times$ across every separation. Run at today's defaults it
+is not. At the same $\beta = 0.3$ the floor returns at $0.88\times$ --- close
+enough to read as correct, which is exactly why it passed unexamined --- while
+the fitted and predicted $c$ disagree by $27\%$, which is what did not. The
+derived window on that cell returns $1.09\times$, and past $\beta = 0.5$ the
+retired rule degrades to $4.3\times$.
+
+One config field separates the two arms. $n_{\mathrm{int}}$ moved from $8$ to
+$12$; a larger graph carries a larger variance term; a window pinned to a
+constant cannot follow it. So the fixed window was not wrong when it was
+written --- it was calibrated, and then the thing it was calibrated against
+moved. That is the failure \S\ref{subsec:window} records for the filling,
+appearing again in a second parameter, and it is the argument for deriving the
+window rather than declaring it.
+
+The converse is the harder case, and it is why this guard is necessary without
+being sufficient: it reads $c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 0.95$ at a
+separation where the floor is still $1.11\times$ too high. It is necessary and not
 sufficient, and we say so wherever it appears. Reporting it as \emph{the} gate
 would have licensed exactly the errors it cannot see. Figure~\ref{fig:guard}
 shows the blind spot as a region rather than an anecdote, and shows that
@@ -506,11 +551,17 @@ value is a draw, not the quantity.
 We arrived at this by getting the same number wrong three times. A residual bias
 was reported as ``$\sim$10\%'', then ``3--6\%'', then ``$\sim$2.0--2.4\%'';
 coverage of the oracle by the confidence interval as ``16/20'', then ``15/16''.
-Each was a single draw, each was superseded by the next, and each \emph{looked}
-settled because nothing in the output marked it as variable. Re-measured over
-$20$ independent base seeds the residual was $1.6\% \pm 0.2\%$ and coverage was
-\emph{typically} $13/16$ --- so ``15/16'', reported twice as the result, had been
-the best of twenty draws.
+Not all of that movement was the seed --- the first two straddle the fit window
+becoming derived (\S\ref{sec:estimation}), so the estimator moved underneath them
+--- but each was a point quoted from a single draw, and each \emph{looked} settled
+because nothing in the output marked it as variable. Re-measured over $20$
+independent base seeds at the configuration then current ($\rho = 3.0$, grid to
+$4096$), the residual was $1.6\% \pm 0.2\%$ and coverage \emph{typically}
+$13/16$, so ``15/16'' had been the best of twenty draws. At the shipped
+configuration ($\rho = 1.5$, grid to $16384$; Table~\ref{tab:rho}) the same two
+quantities are $+0.43\% \pm 0.09\%$ and a median of $15/16$, which makes the
+point a second time: neither figure survives being quoted without the
+configuration that produced it.
 
 \begin{figure}[h]
 \centering
@@ -518,10 +569,11 @@ the best of twenty draws.
 \caption{Twenty independent base seeds of the same quantity, with the three
 figures we successively reported as \emph{the} result marked below. Each was a
 legitimate draw; none was the quantity. The spread is wide enough that a single
-run supports almost any of them --- but the spread is Monte Carlo. The same
-quantity computed with exact energies is $+0.3624\% \pm 0.0024\%$, a per-draw
-range of $0.046$ pt against the $1.685$ pt plotted here. The three figures are
-draws from the sampling law, not from the estimator.\label{fig:draws}}
+run supports almost any of them. The same quantity computed with exact energies
+is $+0.3635\% \pm 0.0020\%$, a per-draw range of $0.034$ pt against the $1.685$
+pt plotted here. The first two figures straddle the fit window becoming derived,
+so part of their separation is the estimator; the rest is the sampling
+law.\label{fig:draws}}
 \end{figure}
 
 The mechanism that exposed it is worth stating because it recurs: adding one
@@ -558,19 +610,20 @@ absorbed the improvement silently.
 
 \section{Results}\label{sec:results}
 
-The instrument reproduces every known answer (Table 2). The synthetic adversarial
+The instrument reproduces every known answer (Table~\ref{tab:oracles}). The synthetic adversarial
 sweep behaves as predicted: with equal spacing every complex--complex edge
 carries unit harmonic energy under the empty filling, so the systematic floor
 follows $m(m-1)/2$ exactly --- measured $0, 3, 10, 21, 36$ --- while the raw
-harmonic \emph{fraction} over the same sweep moves only $0.004$ to $0.092$,
+harmonic \emph{fraction} over the same sweep moves only $0.0008$ to $0.0047$,
 diluted by blocks of differing per-edge energy. We therefore state the
 monotonicity claim on the floor and report the fraction alongside, so the
 confound stays visible rather than being quietly resolved in our favour.
 
 The triad statistic behaves as the certificate's motivation requires. On a
-$4$-cycle beside a transitive triangle, the coefficient of consistency sees only
-the triple it can, finds it perfectly transitive, and reports $1.0$ --- while a
-third of the flow's energy is harmonic and unrankable.
+$4$-cycle beside a transitive triangle, the coefficient of
+consistency~\cite{kendall1940} sees only the triple it can, finds it perfectly
+transitive, and reports $1.0$ --- while a third of the flow's energy is harmonic
+and unrankable.
 
 Tuning the resolvability margin $\rho$ closed most of the remaining bias. The
 residual falls monotonically as $\rho$ falls, because a smaller $\rho$ demands a
@@ -591,7 +644,7 @@ $\rho = 1.5$, grid to $16384$  & $+0.43\% \pm 0.09\%$ & median $15/16$ & $0.00$ 
 \caption{Over $20$ independent base seeds; per-draw spread tightened from
 $(-0.7\%, +3.4\%)$ to $(-0.52\%, +1.16\%)$. These are \emph{sampled} figures at
 $\texttt{reps}=16$, which is what the two levers were tuned against; the same
-quantity on exact energies is $+0.3624\% \pm 0.0024\%$, and the text below
+quantity on exact energies is $+0.3635\% \pm 0.0020\%$, and the text below
 accounts for the difference.\label{tab:rho}}
 \end{table}
 
@@ -606,8 +659,9 @@ Two facts fix what $c_2$ is. The mean bias $b$ that completes the $O(k^{-1})$
 coefficient in \eqref{eq:c1} is nearly irrelevant here: expanding both the mean
 and the variance to second order gives
 $c_2 = \langle b,\Ph b\rangle + 2\varepsilon\langle h,b_2\rangle + \sum_e
-(\Ph)_{ee}\,v_2(p_e)$, and the composition is $95$--$99\%$ the third term, with
-$\langle b,\Ph b\rangle$ contributing about $1\%$. The expectation that whatever
+(\Ph)_{ee}\,v_2(p_e)$, and on both calibration topologies the composition is
+$88$--$95\%$ the third term, with $\langle b,\Ph b\rangle$ contributing
+$0.6$--$2.5\%$. The expectation that whatever
 drives the $1/k$ correction also drives the $1/k^2$ one is wrong by two orders of
 magnitude. The term that does drive it is the second-order \emph{variance} of the
 logit, in closed form
@@ -620,7 +674,7 @@ confirmed against exact binomial moments and independently by a third-order delt
 method, in which the $2/(pq)$ piece is the near-boundary $g'g'''$ tail.
 
 Computed with exact energies over $20$ base seeds --- no Monte Carlo --- the
-residual is $+0.3624\% \pm 0.0024\%$. Two consequences follow. First, the shipped
+residual is $+0.3635\% \pm 0.0020\%$. Two consequences follow. First, the shipped
 $\pm 0.09$ pt band was almost entirely $\texttt{reps}=16$ sampling noise rather
 than base-seed variation: the underlying quantity is near-deterministic, and its
 standard error is some forty times narrower than the sampled figure it explains.
@@ -732,6 +786,16 @@ replication, one that fabricates a surrogate order deposits none at all. Whether
 a real comparator resembles either is the next question, and it is now the only
 thing standing between this method and its intended use.
 
+Stated as a chain, this document is one stage of several: pairwise judgements,
+then the structural decomposition and its calibration, which is the work here;
+then a statistical test of the harmonic residual against a matched null; then
+whatever stability and external-validity work a deployment demands. The intended
+application is not to certify that a judge is aligned with an evaluation
+criterion, but to make one prerequisite to that assessment measurable --- whether
+its pairwise judgements carry global inconsistencies that cannot be attributed to
+finite sampling or to localised cyclic disagreement. That is structural auditing,
+and every normative question sits downstream of it.
+
 A second gap is narrower but concrete. The rig calibrates its null at the true
 edge probabilities, which it knows by construction; a deployment knows only the
 data it is judging and must estimate the null from it. That estimate carries a
@@ -754,6 +818,26 @@ choose independently of the filling: with no $2$-cells the curl space is trivial
 paragraph draws disappears. The choice of filling and the choice of null are one
 decision, not two --- which is Principle~\ref{prin:nouniversal} again, reaching a
 quantity we did not anticipate it would reach.
+
+The immediate motivating case is a language-model comparator, but the measurement
+problem is not AI-specific. Bradley--Terry~\cite{bradley1952} and related
+paired-comparison generalised linear models posit a scalar latent ordering, while
+comparative psychometric models make closely related measurement assumptions. The
+calibrated harmonic residual therefore suggests a general diagnostic for
+departures from scalar comparative structure. Whether the same machinery is
+useful for item-response-theory model checking, test linking, or scale drift is
+an empirical question left for future work.
+
+The present calibration treats the comparison complex as fixed independently of
+the measured flow. In adaptive comparison systems this assumption fails: earlier
+judgements may determine which comparisons are collected later, making the
+eventual projector $\Ph$ itself data-dependent. This raises both a
+selective-inference problem --- when loops or residual directions are discovered
+from the same data on which they are tested --- and a design problem --- how to
+choose comparisons so that local and global ranking residuals remain
+identifiable. Recent orthogonalization approaches to data-dependent hypothesis
+testing offer one possible route for the former; outcome-adaptive acquisition
+requires separate treatment.
 
 \begin{thebibliography}{9}
 \bibitem{jiang2011}

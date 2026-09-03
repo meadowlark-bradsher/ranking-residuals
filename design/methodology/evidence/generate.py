@@ -148,7 +148,8 @@ def structural():
     a = assemble(cfg.with_(n_int=0, n_cplx=5))
     claim("equal-spaced-complex", asserts="An equal-spaced complex pool is pure harmonic "
           "under the empty filling and pure curl under the observed one.",
-          cited_in=["methodology sec 3.1 oracle table", "methodology fig 1"],
+          cited_in=["methodology sec 3.1 oracle table", "methodology fig 1",
+                    "bridge sec 6, Definition 1 (The certified quantity)"],
           value={"empty_harmonic": a.analyze(filling="empty")["fractions"]["harmonic"],
                  "observed_curl": a.analyze(filling="observed")["fractions"]["curl"]},
           tol={"kind": "abs", "value": 1e-12},
@@ -233,6 +234,63 @@ def bridge(cfg):
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias")
 
+    # Theorem 1's properness clause carries a hypothesis rather than asserting the
+    # strict inequality outright, and this is the measurement that forced it. The
+    # condition is NOT b1 > 0: a constant bridge's non-gradient residual can lie in
+    # im D1^T, leaving Ph B_const = 0 and the two energies equal even where holes
+    # exist. Masks are sparse so that `observed` can leave holes at all -- on the
+    # COMPLETE glued graph the observed filling always gives b1 = 0, which is why
+    # the unconditional clause read as true for as long as it did.
+    def _properness(n_int, m, keep, seed, c_bridge=1.0):
+        n = n_int + m
+        rng = np.random.default_rng(seed)
+        edges = [e for e in itertools.combinations(range(n), 2) if rng.random() < keep]
+        D0, D1 = hodge.build_operators(
+            n, edges, hodge.triangles_for_filling(edges, "observed"))
+        _, _, Ph = hodge.hodge_projectors(D0, D1)
+        rk = lambda M: 0 if getattr(M, "size", 0) == 0 else int(np.linalg.matrix_rank(M))
+        b1 = len(edges) - rk(D0) - rk(D1)
+        sv = np.arange(n_int, dtype=float)
+        ang = 2 * np.pi * np.arange(m) / m
+        Y = np.zeros(len(edges)); Ycc = np.zeros(len(edges)); B = np.zeros(len(edges))
+        for e, (i, j) in enumerate(edges):
+            if i < n_int and j < n_int:
+                Y[e] = sv[j] - sv[i]
+            elif i >= n_int and j >= n_int:
+                v = np.sin(ang[j - n_int] - ang[i - n_int]); Y[e] = v; Ycc[e] = v
+            else:
+                Y[e] = c_bridge; B[e] = c_bridge
+        strict = float(Y @ Ph @ Y) > float(Ycc @ Ph @ Ycc) + 1e-9
+        return b1, strict, float(np.linalg.norm(Ph @ B)) > 1e-8
+
+    tally = collections.Counter({"fail_b1_zero": 0, "fail_b1_pos": 0,
+                                 "fail_with_nonzero_Ph_B": 0})
+    for n_int, m in ((8, 6), (6, 5), (10, 4), (5, 5)):
+        for keep in (0.45, 0.5, 0.55, 0.6, 0.65, 0.7):
+            for sd in range(25):
+                b1, strict, ph_b = _properness(n_int, m, keep, sd)
+                tally["total"] += 1
+                tally["b1_zero" if b1 == 0 else "b1_pos"] += 1
+                if not strict:
+                    tally["fail_b1_zero" if b1 == 0 else "fail_b1_pos"] += 1
+                    tally["fail_with_nonzero_Ph_B"] += int(ph_b)
+    claim("properness-hypothesis", asserts="Theorem 1's properness clause needs "
+          "Ph B_const != 0, and b1 > 0 does not supply it. Across sparse glued "
+          "configurations under the observed filling, EVERY failure of the strict "
+          "inequality has Ph B_const = 0 -- all of the b1 = 0 cases, where Ph "
+          "annihilates every flow, and a minority of the b1 > 0 cases, where the "
+          "non-gradient residual lies in im D1^T. No configuration with "
+          "Ph B_const != 0 fails.",
+          cited_in=["bridge sec 4, Theorem 1 (Bridge-invariance)"],
+          value=dict(tally),
+          tol={"kind": "exact_int"},
+          note="Counts, not a rate: the ensemble is a fixed grid of (n_int, m, keep, "
+               "seed) with deterministic masks, so these regenerate exactly. The "
+               "claim is the ZERO in fail_with_nonzero_Ph_B rather than the "
+               "proportions around it. The complete glued graph is deliberately "
+               "absent -- under `observed` it is always b1 = 0, so an ensemble that "
+               "included it would report a failure rate rather than a condition.")
+
     rows = {}
     for R in (8, 32, 128, 512, 2048):
         alone, comb = [], []
@@ -277,19 +335,79 @@ def bridge(cfg):
           note="A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured.")
 
     Ycc = np.array([a.Y_expected[k] if e in ccs else 0.0 for k, e in enumerate(a.edges)])
-    rng = np.random.default_rng(0); en = []
+    Pg, _, _ = hodge.hodge_projectors(D0, D1)
+    rng = np.random.default_rng(0); en, Bs = [], []
     for _ in range(2000):
         psi = np.zeros(n); psi[:ni] = np.arange(ni, dtype=float)
         psi[ni:] = rng.normal(0, 5, n - ni)
-        Y = D0 @ psi + Ycc
+        B = D0 @ psi                    # the fabricator's own flow, in im D0 by construction
+        Bs.append(B)
+        Y = B + Ycc
         en.append(float(Y @ Ph @ Y))
-    en = np.array(en)
+    en = np.array(en); Bs = np.asarray(Bs)
+    # The spread of the ENERGY is evidence for Proposition 3 but is not what it
+    # says. It says range Cov(B) <= im D0, hence tr(Ph Cov(B) Ph) = 0 -- a
+    # statement about the covariance OPERATOR, and about EVERY realisation rather
+    # than the average. All three are measured here, because a family that were
+    # gradient only in mean would pass the energy check and fail the other two.
+    cov = np.cov(Bs, rowvar=False)
+    leak = np.linalg.norm((np.eye(len(a.edges)) - Pg) @ cov, 2) / np.linalg.norm(cov, 2)
+    # NEGATIVE CONTROL, measured rather than argued. A family that is gradient only
+    # in MEAN leaves the average energy at the floor too, so without this arm the
+    # four numbers above cannot be shown capable of failing. Same seed, plus a
+    # zero-mean harmonic jitter -- the one perturbation the mean cannot see.
+    hu = flows.harmonic_unit(D0, D1)
+    rng2 = np.random.default_rng(0); enM, BsM = [], []
+    for _ in range(2000):
+        psi = np.zeros(n); psi[:ni] = np.arange(ni, dtype=float)
+        psi[ni:] = rng2.normal(0, 5, n - ni)
+        B = D0 @ psi + rng2.normal(0, 1) * hu
+        BsM.append(B); enM.append(float((B + Ycc) @ Ph @ (B + Ycc)))
+    enM = np.array(enM); covM = np.cov(np.asarray(BsM), rowvar=False)
+    leakM = np.linalg.norm((np.eye(len(a.edges)) - Pg) @ covM, 2) / np.linalg.norm(covM, 2)
     claim("fabricator-family-invisible", asserts="A family of internally-gradient fabricators is "
-          "invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
+          "invisible in every moment, not only the mean: range Cov(B) lies inside im D0, so "
+          "tr(P_h Cov(B) P_h) is zero and both terms of the bias-variance identity are blind "
+          "to the family. Measured on the operator, not only on the energy: the covariance's "
+          "leakage out of im D0 is machine epsilon RELATIVE to its own spectral norm, no "
+          "single realisation has nonzero harmonic part, and every energy sits within 1.4e-12 "
+          "of the circle floor -- which bounds every central moment at once, not just the second.",
           cited_in=["bridge sec 6.1, Proposition 3 (Gradient families are invisible)"],
-          value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle},
+          value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle,
+                 "max_Ph_B_realisation": float(np.linalg.norm(Bs @ Ph, axis=1).max()),
+                 "tr_Ph_cov_Ph": float(np.trace(Ph @ cov @ Ph)),
+                 "cov_leakage_relative": float(leak),
+                 "energy_max_dev_from_floor": float(np.abs(en - circle).max())},
           tol={"kind": "abs", "value": 1e-9},
-          note="sd is at machine precision; the claim is exactness, not a small number.")
+          test="tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+          note="Leakage is stored RELATIVE to ||Cov(B)||_2 rather than as the raw "
+               "operator norm: the raw pair would put a value of order 291 under a "
+               "1e-9 absolute tolerance, which asks a different question than the "
+               "one the proposition poses. energy_max_dev_from_floor is the useful "
+               "single number -- it dominates every central moment of the energy, so "
+               "'invisible in every moment' is bounded by one measurement rather "
+               "than by reporting moments one at a time. Its negative control is a "
+               "SEPARATE claim, fabricator-mean-only-control, because the control's "
+               "numbers are order 1 and would drag this claim's absolute tolerance "
+               "up with them -- one tolerance per scale, or the machine zeros stop "
+               "being asserted as machine zeros.")
+
+    claim("fabricator-mean-only-control", asserts="The negative control for "
+          "fabricator-family-invisible. A family that is gradient only IN MEAN leaves the "
+          "AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot "
+          "tell the two apart. The operator measurements can: adding a zero-mean harmonic "
+          "jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to "
+          "7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly "
+          "tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four "
+          "machine zeros beside it could not be shown capable of failing.",
+          cited_in=["bridge sec 6.1, Proposition 3 (Gradient families are invisible)"],
+          value={"cov_leakage_relative": float(leakM), "mean_energy": float(enM.mean()),
+                 "excess_over_floor": float(enM.mean() - circle)},
+          tol={"kind": "rel", "value": 1e-6}, kind="stochastic",
+          test="tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+          note="Same seed and same 2000 draws as fabricator-family-invisible, plus the one "
+               "perturbation the first moment cannot see. Stochastic rather than exact "
+               "because the jitter is a draw, though a deterministically seeded one.")
 
 
 # ---------------------------------------------------------------- emission (spec 10)
@@ -449,17 +567,72 @@ def estimator(cfg):
                  "intercept_full_grid": float(full[0]), "intercept_windowed": float(win[0])},
           tol={"kind": "rel", "value": 0.05}, kind="stochastic")
 
+    # The window's whole justification is a RANGE -- "0.83x-2.48x on the full grid
+    # against 0.87x-0.95x on k >= 64" -- quoted in sec 5.3, in rig/fit.py's module
+    # docstring, and in the fit/floor-ols manifest member. It was owned by none of
+    # them: the sweep that produced those figures was never recorded, and the
+    # numbers do not reproduce on any configuration the rig can still build. So it
+    # is measured here, across the separations sec 2.6 admits, and the three places
+    # that quote it now quote something that regenerates.
+    bias = []
+    for beta_s in (0.15, 0.20, 0.25, 0.30):
+        for gam_s in (1.0, 2.0, 6.0):
+            th_s = flows.theta_gamma(n, beta_s, gam_s)
+            pe_s = 1 / (1 + np.exp(-flows.misspecified_latent(D0, th_s, eps, hu)))
+            E_s = []
+            for k in ks:
+                rg = np.random.default_rng(999 + k)
+                w_s = rg.binomial(k, np.broadcast_to(pe_s, (3000, len(pe_s))))
+                Y_s = flows.logodds_from_counts(w_s, k)
+                E_s.append(float(np.mean(np.einsum("ij,jk,ik->i", Y_s, Ph, Y_s))))
+            E_s = np.array(E_s)
+            sel_s = [i for i, k in enumerate(ks) if k >= 64]
+            bias.append({"beta": beta_s, "gamma": gam_s,
+                         "full_grid_x": float(np.linalg.lstsq(A(ks), E_s, rcond=None)[0][0]) / eps ** 2,
+                         "windowed_x": float(np.linalg.lstsq(
+                             A([ks[i] for i in sel_s]), E_s[sel_s], rcond=None)[0][0]) / eps ** 2})
+    fg = [r["full_grid_x"] for r in bias]; wg = [r["windowed_x"] for r in bias]
+    claim("fit-window-bias-range", asserts="Across the separations sec 2.6 admits, fitting the "
+          "full k grid recovers the floor at between 0.99x and 1.97x of its true value, while "
+          "the k >= 64 window holds 0.94x to 1.01x. The full-grid error grows with beta and "
+          "shrinks with gamma, so it is a range over the operating region and not a constant.",
+          cited_in=["methodology sec 5.3", "rig/fit.py, the module docstring"],
+          value={"rows": bias, "full_grid_min": min(fg), "full_grid_max": max(fg),
+                 "windowed_min": min(wg), "windowed_max": max(wg)},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          note="Supersedes the unowned 0.83x-2.48x / 0.87x-0.95x figures that stood in sec 5.3 "
+               "and rig/fit.py. Those were measured on a sweep whose configuration was not "
+               "recorded and do not reproduce here; the CONCLUSION they were quoted for -- the "
+               "full grid biases the intercept, the window does not -- reproduces intact, which "
+               "is why the fix is a re-measurement rather than a retraction.")
+
     fill = {}
     for f in ("observed", "empty"):
         d0, d1 = hodge.build_operators(n, mask, hodge.triangles_for_filling(mask, f))
         _, _, P = hodge.hodge_projectors(d0, d1)
         h = flows.harmonic_unit(d0, d1)
         pef = 1 / (1 + np.exp(-flows.misspecified_latent(d0, th, eps, h)))
+        # b1 and c_oracle are the EXPLANATION; the recovered floor is the
+        # consequence, and the consequence is what sec 5.3's table is for. It went
+        # unowned, so the table's floors and the registry drifted apart with
+        # nothing to notice. Fitted at the FIXED k >= 64 window on purpose: the
+        # table exists to show that a fixed window is wrong under some filling.
+        Ef = []
+        for k in ks:
+            rg = np.random.default_rng(999 + k)
+            wf = rg.binomial(k, np.broadcast_to(pef, (3000, len(pef))))
+            Yf = flows.logodds_from_counts(wf, k)
+            Ef.append(float(np.mean(np.einsum("ij,jk,ik->i", Yf, P, Yf))))
+        self_ = [i for i, k in enumerate(ks) if k >= 64]
         fill[f] = {"b1": int(hodge.harmonic_basis(d0, d1).shape[1]),
-                   "c_oracle": oracle.c_oracle(P, pef)}
+                   "c_oracle": oracle.c_oracle(P, pef),
+                   "floor_at_k64": float(np.linalg.lstsq(
+                       A([ks[i] for i in self_]),
+                       np.array([Ef[i] for i in self_]), rcond=None)[0][0])}
     claim("filling-dependence", asserts="b1 and c_oracle move by nearly an order of magnitude "
           "with the filling, so a fixed window calibrated under one is wrong under the other.",
-          cited_in=["methodology sec 5.3 table"], value=fill,
+          cited_in=["methodology sec 5.3 table"],
+          value={**fill, "true_floor": eps ** 2},
           tol={"kind": "rel", "value": 0.02})
 
     cross = {}
@@ -644,7 +817,9 @@ def sweeps(cfg):
     r = np.array(ratios)
     claim("residual-across-draws", asserts="The residual is real but small, and any single run "
           "lands anywhere in a band about a percentage point wide; coverage is typically 15/16.",
-          cited_in=["methodology sec 9 table", "methodology fig 5", "methodology v7 note"],
+          cited_in=["methodology sec 7, the reporting-discipline example",
+                    "methodology sec 9 table", "methodology fig 5",
+                    "methodology v7 note"],
           value={"ratios": ratios, "coverage": covs,
                  "mean": float(r.mean()), "se": float(r.std(ddof=1) / np.sqrt(len(r))),
                  "residual_pct": float(100 * (1 - r.mean())),
@@ -742,6 +917,107 @@ def sweeps(cfg):
                  "harmonic": hodge.analyze_flow(7, edges, Y, filling="observed")["fractions"]["harmonic"]},
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_acceptance.py::test_8_8_zeta_misses_the_planted_harmonic")
+
+    # THE RETIRED WINDOW RULE, kept runnable as a fixture.
+    #
+    # sec 6 records an incident: a default separation saturated the clamp, the fixed
+    # k >= 64 window returned an entirely plausible floor, and only the c-oracle
+    # disagreeing revealed the fit as misspecified. The paper used to print that
+    # run's digits. They are NOT RECOVERABLE -- the run predates both Delta A
+    # (deriving the window) and Delta E (moving the default separation), and its
+    # configuration was never recorded. Searching the parameter space until three
+    # remembered digits reappeared would be choosing a configuration to match a
+    # number, which is the failure this registry exists to prevent.
+    #
+    # What IS recoverable is the RULE. This is floor_measurement's seed loop with
+    # the window pinned at fit_k_min instead of derived from c_oracle -- the v5
+    # estimator, applied to today's rig. It reproduces the incident's SHAPE at the
+    # old default beta = 0.3, which is the part worth citing.
+    def _fixed_window(cfgf, gamma, epsf, filling="observed"):
+        nf = cfgf.n_int; ksf = np.array(cfgf.btl.k, float)
+        fl, cs, cors = [], [], []
+        for sd in range(cfgf.seeds):
+            mk = flows.sample_sparse_graph(nf, cfgf.btl.p, np.random.default_rng(
+                cfgf.derive_seed("floor_mask", gamma, epsf, sd)))
+            if len(mk) < 3:
+                continue
+            d0f, d1f = hodge.build_operators(nf, mk, hodge.triangles_for_filling(mk, filling))
+            _, _, Pf = hodge.hodge_projectors(d0f, d1f)
+            try:
+                huf = flows.harmonic_unit(d0f, d1f)
+            except ValueError:
+                continue
+            thf = flows.latent_potential(nf, cfgf.btl, gamma,
+                                         np.random.default_rng(cfgf.derive_seed("theta", sd)))
+            pef = 1.0 / (1.0 + np.exp(-flows.misspecified_latent(d0f, thf, epsf, huf)))
+            cors.append(oracle.c_oracle(Pf, pef))
+            dr = np.random.default_rng(cfgf.derive_seed("draws", gamma, epsf, sd))
+            enf = []
+            for kk in cfgf.btl.k:
+                wq = dr.binomial(kk, np.broadcast_to(pef, (cfgf.reps, len(pef))))
+                Yq = flows.logodds_from_counts(wq, kk)
+                enf.append(float(np.mean(np.einsum("ij,jk,ik->i", Yq, Pf, Yq))))
+            ff = fit.fit_floor_c(ksf, enf, cfgf.btl.fit_k_min)   # PINNED: the whole point
+            fl.append(ff["floor"]); cs.append(ff["c"])
+        return (float(np.median(fl)), float(np.median(cs)), float(np.median(cors)))
+
+    # THE V5 DEFAULTS, read out of a0b508b:rig/config.py rather than inferred.
+    # a0b508b is "Implement the calibration rig against spec v5" and is the first
+    # commit that carries a rig at all -- and its floor_measurement ALREADY derives
+    # the window. The repository therefore begins AFTER Delta A, which is why the
+    # sec 6 incident cannot be recovered from history: it happened before there was
+    # a history. What a0b508b does record is the configuration v5 shipped with, and
+    # that is what is pinned here. n_cplx is carried for fidelity though it does not
+    # reach this measurement -- floor_measurement reads n_int only -- and `filling`
+    # is 'empty' in the config while floor_measurement defaults its own to
+    # 'observed', which is the filling the measurement was actually taken under.
+    V5 = {"n_int": 8, "n_cplx": 5, "beta": 0.3, "p": 0.45, "fit_k_min": 64,
+          "reps": 16, "seeds": 64, "k_max": 1024, "filling": "observed",
+          "source": "a0b508b:rig/config.py"}
+    G1024 = (8, 16, 32, 64, 128, 256, 512, 1024)   # the v5 grid, before v6 extended it
+    betas_f = (0.15, 0.25, 0.30, 0.50, 0.70)
+
+    fixrows = []
+    for beta_f in betas_f:
+        cf = base.with_(n_int=12, n_cplx=0, seeds=24, reps=16,
+                        btl=replace(base.btl, beta=beta_f, k=G1024))
+        flr, cft, cor = _fixed_window(cf, 2.0, 0.3)
+        dv = floor_measurement(cf, 2.0, 0.3, strict=False)
+        fixrows.append({"beta": beta_f, "fixed_floor_x": flr / 0.09,
+                        "derived_floor_x": dv["floor_over_oracle"],
+                        "c_fit": cft, "c_oracle": cor, "c_ratio": cft / cor})
+
+    v5rows = []
+    for beta_f in betas_f:
+        c5 = base.with_(n_int=V5["n_int"], n_cplx=V5["n_cplx"],
+                        seeds=V5["seeds"], reps=V5["reps"],
+                        btl=replace(base.btl, beta=beta_f, p=V5["p"], k=G1024,
+                                    fit_k_min=V5["fit_k_min"]))
+        flr5, cft5, cor5 = _fixed_window(c5, 2.0, 0.3, V5["filling"])
+        v5rows.append({"beta": beta_f, "fixed_floor_x": flr5 / 0.09,
+                       "c_fit": cft5, "c_oracle": cor5, "c_ratio": cft5 / cor5})
+    claim("fixed-window-fixture", asserts="The retired fixed k >= 64 window was ADEQUATE for "
+          "the configuration it was written against and became wrong when that configuration "
+          "moved. At the pinned v5 defaults (n_int = 8) it recovers the floor at 0.98x-1.20x "
+          "across every separation. At today's defaults (n_int = 12) the same rule reads 0.88x "
+          "at beta = 0.3 -- plausible enough to pass unexamined, which is the sec 6 incident's "
+          "shape -- while the c-oracle disagrees by 27%, and it degrades to 4.3x by beta = 0.7. "
+          "A bigger graph carries a bigger variance term, so Delta E's n_int 8 -> 12 is part of "
+          "why Delta A's derived window was needed. The incident's OWN digits are not "
+          "reproduced and cannot be: a0b508b, the first commit carrying a rig, already derives "
+          "the window, so that run predates the repository.",
+          cited_in=["methodology sec 6"],
+          value={"config_v5": V5, "at_v5_defaults": v5rows, "at_current_defaults": fixrows},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          test="tests/test_acceptance.py::test_retired_fixed_window_reproduces_the_guard_incident",
+          note="A FIXTURE, not a recommendation. Two things are pinned and they are pinned "
+               "differently: the RULE is reconstructed (fit.fit_floor_c still takes fit_k_min, "
+               "so the v5 estimator is one argument away), while the CONFIG is recovered from "
+               "a0b508b:rig/config.py rather than inferred -- an earlier attempt at this guessed "
+               "n_cplx = 0 and filling = 'observed' and had both wrong. What remains "
+               "unrecoverable is the incident's run, and hunting the parameter space until its "
+               "three remembered digits reappeared would be selecting a configuration to match "
+               "a number rather than measuring one.")
 
     guard = {}
     for name, (rho, grid) in {"historical": (3.0, G4), "current": (1.5, base.btl.k)}.items():
@@ -1003,8 +1279,19 @@ if __name__ == "__main__":
     # reported as "the" result before the quantity was characterised across seeds.
     # They belong with the evidence because Figure 5 plots them, but they are not
     # claims -- nothing regenerates them, so they sit outside `claims`.
+    # The three figures spec §13.1 records having reported in turn, as the LABEL,
+    # against their position on the ratio axis as the VALUE. The convention is that
+    # the label is the figure as it was published and the value is its midpoint:
+    # 10% -> 0.90, 3-6% -> 4.5% -> 0.955, 2.0-2.4% -> 2.2% -> 0.978.
+    #
+    # BOTH MOVE TOGETHER OR NEITHER DOES. make_figures draws the label as the
+    # marker's text and the value as its x-position, so a label and value that
+    # disagree put a number on Figure 5 that the marker beside it contradicts --
+    # which is what happened here: the label read `~2.6%` and sat at 0.974 while
+    # §7's prose, the README and spec §13.1 all said 2.0-2.4%. Three documents
+    # against one plotting constant.
     annotations = {"historical_residual_estimates":
-                   {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.6%)": 0.974}}
+                   {"v5 (~10%)": 0.90, "v6 (3-6%)": 0.955, "v6b (~2.0-2.4%)": 0.978}}
     out = {"annotations": annotations,
            "meta": {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     "commit": sha, "numpy": np.__version__,

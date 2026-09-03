@@ -307,3 +307,103 @@ def test_the_check_would_catch_the_drift_it_was_written_for(numbering, kind,
     """
     envs, _ = numbering["bridge"]
     assert ((kind, number) in envs) is exists
+
+
+# ---------------------------------------------------------------- body text
+# Everything above guards `cited_in`, which is JSON and cannot use \ref. The
+# PROSE had the same exposure and no guard at all: the bridge paper referred to
+# its own results by literal number 29 times, so inserting one environment would
+# have renumbered every later reference to that counter silently -- the exact
+# defect this file was written for, one level over. Those 29 are now \ref, which
+# cannot drift. What is left is what \ref cannot safely express.
+
+# `[~\s]`, not `~?\s`. LaTeX prose writes `Theorem~1` with a non-breaking space
+# and NO whitespace after it, so a pattern requiring whitespace matches none of
+# them -- the first draft of this did, passed on an injected `Theorem~1`, and was
+# caught only by running the negative control rather than trusting the green.
+_LITERAL = re.compile(r"(?<!\\)\b(Lemma|Proposition|Theorem|Corollary|Definition|"
+                      r"Remark|Observation|Principle)[~\s](\d+)")
+_HEAD = re.compile(r"\\(?:sub)*section\{")
+
+
+def _split_headings(text):
+    """(prose, heading titles). Brace-balanced: a title may contain $Y_{cc}$."""
+    heads, out, i = [], [], 0
+    for m in _HEAD.finditer(text):
+        j, depth = m.end(), 1
+        while j < len(text) and depth:
+            depth += (text[j] == "{") - (text[j] == "}")
+            j += 1
+        out.append(text[i:m.start()]); heads.append(text[m.end():j - 1]); i = j
+    out.append(text[i:])
+    return "".join(out), heads
+
+
+def _prose(path):
+    r"""Body with \cite[...] arguments and every heading title removed.
+
+    Both exemptions are STRUCTURAL, not a list of allowed numbers. An earlier
+    draft allowlisted ("bridge", "Theorem", 1) and thereby waved through every
+    occurrence of `Theorem~1` in that paper, including a reintroduced one in
+    prose -- an allowlist keyed on the value cannot tell the two apart, which a
+    negative control caught before this shipped.
+    """
+    s = path.read_text()
+    s = s[s.index(r"\begin{document}"):]
+    s = re.sub(r"\\cite\[[^\]]*\]", r"\\cite[]", s)
+    return _split_headings(s)[0]
+
+
+def test_prose_refers_to_its_own_results_by_ref_not_by_number():
+    """A literal number in prose is an uncited number: nothing recomputes it."""
+    stray = []
+    for paper, path in PAPERS.items():
+        for m in _LITERAL.finditer(_prose(path)):
+            stray.append(f"{paper}: {m.group(0)!r}")
+    assert not stray, (
+        "these refer to a numbered environment by literal number, so TeX will not "
+        "renumber them when one is inserted above:\n  " + "\n  ".join(stray)
+        + "\nPut \\label on the environment and \\ref here instead. Headings are "
+          "exempt -- \\ref is fragile in a moving argument -- and are checked by "
+          "test_heading_literals_still_name_what_they_claim.")
+
+
+def test_heading_literals_still_name_what_they_claim(numbering):
+    """Headings keep literal numbers, so this is the only thing checking them."""
+    seen, bad = 0, []
+    for paper, path in PAPERS.items():
+        src = path.read_text()
+        _, heads = _split_headings(src[src.index(r"\begin{document}"):])
+        envs, _ = numbering[paper]
+        for title in heads:
+            for kind, num in _LITERAL.findall(title):
+                seen += 1
+                if (kind, int(num)) not in envs:
+                    bad.append(f"{paper}: heading {title!r} names a missing {kind} {num}")
+    assert seen, ("no heading names a numbered environment; either they all moved to "
+                  "\\ref (good, delete this) or _split_headings stopped matching")
+    assert not bad, "\n  ".join(bad)
+
+
+def test_cross_paper_citations_resolve_in_the_paper_they_name():
+    """`\\cite[\\S2, Observation 1]{bradsher2026}` points at the OTHER paper's counter.
+
+    \ref cannot reach across documents, so these stay literal by necessity and were
+    the one class this file never covered.
+    """
+    envs, sections = _numbering(PAPERS["methodology"])
+    src = PAPERS["bridge"].read_text()
+    seen, bad = 0, []
+    for m in re.finditer(r"\\cite\[([^\]]*)\]\{bradsher2026\}", src):
+        arg = m.group(1)
+        for kind, num in _REF.findall(arg):
+            seen += 1
+            if (kind, int(num)) not in envs:
+                bad.append(f"{arg!r} -> methodology has no {kind} {num}")
+        for sec in _SECREF.findall(arg.replace("\\S", "sec ")):
+            seen += 1
+            if sec not in sections:
+                bad.append(f"{arg!r} -> methodology has no section {sec}")
+    assert seen, "no cross-paper citation parsed; the scan is broken, not clean"
+    assert not bad, ("cross-paper citations name things the methodology paper does "
+                     "not have:\n  " + "\n  ".join(bad))

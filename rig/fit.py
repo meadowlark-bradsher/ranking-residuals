@@ -4,7 +4,8 @@ The model E||P_h Y||^2 = floor + c/k is linear in (floor, c) under x = 1/k, so O
 is exact -- per seed, because the mask (hence P_h and the true floor) is fixed within
 a seed (§2.4). The fit is restricted to k >= fit_k_min: the small-k points are where
 the O(1/k^2) logit-bias term lives and a 2-parameter OLS absorbs it into the intercept
-(measured floor bias 0.83x-2.48x on the full grid vs 0.87x-0.95x on k>=64, §2.6).
+(measured floor bias 0.99x-2.30x on the full grid vs 0.92x-1.00x on k>=64 across
+the §2.6 separations -- the `fit-window-bias-range` claim, which owns those digits).
 """
 
 from __future__ import annotations

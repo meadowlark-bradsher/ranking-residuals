@@ -10,7 +10,9 @@ window is not a constant — it is set by the ratio of the variance term to the
 floor. On `filling='empty'` the same graph has `b1 = 20` and `c ≈ 160`, so at
 `k = 64` the variance term is still about ten times larger and the intercept
 becomes a small difference of large extrapolated numbers: a measured floor of
-0.016 against a true 0.090.
+0.047 against a true 0.090. Both digits belong to the `filling-dependence`
+claim, which gained the recovered floor for exactly this reason — the b₁ and `c`
+that explain the failure were owned, and the floor that demonstrates it was not.
 
 `rho` is a required positional parameter with no default, and the docstring
 explains why that is deliberate rather than austere. It is a shipped config
