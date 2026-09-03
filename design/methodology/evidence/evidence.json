@@ -8,12 +8,12 @@
  },
  "meta": {
   "generated": "2026-09-03",
-  "commit": "0074a9d",
+  "commit": "0fa308e",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 34,
-  "source_fingerprint": "3439073d13cfaf87",
-  "claims_digest": "70b5001212e65eb0"
+  "n_claims": 35,
+  "source_fingerprint": "667fff4a1f4ffb28",
+  "claims_digest": "d9d5fdf64e640035"
  },
  "claims": {
   "pm1-trap": {
@@ -319,22 +319,44 @@
    "note": "A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured."
   },
   "fabricator-family-invisible": {
-   "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
+   "claim": "A family of internally-gradient fabricators is invisible in every moment, not only the mean: range Cov(B) lies inside im D0, so tr(P_h Cov(B) P_h) is zero and both terms of the bias-variance identity are blind to the family. Measured on the operator, not only on the energy: the covariance's leakage out of im D0 is machine epsilon RELATIVE to its own spectral norm, no single realisation has nonzero harmonic part, and every energy sits within 1.4e-12 of the circle floor -- which bounds every central moment at once, not just the second.",
    "cited_in": [
     "bridge sec 6.1, Proposition 3 (Gradient families are invisible)"
    ],
    "value": {
     "mean": 9.999999999999833,
     "sd": 2.631344073992009e-13,
-    "circle_floor": 10.0
+    "circle_floor": 10.0,
+    "max_Ph_B_realisation": 5.656547841279204e-14,
+    "tr_Ph_cov_Ph": 3.2314514929841934e-14,
+    "cov_leakage_relative": 5.890100257180081e-16,
+    "energy_max_dev_from_floor": 1.3713474800169934e-12
    },
    "tolerance": {
     "kind": "abs",
     "value": 1e-09
    },
    "kind": "exact",
-   "test": null,
-   "note": "sd is at machine precision; the claim is exactness, not a small number."
+   "test": "tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+   "note": "Leakage is stored RELATIVE to ||Cov(B)||_2 rather than as the raw operator norm: the raw pair would put a value of order 291 under a 1e-9 absolute tolerance, which asks a different question than the one the proposition poses. energy_max_dev_from_floor is the useful single number -- it dominates every central moment of the energy, so 'invisible in every moment' is bounded by one measurement rather than by reporting moments one at a time. Its negative control is a SEPARATE claim, fabricator-mean-only-control, because the control's numbers are order 1 and would drag this claim's absolute tolerance up with them -- one tolerance per scale, or the machine zeros stop being asserted as machine zeros."
+  },
+  "fabricator-mean-only-control": {
+   "claim": "The negative control for fabricator-family-invisible. A family that is gradient only IN MEAN leaves the AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot tell the two apart. The operator measurements can: adding a zero-mean harmonic jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to 7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four machine zeros beside it could not be shown capable of failing.",
+   "cited_in": [
+    "bridge sec 6.1, Proposition 3 (Gradient families are invisible)"
+   ],
+   "value": {
+    "cov_leakage_relative": 0.0038485383236545145,
+    "mean_energy": 10.948597108968722,
+    "excess_over_floor": 0.9485971089687215
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 1e-06
+   },
+   "kind": "stochastic",
+   "test": "tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+   "note": "Same seed and same 2000 draws as fabricator-family-invisible, plus the one perturbation the first moment cannot see. Stochastic rather than exact because the jitter is a draw, though a deterministically seeded one."
   },
   "emit-saturation-count": {
    "claim": "The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8.",

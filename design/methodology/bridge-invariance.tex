@@ -319,9 +319,26 @@ is the one limit that separates quenched disorder from signal (Remark~4), and it
 does not separate this. A judge that invents a \emph{different but internally
 consistent} order on each re-instantiation --- a family of perfect fabricators ---
 is indistinguishable from a judge with no bridge at all, at every level of
-resampling available. Measured over $2000$ independent fabricators, each placing
-the complex items at its own levels: harmonic energy $10.000000$, standard
-deviation $2.6\times10^{-13}$.
+resampling available.
+
+Measured over $2000$ independent fabricators, each placing the complex items at
+its own levels: harmonic energy $10.000000$ against a circle floor of
+$10.000000$. But the spread of that energy is one scalar functional, and the
+proposition is a statement about the covariance \emph{operator}, so the operator
+is what is measured. The leakage of $\Cov(B)$ out of $\im D_0$ is
+$6\times10^{-16}$ \emph{relative to its own spectral norm}, and
+$\tr(\Ph\Cov(B)\Ph)=3\times10^{-14}$. Neither is an average over the family:
+no single realisation has a harmonic part, $\max_\omega\|\Ph B(\omega)\|$ being
+$6\times10^{-14}$. And every energy in the family sits within $1.4\times10^{-12}$
+of the floor --- one bound that dominates every central moment at once, which is
+what ``in every moment'' has to mean if it is to be checked rather than asserted.
+
+The distinction is not pedantry. A family that were gradient only \emph{in mean}
+would leave the average energy at the floor and fail all four of those: adding a
+zero-mean harmonic jitter moves the relative leakage to $4\times10^{-3}$ and
+lifts the mean energy to $10.95$, which is $\tr(\Ph\Cov(B)\Ph)$ entering
+\eqref{eq:biasvar} exactly as it should. The hypothesis is ``for every
+realisation'', and only the pointwise measurement tests it.
 
 This is the honest boundary of the method, and it deserves stating as strictly as
 the validation protocol states its expected failures. The certificate detects

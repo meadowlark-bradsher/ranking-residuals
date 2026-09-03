@@ -376,6 +376,59 @@ def test_8_10_saturation_count_is_exact_in_gamma_and_emit_k(cfg):
 # These pin the two claims of design/methodology/bridge-invariance.tex that the
 # paper itself flags as wanting a check rather than trust (its Remark 2).
 
+def test_gradient_fabricators_are_invisible_in_every_moment(cfg):
+    """Proposition 3: a family of internally-gradient fabricators moves no moment.
+
+    THE ENERGY CHECK IS NOT THE PROPOSITION, and for a while it was all the
+    registry stored. `fabricator-family-invisible` held the mean and spread of the
+    harmonic ENERGY across the family -- evidence for invisibility, but a
+    statement about one scalar functional. What the proposition says is about the
+    covariance OPERATOR: B(w) in im D0 for EVERY realisation, hence
+    range Cov(B) <= im D0, hence tr(P_h Cov(B) P_h) = 0 and both terms of the
+    bias-variance identity are blind to the family.
+
+    The gap matters because a family that were gradient only IN MEAN would pass
+    the energy check on average and fail here. So this asserts the operator
+    statement and the pointwise one, and it asserts the leakage RELATIVE to the
+    covariance's own norm -- an absolute threshold on a matrix whose entries run
+    to hundreds would be satisfied by a leak that is not machine zero at all.
+    """
+    c = cfg.with_(n_int=6, n_cplx=5, mode_II="clean_gradient", bridge_mode="bias_rule")
+    a = assemble(c)
+    n, ni = c.n_vertices, c.n_int
+    D0, D1 = hodge.build_operators(n, a.edges,
+                                   hodge.triangles_for_filling(a.edges, "empty"))
+    Pg, _, Ph = hodge.hodge_projectors(D0, D1)
+    ccs = set(a.blocks["cc"].edges)
+    Ycc = np.array([a.Y_expected[k] if e in ccs else 0.0 for k, e in enumerate(a.edges)])
+    floor = float(Ycc @ Ph @ Ycc)
+
+    rng = np.random.default_rng(7)          # NOT the generator's seed: independent draw
+    Bs, en = [], []
+    for _ in range(400):
+        psi = np.zeros(n)
+        psi[:ni] = np.arange(ni, dtype=float)
+        psi[ni:] = rng.normal(0, 5, n - ni)
+        B = D0 @ psi
+        Bs.append(B)
+        en.append(float((B + Ycc) @ Ph @ (B + Ycc)))
+    Bs, en = np.asarray(Bs), np.asarray(en)
+
+    # (i) pointwise -- "for every realisation, not merely in mean"
+    assert np.linalg.norm(Bs @ Ph, axis=1).max() < 1e-9, "some realisation has harmonic part"
+
+    # (ii) the operator statement, relative to the covariance's own scale
+    cov = np.cov(Bs, rowvar=False)
+    scale = np.linalg.norm(cov, 2)
+    assert scale > 1.0, f"the family barely varies ({scale}); the test would be vacuous"
+    leak = np.linalg.norm((np.eye(len(a.edges)) - Pg) @ cov, 2) / scale
+    assert leak < 1e-12, f"range Cov(B) escapes im D0: relative leakage {leak}"
+    assert abs(np.trace(Ph @ cov @ Ph)) < 1e-9, "tr(P_h Cov(B) P_h) is not zero"
+
+    # (iii) every central moment at once: the energy never leaves the floor
+    assert np.abs(en - floor).max() < 1e-9, "the family moved the harmonic energy"
+
+
 @pytest.mark.parametrize("filling", ["empty", "observed"])
 def test_bridge_invariance_under_surrogate_level(cfg, filling):
     """Theorem 1: harmonic energy is invariant across the admissible bridge class.

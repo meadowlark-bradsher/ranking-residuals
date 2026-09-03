@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-09-03 from commit `0074a9d`
+Generated 2026-09-03 from commit `0fa308e`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -17,7 +17,7 @@ python verify.py --fast  # structural claims only, seconds
 
 Every RNG is seeded from a fixed constant, so on the same numpy every claim
 reproduces **bit-exactly** — the last full run showed zero drift on all
-34 claims. The tolerances below are the margin allowed for a
+35 claims. The tolerances below are the margin allowed for a
 different numpy or platform, not slack in the measurement. `exact` claims are
 identities or closed forms and are held to machine precision; `stochastic`
 claims are Monte Carlo and carry a tolerance set from their measured spread.
@@ -40,7 +40,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | `systematic-floors` | Only the potential-consistent bridge satisfies Corollary 1's hypothesis; the zero-centred coins carry a systematic floor. | bridge sec 8.2 table | 1e-09 abs | `test_zero_mean_bridge_leaves_a_persistent_bias` |
 | `properness-hypothesis` | Theorem 1's properness clause needs Ph B_const != 0, and b1 > 0 does not supply it. Across sparse glued configurations under the observed filling, EVERY failure of the strict inequality has Ph B_const = 0 -- all of the b1 = 0 cases, where Ph annihilates every flow, and a minority of the b1 > 0 cases, where the non-gradient residual lies in im D1^T. No configuration with Ph B_const != 0 fails. | bridge sec 4, Theorem 1 (Bridge-invariance) | exact | — |
 | `spread-scaling` | The persistent bias equals ||P_h (D0 s)|Eb||^2 and is exactly quadratic in the integer scale; at zero spread it is exactly zero. | bridge sec 8.3(i); bridge sec 8.3(ii) | 1e-09 abs | — |
-| `fabricator-family-invisible` | A family of internally-gradient fabricators is invisible in every moment, not only the mean: Cov(B) lies inside im D0. | bridge sec 6.1, Proposition 3 (Gradient families are invisible) | 1e-09 abs | — |
+| `fabricator-family-invisible` | A family of internally-gradient fabricators is invisible in every moment, not only the mean: range Cov(B) lies inside im D0, so tr(P_h Cov(B) P_h) is zero and both terms of the bias-variance identity are blind to the family. Measured on the operator, not only on the energy: the covariance's leakage out of im D0 is machine epsilon RELATIVE to its own spectral norm, no single realisation has nonzero harmonic part, and every energy sits within 1.4e-12 of the circle floor -- which bounds every central moment at once, not just the second. | bridge sec 6.1, Proposition 3 (Gradient families are invisible) | 1e-09 abs | `test_gradient_fabricators_are_invisible_in_every_moment` |
 | `emit-saturation-count` | The count of edges whose target exceeds the emission headroom log(2*emit_k-1) is exact rather than a draw: under the default mode_II=null_btl the bias_rule bridge is handed theta_gamma, which takes no rng, so the count is a function of gamma and emit_k alone -- 15 at emit_k=8, 5 at 16, 0 from 32 up, and 25/15/15/10 across the gamma grid at emit_k=8. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 3 and 4 | exact | `test_8_10_saturation_count_is_exact_in_gamma_and_emit_k` |
 | `filling-dependence` | b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other. | methodology sec 5.3 table | 0.02 rel | — |
 | `c1-cross-term-completes` | The 1/k coefficient of the harmonic energy is tr(P_h V) + 2 eps (h.b), not tr(P_h V) alone. The cross term COMPLETES the delta-method oracle rather than refining it: measured/closed is 1.0 to 8 dp on both calibration topologies, while variance-only is off by 2.7% and 5.0%. | methodology sec 5.1; methodology sec 9 | 1e-06 rel | `test_7_c1_equals_variance_plus_cross` |
@@ -55,6 +55,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | id | asserts | cited in | tolerance | test |
 |---|---|---|---|---|
 | `thrashing-does-not-wash-out` | The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor. | bridge sec 8.2 table; bridge Remark 6 (A thrashing judge does not wash out) | 0.05 rel | `test_zero_mean_bridge_leaves_a_persistent_bias` |
+| `fabricator-mean-only-control` | The negative control for fabricator-family-invisible. A family that is gradient only IN MEAN leaves the AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot tell the two apart. The operator measurements can: adding a zero-mean harmonic jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to 7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four machine zeros beside it could not be shown capable of failing. | bridge sec 6.1, Proposition 3 (Gradient families are invisible) | 1e-06 rel | `test_gradient_fabricators_are_invisible_in_every_moment` |
 | `emit-roundtrip-deviation` | The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 2 and 4 | 0.05 rel | — |
 | `fit-window` | Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it. | methodology sec 5.3; methodology fig 3 | 0.05 rel | — |
 | `delta-method-cross-term` | The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps. | methodology sec 5.1 | 0.05 rel | — |

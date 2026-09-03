@@ -335,19 +335,79 @@ def bridge(cfg):
           note="A law, not a fit: the quotient by lambda^2 is constant. flat_block is measured.")
 
     Ycc = np.array([a.Y_expected[k] if e in ccs else 0.0 for k, e in enumerate(a.edges)])
-    rng = np.random.default_rng(0); en = []
+    Pg, _, _ = hodge.hodge_projectors(D0, D1)
+    rng = np.random.default_rng(0); en, Bs = [], []
     for _ in range(2000):
         psi = np.zeros(n); psi[:ni] = np.arange(ni, dtype=float)
         psi[ni:] = rng.normal(0, 5, n - ni)
-        Y = D0 @ psi + Ycc
+        B = D0 @ psi                    # the fabricator's own flow, in im D0 by construction
+        Bs.append(B)
+        Y = B + Ycc
         en.append(float(Y @ Ph @ Y))
-    en = np.array(en)
+    en = np.array(en); Bs = np.asarray(Bs)
+    # The spread of the ENERGY is evidence for Proposition 3 but is not what it
+    # says. It says range Cov(B) <= im D0, hence tr(Ph Cov(B) Ph) = 0 -- a
+    # statement about the covariance OPERATOR, and about EVERY realisation rather
+    # than the average. All three are measured here, because a family that were
+    # gradient only in mean would pass the energy check and fail the other two.
+    cov = np.cov(Bs, rowvar=False)
+    leak = np.linalg.norm((np.eye(len(a.edges)) - Pg) @ cov, 2) / np.linalg.norm(cov, 2)
+    # NEGATIVE CONTROL, measured rather than argued. A family that is gradient only
+    # in MEAN leaves the average energy at the floor too, so without this arm the
+    # four numbers above cannot be shown capable of failing. Same seed, plus a
+    # zero-mean harmonic jitter -- the one perturbation the mean cannot see.
+    hu = flows.harmonic_unit(D0, D1)
+    rng2 = np.random.default_rng(0); enM, BsM = [], []
+    for _ in range(2000):
+        psi = np.zeros(n); psi[:ni] = np.arange(ni, dtype=float)
+        psi[ni:] = rng2.normal(0, 5, n - ni)
+        B = D0 @ psi + rng2.normal(0, 1) * hu
+        BsM.append(B); enM.append(float((B + Ycc) @ Ph @ (B + Ycc)))
+    enM = np.array(enM); covM = np.cov(np.asarray(BsM), rowvar=False)
+    leakM = np.linalg.norm((np.eye(len(a.edges)) - Pg) @ covM, 2) / np.linalg.norm(covM, 2)
     claim("fabricator-family-invisible", asserts="A family of internally-gradient fabricators is "
-          "invisible in every moment, not only the mean: Cov(B) lies inside im D0.",
+          "invisible in every moment, not only the mean: range Cov(B) lies inside im D0, so "
+          "tr(P_h Cov(B) P_h) is zero and both terms of the bias-variance identity are blind "
+          "to the family. Measured on the operator, not only on the energy: the covariance's "
+          "leakage out of im D0 is machine epsilon RELATIVE to its own spectral norm, no "
+          "single realisation has nonzero harmonic part, and every energy sits within 1.4e-12 "
+          "of the circle floor -- which bounds every central moment at once, not just the second.",
           cited_in=["bridge sec 6.1, Proposition 3 (Gradient families are invisible)"],
-          value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle},
+          value={"mean": float(en.mean()), "sd": float(en.std()), "circle_floor": circle,
+                 "max_Ph_B_realisation": float(np.linalg.norm(Bs @ Ph, axis=1).max()),
+                 "tr_Ph_cov_Ph": float(np.trace(Ph @ cov @ Ph)),
+                 "cov_leakage_relative": float(leak),
+                 "energy_max_dev_from_floor": float(np.abs(en - circle).max())},
           tol={"kind": "abs", "value": 1e-9},
-          note="sd is at machine precision; the claim is exactness, not a small number.")
+          test="tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+          note="Leakage is stored RELATIVE to ||Cov(B)||_2 rather than as the raw "
+               "operator norm: the raw pair would put a value of order 291 under a "
+               "1e-9 absolute tolerance, which asks a different question than the "
+               "one the proposition poses. energy_max_dev_from_floor is the useful "
+               "single number -- it dominates every central moment of the energy, so "
+               "'invisible in every moment' is bounded by one measurement rather "
+               "than by reporting moments one at a time. Its negative control is a "
+               "SEPARATE claim, fabricator-mean-only-control, because the control's "
+               "numbers are order 1 and would drag this claim's absolute tolerance "
+               "up with them -- one tolerance per scale, or the machine zeros stop "
+               "being asserted as machine zeros.")
+
+    claim("fabricator-mean-only-control", asserts="The negative control for "
+          "fabricator-family-invisible. A family that is gradient only IN MEAN leaves the "
+          "AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot "
+          "tell the two apart. The operator measurements can: adding a zero-mean harmonic "
+          "jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to "
+          "7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly "
+          "tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four "
+          "machine zeros beside it could not be shown capable of failing.",
+          cited_in=["bridge sec 6.1, Proposition 3 (Gradient families are invisible)"],
+          value={"cov_leakage_relative": float(leakM), "mean_energy": float(enM.mean()),
+                 "excess_over_floor": float(enM.mean() - circle)},
+          tol={"kind": "rel", "value": 1e-6}, kind="stochastic",
+          test="tests/test_acceptance.py::test_gradient_fabricators_are_invisible_in_every_moment",
+          note="Same seed and same 2000 draws as fabricator-family-invisible, plus the one "
+               "perturbation the first moment cannot see. Stochastic rather than exact "
+               "because the jitter is a draw, though a deterministically seeded one.")
 
 
 # ---------------------------------------------------------------- emission (spec 10)
