@@ -961,9 +961,24 @@ def sweeps(cfg):
             fl.append(ff["floor"]); cs.append(ff["c"])
         return (float(np.median(fl)), float(np.median(cs)), float(np.median(cors)))
 
+    # THE V5 DEFAULTS, read out of a0b508b:rig/config.py rather than inferred.
+    # a0b508b is "Implement the calibration rig against spec v5" and is the first
+    # commit that carries a rig at all -- and its floor_measurement ALREADY derives
+    # the window. The repository therefore begins AFTER Delta A, which is why the
+    # sec 6 incident cannot be recovered from history: it happened before there was
+    # a history. What a0b508b does record is the configuration v5 shipped with, and
+    # that is what is pinned here. n_cplx is carried for fidelity though it does not
+    # reach this measurement -- floor_measurement reads n_int only -- and `filling`
+    # is 'empty' in the config while floor_measurement defaults its own to
+    # 'observed', which is the filling the measurement was actually taken under.
+    V5 = {"n_int": 8, "n_cplx": 5, "beta": 0.3, "p": 0.45, "fit_k_min": 64,
+          "reps": 16, "seeds": 64, "k_max": 1024, "filling": "observed",
+          "source": "a0b508b:rig/config.py"}
     G1024 = (8, 16, 32, 64, 128, 256, 512, 1024)   # the v5 grid, before v6 extended it
+    betas_f = (0.15, 0.25, 0.30, 0.50, 0.70)
+
     fixrows = []
-    for beta_f in (0.15, 0.25, 0.30, 0.50, 0.70):
+    for beta_f in betas_f:
         cf = base.with_(n_int=12, n_cplx=0, seeds=24, reps=16,
                         btl=replace(base.btl, beta=beta_f, k=G1024))
         flr, cft, cor = _fixed_window(cf, 2.0, 0.3)
@@ -971,24 +986,38 @@ def sweeps(cfg):
         fixrows.append({"beta": beta_f, "fixed_floor_x": flr / 0.09,
                         "derived_floor_x": dv["floor_over_oracle"],
                         "c_fit": cft, "c_oracle": cor, "c_ratio": cft / cor})
-    claim("fixed-window-fixture", asserts="The retired fixed k >= 64 window, run against "
-          "today's rig, reproduces the SHAPE of the sec 6 incident at the old default "
-          "separation beta = 0.3: a floor about 12% low -- entirely plausible, and the "
-          "reason it passed unexamined -- while the c-oracle disagrees by about 27%, which "
-          "is what flagged it. Past beta = 0.5 the fixed window is worse than the derived "
-          "one at every separation. The incident's own digits are NOT reproduced and are "
-          "not recoverable: that run predates Delta A and Delta E and its configuration was "
-          "never recorded.",
+
+    v5rows = []
+    for beta_f in betas_f:
+        c5 = base.with_(n_int=V5["n_int"], n_cplx=V5["n_cplx"],
+                        seeds=V5["seeds"], reps=V5["reps"],
+                        btl=replace(base.btl, beta=beta_f, p=V5["p"], k=G1024,
+                                    fit_k_min=V5["fit_k_min"]))
+        flr5, cft5, cor5 = _fixed_window(c5, 2.0, 0.3, V5["filling"])
+        v5rows.append({"beta": beta_f, "fixed_floor_x": flr5 / 0.09,
+                       "c_fit": cft5, "c_oracle": cor5, "c_ratio": cft5 / cor5})
+    claim("fixed-window-fixture", asserts="The retired fixed k >= 64 window was ADEQUATE for "
+          "the configuration it was written against and became wrong when that configuration "
+          "moved. At the pinned v5 defaults (n_int = 8) it recovers the floor at 0.98x-1.20x "
+          "across every separation. At today's defaults (n_int = 12) the same rule reads 0.88x "
+          "at beta = 0.3 -- plausible enough to pass unexamined, which is the sec 6 incident's "
+          "shape -- while the c-oracle disagrees by 27%, and it degrades to 4.3x by beta = 0.7. "
+          "A bigger graph carries a bigger variance term, so Delta E's n_int 8 -> 12 is part of "
+          "why Delta A's derived window was needed. The incident's OWN digits are not "
+          "reproduced and cannot be: a0b508b, the first commit carrying a rig, already derives "
+          "the window, so that run predates the repository.",
           cited_in=["methodology sec 6"],
-          value={"rows": fixrows},
+          value={"config_v5": V5, "at_v5_defaults": v5rows, "at_current_defaults": fixrows},
           tol={"kind": "rel", "value": 0.05}, kind="stochastic",
           test="tests/test_acceptance.py::test_retired_fixed_window_reproduces_the_guard_incident",
-          note="A FIXTURE, not a recommendation: fit.fit_floor_c still takes fit_k_min, so the "
-               "v5 estimator is one argument away and nothing had to be resurrected. What is "
-               "reconstructed is the window RULE applied to the current configuration, which "
-               "is the honest half -- the run itself cannot be recovered, and hunting the "
-               "parameter space until three remembered digits reappeared would be selecting a "
-               "configuration to match a number rather than measuring one.")
+          note="A FIXTURE, not a recommendation. Two things are pinned and they are pinned "
+               "differently: the RULE is reconstructed (fit.fit_floor_c still takes fit_k_min, "
+               "so the v5 estimator is one argument away), while the CONFIG is recovered from "
+               "a0b508b:rig/config.py rather than inferred -- an earlier attempt at this guessed "
+               "n_cplx = 0 and filling = 'observed' and had both wrong. What remains "
+               "unrecoverable is the incident's run, and hunting the parameter space until its "
+               "three remembered digits reappeared would be selecting a configuration to match "
+               "a number rather than measuring one.")
 
     guard = {}
     for name, (rho, grid) in {"historical": (3.0, G4), "current": (1.5, base.btl.k)}.items():

@@ -487,17 +487,28 @@ is not.
 prediction \eqref{eq:coracle} is a genuine misspecification detector. It caught a
 default separation parameter of ours that saturated the clamp --- $\beta = 0.3$,
 which sits on the saturation gate that $0.25$ clears. That run's own digits are
-gone: it predates both the derived window and the change of default, and its
-configuration was never recorded. \emph{The rule survives, though,} because the
-estimator still takes its window as a parameter rather than deriving it
-internally --- so the retired rule is one argument away and is kept as a fixture.
-Pinned back to $k \geq 64$ on the present rig, it reproduces the incident's shape
-at the same $\beta = 0.3$: the floor returns at $0.88\times$ the oracle, close
+gone, and the reason is sharper than a lost note: the first commit to carry a rig
+at all already derives the window, so the incident predates the repository.
+\emph{The rule survives, though,} because the estimator still takes its window as
+a parameter rather than deriving it internally --- and the configuration v5
+shipped with is recorded even where that run is not. Both are pinned as a
+fixture.
+
+Run at the v5 defaults, the retired rule is \emph{adequate}: it recovers the
+floor at $0.98$--$1.20\times$ across every separation. Run at today's defaults it
+is not. At the same $\beta = 0.3$ the floor returns at $0.88\times$ --- close
 enough to read as correct, which is exactly why it passed unexamined --- while
 the fitted and predicted $c$ disagree by $27\%$, which is what did not. The
-derived window on that same cell returns $1.09\times$. Past $\beta = 0.5$ the
-retired rule is worse at every separation, reaching $4.3\times$ at $\beta = 0.7$,
-where the guard reads $0.27$ and is impossible to miss.
+derived window on that cell returns $1.09\times$, and past $\beta = 0.5$ the
+retired rule degrades to $4.3\times$.
+
+One config field separates the two arms. $n_{\mathrm{int}}$ moved from $8$ to
+$12$; a larger graph carries a larger variance term; a window pinned to a
+constant cannot follow it. So the fixed window was not wrong when it was
+written --- it was calibrated, and then the thing it was calibrated against
+moved. That is the failure \S\ref{subsec:window} records for the filling,
+appearing again in a second parameter, and it is the argument for deriving the
+window rather than declaring it.
 
 The converse is the harder case, and it is why this guard is necessary without
 being sufficient: it reads $c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 0.95$ at a
