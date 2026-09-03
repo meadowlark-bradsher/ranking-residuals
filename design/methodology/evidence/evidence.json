@@ -8,12 +8,12 @@
  },
  "meta": {
   "generated": "2026-09-03",
-  "commit": "0fa308e",
+  "commit": "20b6937",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 35,
-  "source_fingerprint": "667fff4a1f4ffb28",
-  "claims_digest": "d9d5fdf64e640035"
+  "n_claims": 36,
+  "source_fingerprint": "d1f25baab5eb3481",
+  "claims_digest": "fb12a92a25404c95"
  },
  "claims": {
   "pm1-trap": {
@@ -500,6 +500,100 @@
    "test": null,
    "note": null
   },
+  "fit-window-bias-range": {
+   "claim": "Across the separations sec 2.6 admits, fitting the full k grid recovers the floor at between 0.99x and 1.97x of its true value, while the k >= 64 window holds 0.94x to 1.01x. The full-grid error grows with beta and shrinks with gamma, so it is a range over the operating region and not a constant.",
+   "cited_in": [
+    "methodology sec 5.3",
+    "rig/fit.py, the module docstring"
+   ],
+   "value": {
+    "rows": [
+     {
+      "beta": 0.15,
+      "gamma": 1.0,
+      "full_grid_x": 1.096529722992655,
+      "windowed_x": 0.9784615088818676
+     },
+     {
+      "beta": 0.15,
+      "gamma": 2.0,
+      "full_grid_x": 1.0738087805768357,
+      "windowed_x": 1.0014405363439711
+     },
+     {
+      "beta": 0.15,
+      "gamma": 6.0,
+      "full_grid_x": 0.9885392690242321,
+      "windowed_x": 0.9858763355304722
+     },
+     {
+      "beta": 0.2,
+      "gamma": 1.0,
+      "full_grid_x": 1.4684364498560112,
+      "windowed_x": 0.9632715303756954
+     },
+     {
+      "beta": 0.2,
+      "gamma": 2.0,
+      "full_grid_x": 1.3901767137324281,
+      "windowed_x": 0.9770026943114712
+     },
+     {
+      "beta": 0.2,
+      "gamma": 6.0,
+      "full_grid_x": 1.2193874592300524,
+      "windowed_x": 0.9733946340811847
+     },
+     {
+      "beta": 0.25,
+      "gamma": 1.0,
+      "full_grid_x": 1.8579860892681135,
+      "windowed_x": 0.9239086193080859
+     },
+     {
+      "beta": 0.25,
+      "gamma": 2.0,
+      "full_grid_x": 1.7261510846351171,
+      "windowed_x": 0.9287009270114475
+     },
+     {
+      "beta": 0.25,
+      "gamma": 6.0,
+      "full_grid_x": 1.4730203728131606,
+      "windowed_x": 0.957558631669747
+     },
+     {
+      "beta": 0.3,
+      "gamma": 1.0,
+      "full_grid_x": 2.2996721287733375,
+      "windowed_x": 0.9330488486184106
+     },
+     {
+      "beta": 0.3,
+      "gamma": 2.0,
+      "full_grid_x": 2.0708056792975627,
+      "windowed_x": 0.9357652017729101
+     },
+     {
+      "beta": 0.3,
+      "gamma": 6.0,
+      "full_grid_x": 1.775497096083248,
+      "windowed_x": 0.994030983790128
+     }
+    ],
+    "full_grid_min": 0.9885392690242321,
+    "full_grid_max": 2.2996721287733375,
+    "windowed_min": 0.9239086193080859,
+    "windowed_max": 1.0014405363439711
+   },
+   "tolerance": {
+    "kind": "rel",
+    "value": 0.05
+   },
+   "kind": "stochastic",
+   "test": null,
+   "note": "Supersedes the unowned 0.83x-2.48x / 0.87x-0.95x figures that stood in sec 5.3 and rig/fit.py. Those were measured on a sweep whose configuration was not recorded and do not reproduce here; the CONCLUSION they were quoted for -- the full grid biases the intercept, the window does not -- reproduces intact, which is why the fix is a re-measurement rather than a retraction."
+  },
   "filling-dependence": {
    "claim": "b1 and c_oracle move by nearly an order of magnitude with the filling, so a fixed window calibrated under one is wrong under the other.",
    "cited_in": [
@@ -508,12 +602,15 @@
    "value": {
     "observed": {
      "b1": 2,
-     "c_oracle": 18.072197533376897
+     "c_oracle": 18.072197533376897,
+     "floor_at_k64": 0.08421886815956191
     },
     "empty": {
      "b1": 20,
-     "c_oracle": 160.44875095871674
-    }
+     "c_oracle": 160.44875095871674,
+     "floor_at_k64": 0.046771767030582695
+    },
+    "true_floor": 0.09
    },
    "tolerance": {
     "kind": "rel",

@@ -414,7 +414,8 @@ mask is drawn once per seed; only the Bernoulli outcomes vary with $k$.
 
 The $O(k^{-2})$ term in \eqref{eq:model} is not negligible at small $k$, and a
 two-parameter fit absorbs it into the intercept. Fitting the full grid biases the
-floor by factors of $0.83$ to $2.48$ depending on separation --- on the graph of
+floor by factors of $0.99$ to $2.30$ across the separations \S\ref{sec:guards}
+admits, against $0.92$ to $1.00$ on the window --- on the graph of
 Figure~\ref{fig:window} an intercept of $0.186$ against a true floor of $0.090$,
 where the windowed fit gives $0.084$. Adding $c_2/k^2$ as a \emph{free} third
 parameter is worse, not better --- on sampled energies it is poorly conditioned
@@ -438,8 +439,8 @@ graph:
 \toprule
 \textbf{Filling} & $b_1$ & $c$ & \textbf{floor at $k\!\geq\!64$} & \textbf{true} \\
 \midrule
-observed & $2$  & $18$  & $0.0807$ & $0.090$ \\
-empty    & $20$ & $160$ & $0.0156$ & $0.090$ \\
+observed & $2$  & $18$  & $0.0842$ & $0.090$ \\
+empty    & $20$ & $160$ & $0.0468$ & $0.090$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -469,7 +470,7 @@ filling dependence --- both fillings recover given a grid that reaches the
 requirement --- and removed most of a residual bias we had been carrying as an
 unexplained constant.
 
-\section{Guard discipline}
+\section{Guard discipline}\label{sec:guards}
 
 Three rules govern how the estimator fails.
 
@@ -484,12 +485,17 @@ is not.
 
 \paragraph{A guard may be necessary without being sufficient.} The delta-method
 prediction \eqref{eq:coracle} is a genuine misspecification detector. It caught a
-default separation parameter of ours that saturated the clamp: the fitted floor
-read $0.2591$ against a true $0.0900$ --- an entirely plausible number --- and
-only the disagreement between fitted $c=9.44$ and predicted $c=70.07$ revealed
-the fit as misspecified rather than informative. But the same guard reads
-$c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 1.01$, essentially exact, at a separation
-where the floor is still $1.86\times$ too high. It is necessary and not
+default separation parameter of ours that saturated the clamp --- $\beta = 0.3$,
+which sits on the saturation gate that $0.25$ clears. The floor it returned was
+an entirely plausible number, close enough to the oracle to pass unexamined, and
+only the disagreement between the fitted and the predicted $c$ revealed the fit
+as misspecified rather than informative. \emph{The digits from that incident are
+not quoted here.} They were measured before the window became derived and before
+the default moved, so no configuration the rig can now build reproduces them, and
+a number no re-run can reach is exactly what this document asks nobody to print.
+The blind spot itself does reproduce: the guard reads
+$c_{\mathrm{fit}}/c_{\mathrm{oracle}} = 0.95$ at a separation where the floor is
+still $1.11\times$ too high. It is necessary and not
 sufficient, and we say so wherever it appears. Reporting it as \emph{the} gate
 would have licensed exactly the errors it cannot see. Figure~\ref{fig:guard}
 shows the blind spot as a region rather than an anecdote, and shows that

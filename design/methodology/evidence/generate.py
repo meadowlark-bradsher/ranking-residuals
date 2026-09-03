@@ -567,17 +567,72 @@ def estimator(cfg):
                  "intercept_full_grid": float(full[0]), "intercept_windowed": float(win[0])},
           tol={"kind": "rel", "value": 0.05}, kind="stochastic")
 
+    # The window's whole justification is a RANGE -- "0.83x-2.48x on the full grid
+    # against 0.87x-0.95x on k >= 64" -- quoted in sec 5.3, in rig/fit.py's module
+    # docstring, and in the fit/floor-ols manifest member. It was owned by none of
+    # them: the sweep that produced those figures was never recorded, and the
+    # numbers do not reproduce on any configuration the rig can still build. So it
+    # is measured here, across the separations sec 2.6 admits, and the three places
+    # that quote it now quote something that regenerates.
+    bias = []
+    for beta_s in (0.15, 0.20, 0.25, 0.30):
+        for gam_s in (1.0, 2.0, 6.0):
+            th_s = flows.theta_gamma(n, beta_s, gam_s)
+            pe_s = 1 / (1 + np.exp(-flows.misspecified_latent(D0, th_s, eps, hu)))
+            E_s = []
+            for k in ks:
+                rg = np.random.default_rng(999 + k)
+                w_s = rg.binomial(k, np.broadcast_to(pe_s, (3000, len(pe_s))))
+                Y_s = flows.logodds_from_counts(w_s, k)
+                E_s.append(float(np.mean(np.einsum("ij,jk,ik->i", Y_s, Ph, Y_s))))
+            E_s = np.array(E_s)
+            sel_s = [i for i, k in enumerate(ks) if k >= 64]
+            bias.append({"beta": beta_s, "gamma": gam_s,
+                         "full_grid_x": float(np.linalg.lstsq(A(ks), E_s, rcond=None)[0][0]) / eps ** 2,
+                         "windowed_x": float(np.linalg.lstsq(
+                             A([ks[i] for i in sel_s]), E_s[sel_s], rcond=None)[0][0]) / eps ** 2})
+    fg = [r["full_grid_x"] for r in bias]; wg = [r["windowed_x"] for r in bias]
+    claim("fit-window-bias-range", asserts="Across the separations sec 2.6 admits, fitting the "
+          "full k grid recovers the floor at between 0.99x and 1.97x of its true value, while "
+          "the k >= 64 window holds 0.94x to 1.01x. The full-grid error grows with beta and "
+          "shrinks with gamma, so it is a range over the operating region and not a constant.",
+          cited_in=["methodology sec 5.3", "rig/fit.py, the module docstring"],
+          value={"rows": bias, "full_grid_min": min(fg), "full_grid_max": max(fg),
+                 "windowed_min": min(wg), "windowed_max": max(wg)},
+          tol={"kind": "rel", "value": 0.05}, kind="stochastic",
+          note="Supersedes the unowned 0.83x-2.48x / 0.87x-0.95x figures that stood in sec 5.3 "
+               "and rig/fit.py. Those were measured on a sweep whose configuration was not "
+               "recorded and do not reproduce here; the CONCLUSION they were quoted for -- the "
+               "full grid biases the intercept, the window does not -- reproduces intact, which "
+               "is why the fix is a re-measurement rather than a retraction.")
+
     fill = {}
     for f in ("observed", "empty"):
         d0, d1 = hodge.build_operators(n, mask, hodge.triangles_for_filling(mask, f))
         _, _, P = hodge.hodge_projectors(d0, d1)
         h = flows.harmonic_unit(d0, d1)
         pef = 1 / (1 + np.exp(-flows.misspecified_latent(d0, th, eps, h)))
+        # b1 and c_oracle are the EXPLANATION; the recovered floor is the
+        # consequence, and the consequence is what sec 5.3's table is for. It went
+        # unowned, so the table's floors and the registry drifted apart with
+        # nothing to notice. Fitted at the FIXED k >= 64 window on purpose: the
+        # table exists to show that a fixed window is wrong under some filling.
+        Ef = []
+        for k in ks:
+            rg = np.random.default_rng(999 + k)
+            wf = rg.binomial(k, np.broadcast_to(pef, (3000, len(pef))))
+            Yf = flows.logodds_from_counts(wf, k)
+            Ef.append(float(np.mean(np.einsum("ij,jk,ik->i", Yf, P, Yf))))
+        self_ = [i for i, k in enumerate(ks) if k >= 64]
         fill[f] = {"b1": int(hodge.harmonic_basis(d0, d1).shape[1]),
-                   "c_oracle": oracle.c_oracle(P, pef)}
+                   "c_oracle": oracle.c_oracle(P, pef),
+                   "floor_at_k64": float(np.linalg.lstsq(
+                       A([ks[i] for i in self_]),
+                       np.array([Ef[i] for i in self_]), rcond=None)[0][0])}
     claim("filling-dependence", asserts="b1 and c_oracle move by nearly an order of magnitude "
           "with the filling, so a fixed window calibrated under one is wrong under the other.",
-          cited_in=["methodology sec 5.3 table"], value=fill,
+          cited_in=["methodology sec 5.3 table"],
+          value={**fill, "true_floor": eps ** 2},
           tol={"kind": "rel", "value": 0.02})
 
     cross = {}

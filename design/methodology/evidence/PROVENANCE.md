@@ -4,7 +4,7 @@ Every quantity cited in the papers, with the code that produces it, the
 tolerance within which a re-run must reproduce it, and the test that pins it
 where one does.
 
-Generated 2026-09-03 from commit `0fa308e`
+Generated 2026-09-03 from commit `20b6937`
 on Python 3.12 / numpy 1.26.4.
 
 ```bash
@@ -17,7 +17,7 @@ python verify.py --fast  # structural claims only, seconds
 
 Every RNG is seeded from a fixed constant, so on the same numpy every claim
 reproduces **bit-exactly** — the last full run showed zero drift on all
-35 claims. The tolerances below are the margin allowed for a
+36 claims. The tolerances below are the margin allowed for a
 different numpy or platform, not slack in the measurement. `exact` claims are
 identities or closed forms and are held to machine precision; `stochastic`
 claims are Monte Carlo and carry a tolerance set from their measured spread.
@@ -58,6 +58,7 @@ claims are Monte Carlo and carry a tolerance set from their measured spread.
 | `fabricator-mean-only-control` | The negative control for fabricator-family-invisible. A family that is gradient only IN MEAN leaves the AVERAGE harmonic energy at the circle floor too, so the energy check alone cannot tell the two apart. The operator measurements can: adding a zero-mean harmonic jitter takes the relative leakage of Cov(B) out of im D0 from machine epsilon to 7e-3, and lifts the mean energy from the floor to about 11.0 -- which is exactly tr(P_h Cov(B) P_h) entering the bias-variance identity. Without this arm the four machine zeros beside it could not be shown capable of failing. | bridge sec 6.1, Proposition 3 (Gradient families are invisible) | 1e-06 rel | `test_gradient_fabricators_are_invisible_in_every_moment` |
 | `emit-roundtrip-deviation` | The magnitude path round-trips only as emit_k -> inf, and the deviation at a given emit_k is a single draw -- emit_k sits in the config fingerprint, so each row is its own assembly. residual_max falls monotonically where the deviation does not, and the seed-0 deviation at emit_k=8 is the top of its 20-seed range. | rig/config.py, the emit_k note; exercises SOLUTIONS.md, exercise 7 part-2 table; exercises SOLUTIONS.md, exercise 7 answers 2 and 4 | 0.05 rel | — |
 | `fit-window` | Fitting the full k grid biases the intercept; restricting to k >= 64 recovers it. The floor is an intercept, so the window decides it. | methodology sec 5.3; methodology fig 3 | 0.05 rel | — |
+| `fit-window-bias-range` | Across the separations sec 2.6 admits, fitting the full k grid recovers the floor at between 0.99x and 1.97x of its true value, while the k >= 64 window holds 0.94x to 1.01x. The full-grid error grows with beta and shrinks with gamma, so it is a range over the operating region and not a constant. | methodology sec 5.3; rig/fit.py, the module docstring | 0.05 rel | — |
 | `delta-method-cross-term` | The 1/k coefficient omits the plug-in logit mean bias; including its cross term flattens the guard's drift in eps. | methodology sec 5.1 | 0.05 rel | — |
 | `residual-across-draws` | The residual is real but small, and any single run lands anywhere in a band about a percentage point wide; coverage is typically 15/16. | methodology sec 7, the reporting-discipline example; methodology sec 9 table; methodology fig 5; methodology v7 note | 0.5 abs_pct | — |
 | `rho-tradeoff` | The residual falls monotonically as rho falls, because a smaller rho demands a longer tail -- but cells become unfittable as the grid stops reaching the window, so rho and the grid must be tuned together. | methodology sec 9; methodology fig 6 left; methodology v7 note | 0.8 abs_pct | — |

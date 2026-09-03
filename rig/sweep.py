@@ -52,7 +52,8 @@ def floor_measurement(cfg, gamma: float, eps: float, strict: bool = True,
     `filling` defaults to 'observed' -- NOT to cfg.filling. §2.4's characterisation of
     the null and §2.6's fit window were both measured on 'observed'; on 'empty' the
     same graph carries ~10x the harmonic dimension, hence ~10x the variance term, and
-    the k>=64 window is nowhere near enough (measured 0.016 against a true 0.090).
+    the k>=64 window is nowhere near enough (measured 0.047 against a true 0.090;
+    the `filling-dependence` claim owns both).
     The window is therefore DERIVED per config from c_oracle and the target floor, and
     a grid that cannot support it is flagged rather than silently fitted.
     """

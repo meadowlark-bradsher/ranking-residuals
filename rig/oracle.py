@@ -103,8 +103,8 @@ def required_fit_k_min(c_or: float, floor_target: float, rho: float) -> float:
     (b1=2, c~17) -- and the window is not a constant, it is set by the ratio of the
     variance term to the floor being resolved. On filling='empty' the same graph has
     b1=20 and c~160, so k=64 leaves the variance term ~10x larger and the intercept is
-    a small difference of large extrapolated numbers (measured floor 0.016 vs a true
-    0.090).
+    a small difference of large extrapolated numbers (measured floor 0.047 vs a true
+    0.090 -- the `filling-dependence` claim, which owns both).
 
     `rho` is REQUIRED and deliberately has no default: it is a shipped config field
     (RigConfig.rho, 1.5 since v7) and a default here would be a second place to set it.

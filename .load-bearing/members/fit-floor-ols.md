@@ -7,7 +7,10 @@ the mask — hence `P_h` and the true floor — is fixed within a seed.
 `fit_floor_c` restricts the fit to `k >= fit_k_min` before assembling the design
 matrix. The small-`k` points are where the `O(1/k²)` logit-bias term lives, and
 a two-parameter OLS has nowhere to put it except the intercept: measured floor
-bias is 0.83×–2.48× on the full grid against 0.87×–0.95× on `k >= 64`. Fewer
+bias is 0.99×–2.30× on the full grid against 0.92×–1.00× on `k >= 64`, across
+the separations §2.6 admits. Those figures now belong to the
+`fit-window-bias-range` claim; the ones this body carried before were quoted
+from a sweep nobody recorded and no configuration reproduces. Fewer
 than two points inside the window raises `ValueError` rather than fitting, and
 the message says which direction to fix it in — extend the `k` grid upward,
 do not lower `fit_k_min`.
