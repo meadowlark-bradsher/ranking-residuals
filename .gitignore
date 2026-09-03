@@ -233,6 +233,10 @@ design/methodology/snippets/*.pdf
 design/methodology/*.png
 design/methodology/combined/*.pdf
 design/methodology/combined/combined-body.tex
+design/methodology/combined/*.toc
+design/methodology/combined/*.log
+design/methodology/combined/*.aux
+design/methodology/combined/*.out
 
 # macOS Finder metadata
 .DS_Store

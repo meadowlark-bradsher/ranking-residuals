@@ -83,6 +83,7 @@ any flow that quantizes away entirely raises rather than returning nothing.
 ```
 hodge.py              THE INSTRUMENT — byte-identical to design/reference/hodge.py
 conftest.py           puts the repo root on sys.path
+Makefile              `make draft` builds paper 1 in an order easy to get wrong
 requirements.txt      the environment evidence.json's meta block records
 LICENSE               MIT
 CLAUDE.md             the working agreement: what "done" requires
