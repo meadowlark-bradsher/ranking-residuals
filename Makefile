@@ -21,12 +21,18 @@ FIGS    := $(METH)/fig-draws.pdf $(METH)/fig-guard.pdf \
            $(METH)/fig-rho-plateau.pdf $(METH)/fig-window.pdf
 BODY    := $(COMB)/combined-body.tex
 PDF     := $(COMB)/combined.pdf
+STANDALONE := $(METH)/calibration-methodology.pdf $(METH)/bridge-invariance.pdf
 
 .DEFAULT_GOAL := help
-.PHONY: help draft figures test verify clean
+# A recipe that FAILS still leaves whatever it wrote. Without this, a ref-check
+# failure leaves a PDF full of `??` carrying a fresh mtime, and the next make
+# reports it up to date -- the exact quiet wrongness this file exists to prevent.
+.DELETE_ON_ERROR:
+.PHONY: help draft papers figures test verify clean
 
 help:
 	@echo "make draft    build paper 1 -> $(PDF)"
+	@echo "make papers   paper 1 plus both standalone source papers"
 	@echo "make figures  regenerate the figures from evidence.json"
 	@echo "make test     python -m pytest tests/ -q"
 	@echo "make verify   evidence/verify.py + .load-bearing/verify.py"
@@ -59,6 +65,30 @@ $(PDF): $(BODY) $(COMB)/combined.tex $(FIGS)
 
 draft: $(PDF)
 
+# The two source papers also compile on their own, and a stale standalone PDF
+# beside a fresh combined one is indistinguishable by filename -- which is how a
+# nine-day-old Definition 1 was reported as still present after a rebuild. The
+# methodology paper includes all four figures; the bridge paper includes none.
+define compile_standalone
+cd $(METH) && tectonic -X compile $(1).tex --keep-logs
+@n=$$(grep -cE "Reference .* undefined|Citation .* undefined" $(METH)/$(1).log || true); \
+if [ "$$n" != "0" ]; then \
+  echo "FAIL: $$n undefined reference(s)/citation(s) in $(1).pdf:"; \
+  grep -E "Reference .* undefined|Citation .* undefined" $(METH)/$(1).log | head; \
+  exit 1; \
+fi
+@rm -f $(METH)/$(1).log $(METH)/$(1).toc $(METH)/$(1).aux $(METH)/$(1).out
+@echo "OK: $(METH)/$(1).pdf, no undefined references or citations"
+endef
+
+$(METH)/calibration-methodology.pdf: $(METH)/calibration-methodology.tex $(FIGS)
+	$(call compile_standalone,calibration-methodology)
+
+$(METH)/bridge-invariance.pdf: $(METH)/bridge-invariance.tex
+	$(call compile_standalone,bridge-invariance)
+
+papers: draft $(STANDALONE)
+
 test:
 	$(PY) -m pytest tests/ -q
 
@@ -67,5 +97,5 @@ verify:
 	cd $(METH)/evidence && $(PY) verify.py
 
 clean:
-	rm -f $(FIGS) $(BODY) $(PDF) $(COMB)/combined.log $(COMB)/combined.toc \
-	      $(COMB)/combined.aux $(COMB)/combined.out
+	rm -f $(FIGS) $(BODY) $(PDF) $(STANDALONE) $(COMB)/combined.log $(COMB)/combined.toc \
+	      $(COMB)/combined.aux $(COMB)/combined.out $(METH)/*.toc $(METH)/*.aux $(METH)/*.out

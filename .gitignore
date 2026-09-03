@@ -237,6 +237,9 @@ design/methodology/combined/*.toc
 design/methodology/combined/*.log
 design/methodology/combined/*.aux
 design/methodology/combined/*.out
+design/methodology/*.toc
+design/methodology/*.aux
+design/methodology/*.out
 
 # macOS Finder metadata
 .DS_Store
