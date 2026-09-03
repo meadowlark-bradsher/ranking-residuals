@@ -148,7 +148,8 @@ def structural():
     a = assemble(cfg.with_(n_int=0, n_cplx=5))
     claim("equal-spaced-complex", asserts="An equal-spaced complex pool is pure harmonic "
           "under the empty filling and pure curl under the observed one.",
-          cited_in=["methodology sec 3.1 oracle table", "methodology fig 1"],
+          cited_in=["methodology sec 3.1 oracle table", "methodology fig 1",
+                    "bridge sec 6, Definition 1 (The certified quantity)"],
           value={"empty_harmonic": a.analyze(filling="empty")["fractions"]["harmonic"],
                  "observed_curl": a.analyze(filling="observed")["fractions"]["curl"]},
           tol={"kind": "abs", "value": 1e-12},
@@ -232,6 +233,63 @@ def bridge(cfg):
           cited_in=["bridge sec 8.2 table"], value=floors,
           tol={"kind": "abs", "value": 1e-9},
           test="tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias")
+
+    # Theorem 1's properness clause carries a hypothesis rather than asserting the
+    # strict inequality outright, and this is the measurement that forced it. The
+    # condition is NOT b1 > 0: a constant bridge's non-gradient residual can lie in
+    # im D1^T, leaving Ph B_const = 0 and the two energies equal even where holes
+    # exist. Masks are sparse so that `observed` can leave holes at all -- on the
+    # COMPLETE glued graph the observed filling always gives b1 = 0, which is why
+    # the unconditional clause read as true for as long as it did.
+    def _properness(n_int, m, keep, seed, c_bridge=1.0):
+        n = n_int + m
+        rng = np.random.default_rng(seed)
+        edges = [e for e in itertools.combinations(range(n), 2) if rng.random() < keep]
+        D0, D1 = hodge.build_operators(
+            n, edges, hodge.triangles_for_filling(edges, "observed"))
+        _, _, Ph = hodge.hodge_projectors(D0, D1)
+        rk = lambda M: 0 if getattr(M, "size", 0) == 0 else int(np.linalg.matrix_rank(M))
+        b1 = len(edges) - rk(D0) - rk(D1)
+        sv = np.arange(n_int, dtype=float)
+        ang = 2 * np.pi * np.arange(m) / m
+        Y = np.zeros(len(edges)); Ycc = np.zeros(len(edges)); B = np.zeros(len(edges))
+        for e, (i, j) in enumerate(edges):
+            if i < n_int and j < n_int:
+                Y[e] = sv[j] - sv[i]
+            elif i >= n_int and j >= n_int:
+                v = np.sin(ang[j - n_int] - ang[i - n_int]); Y[e] = v; Ycc[e] = v
+            else:
+                Y[e] = c_bridge; B[e] = c_bridge
+        strict = float(Y @ Ph @ Y) > float(Ycc @ Ph @ Ycc) + 1e-9
+        return b1, strict, float(np.linalg.norm(Ph @ B)) > 1e-8
+
+    tally = collections.Counter({"fail_b1_zero": 0, "fail_b1_pos": 0,
+                                 "fail_with_nonzero_Ph_B": 0})
+    for n_int, m in ((8, 6), (6, 5), (10, 4), (5, 5)):
+        for keep in (0.45, 0.5, 0.55, 0.6, 0.65, 0.7):
+            for sd in range(25):
+                b1, strict, ph_b = _properness(n_int, m, keep, sd)
+                tally["total"] += 1
+                tally["b1_zero" if b1 == 0 else "b1_pos"] += 1
+                if not strict:
+                    tally["fail_b1_zero" if b1 == 0 else "fail_b1_pos"] += 1
+                    tally["fail_with_nonzero_Ph_B"] += int(ph_b)
+    claim("properness-hypothesis", asserts="Theorem 1's properness clause needs "
+          "Ph B_const != 0, and b1 > 0 does not supply it. Across sparse glued "
+          "configurations under the observed filling, EVERY failure of the strict "
+          "inequality has Ph B_const = 0 -- all of the b1 = 0 cases, where Ph "
+          "annihilates every flow, and a minority of the b1 > 0 cases, where the "
+          "non-gradient residual lies in im D1^T. No configuration with "
+          "Ph B_const != 0 fails.",
+          cited_in=["bridge sec 4, Theorem 1 (Bridge-invariance)"],
+          value=dict(tally),
+          tol={"kind": "exact_int"},
+          note="Counts, not a rate: the ensemble is a fixed grid of (n_int, m, keep, "
+               "seed) with deterministic masks, so these regenerate exactly. The "
+               "claim is the ZERO in fail_with_nonzero_Ph_B rather than the "
+               "proportions around it. The complete glued graph is deliberately "
+               "absent -- under `observed` it is always b1 = 0, so an ensemble that "
+               "included it would report a failure rate rather than a condition.")
 
     rows = {}
     for R in (8, 32, 128, 512, 2048):

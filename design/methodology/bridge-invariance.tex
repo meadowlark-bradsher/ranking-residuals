@@ -152,7 +152,7 @@ For the flow~\eqref{eq:glue}, if the bridge flow is a global gradient, $B\in\im 
 \[
 \|\Ph Y\|^2=\|\Ph Y_{cc}\|^2,
 \]
-independent of $B$. Under the empty filling this equals $\|Y_{cc}\|^2$, the full intrinsic circle harmonic energy. The class $\{B\in\im D_0\}$ is proper: a constant bridge against a non-constant integer block lies outside it and yields $\|\Ph Y\|^2>\|\Ph Y_{cc}\|^2$.
+independent of $B$. Under the empty filling this equals $\|Y_{cc}\|^2$, the full intrinsic circle harmonic energy. The class $\{B\in\im D_0\}$ is proper: a constant bridge against a non-constant integer block lies outside it, and yields $\|\Ph Y\|^2>\|\Ph Y_{cc}\|^2$ whenever $\Ph B_{\mathrm{const}}\neq0$.
 \end{theorem}
 \begin{proof}
 By linearity $\Ph Y=\Ph D_0s+\Ph Y_{cc}+\Ph B$. The first term is zero by Lemma~1; the third is zero because $B\in\im D_0$ and Lemma~1 again. Hence $\Ph Y=\Ph Y_{cc}$ for every such $B$, and the energy follows. Under the empty filling $Y_{cc}$ is harmonic (Proposition~1(b)), so $\Ph Y_{cc}=Y_{cc}$ and the value is $\|Y_{cc}\|^2$.
@@ -161,8 +161,10 @@ Properness: a constant bridge assigns $c$ to each edge $(i,\gamma)$, so $B_{\mat
 \[
 B_{\mathrm{const}}-(D_0s)\big|_{E_b},
 \]
-whose entry on $(i,\gamma)$ is $c+s_i-s_\gamma$ and varies with $i$, has nonzero harmonic component generically, so $\Ph B_{\mathrm{const}}\neq0$.
+whose entry on $(i,\gamma)$ is $c+s_i-s_\gamma$ and varies with $i$, is therefore not in $\im D_0$. Being non-gradient is not yet enough. The residual may lie in $\im D_1^{\top}$, in which case $\Ph B_{\mathrm{const}}=0$ and the two energies agree; expanding $\|\Ph Y\|^2=\|\Ph Y_{cc}\|^2+2\langle\Ph Y_{cc},\Ph B\rangle+\|\Ph B\|^2$ shows the strict inequality is a claim about the \emph{harmonic} part of the residual and not about its being non-gradient. Hence the hypothesis, which is what the first draft of this proof discharged as ``generically''.
 \end{proof}
+
+The hypothesis is not decoration, and it is not $b_1>0$. Over sparse glued configurations under the observed filling, every configuration failing the strict inequality had $\Ph B_{\mathrm{const}}=0$: all of those with $b_1=0$, where $\Ph$ annihilates every flow, and a minority of those with $b_1>0$, where the residual fell in $\im D_1^{\top}$. No configuration with $\Ph B_{\mathrm{const}}\neq0$ failed. Counts are the \texttt{properness-hypothesis} claim of the evidence registry.
 
 Two remarks locate what the proof does and does not use.
 
@@ -263,7 +265,7 @@ because $\tr(\Ph\Sigma)=\tr(\Ph\Sigma\Ph)$ for the idempotent $\Ph$. Both are in
 the bias-plus-variance decomposition of harmonic energy under the projector. The systematic floor is whatever survives infinite data---misspecification $\varepsilon^2$ for the null, the circle signal $\|\Ph Y_{cc}\|^2$ for the bridge, an adversarial cyclic field in deployment. The variance term is whatever resampling can reach, with the covariance source naming the regime: sampling noise $\Sigma/k$, quenched disorder $W$, annealed disorder $V/R$. The six-cell grid $\{\text{systematic},\text{sampling}\}\times\{\text{gradient},\text{curl},\text{harmonic}\}$ is the row-and-column structure of~\eqref{eq:biasvar}: the first factor is which term of~\eqref{eq:biasvar}, the second is which subspace $\Ph$ is replaced by. Every named corruption is one entry.
 
 \begin{definition}[The certified quantity]
-The signal the certificate detects is the harmonic energy that survives the closure of every available limit: $R\to\infty$ (anneal sampling and annealed disorder), re-instantiation of the quenched disorder (average $W$ out), and gradient-neutralisation of the bridge (set $\mathbb{E}[B]\in\im D_0$). By Corollary~1 and~\eqref{eq:biasvar} this is $\|\Ph\mathbb{E}_{\infty}[Y]\|^2$, the systematic floor alone. Rankability fails exactly when it is nonzero.
+The signal the certificate detects is the harmonic energy that survives the closure of every available limit: $R\to\infty$ (anneal sampling and annealed disorder), re-instantiation of the quenched disorder (average $W$ out), and gradient-neutralisation of the bridge (set $\mathbb{E}[B]\in\im D_0$). By Corollary~1 and~\eqref{eq:biasvar} this is $\|\Ph\mathbb{E}_{\infty}[Y]\|^2$, the systematic floor alone. Under the empty filling, where the curl space is trivial and every non-gradient flow reads as harmonic, rankability fails exactly when it is nonzero. Under a filling with a non-trivial curl space the biconditional loses a direction: a nonzero floor remains \emph{sufficient} for non-rankability, but a zero floor is not sufficient for rankability, because a pure curl admits no scalar potential and $\Ph$ does not see it. The rig's own oracle row exhibits the gap --- an equal-spaced complex pool reads pure harmonic under the empty filling and pure curl, with zero harmonic, under the observed one (\texttt{equal-spaced-complex}). What the quantity certifies in general is therefore the harmonic ranking \emph{residual}: the non-rankability that survives a triad-consistency check, which is the failure the certificate exists to catch and the one a curl reading would already have reported.
 \end{definition}
 
 \subsection{A strict limit: perfect fabricators are invisible at every level}

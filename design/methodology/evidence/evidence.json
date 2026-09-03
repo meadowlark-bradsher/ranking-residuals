@@ -8,12 +8,12 @@
  },
  "meta": {
   "generated": "2026-09-03",
-  "commit": "bbd6627",
+  "commit": "0074a9d",
   "numpy": "1.26.4",
   "python": "3.12",
-  "n_claims": 33,
-  "source_fingerprint": "d776cf2877527a26",
-  "claims_digest": "9f8d08d296536b21"
+  "n_claims": 34,
+  "source_fingerprint": "3439073d13cfaf87",
+  "claims_digest": "70b5001212e65eb0"
  },
  "claims": {
   "pm1-trap": {
@@ -82,7 +82,8 @@
    "claim": "An equal-spaced complex pool is pure harmonic under the empty filling and pure curl under the observed one.",
    "cited_in": [
     "methodology sec 3.1 oracle table",
-    "methodology fig 1"
+    "methodology fig 1",
+    "bridge sec 6, Definition 1 (The certified quantity)"
    ],
    "value": {
     "empty_harmonic": 1.0,
@@ -227,6 +228,26 @@
    "kind": "exact",
    "test": "tests/test_acceptance.py::test_zero_mean_bridge_leaves_a_persistent_bias",
    "note": null
+  },
+  "properness-hypothesis": {
+   "claim": "Theorem 1's properness clause needs Ph B_const != 0, and b1 > 0 does not supply it. Across sparse glued configurations under the observed filling, EVERY failure of the strict inequality has Ph B_const = 0 -- all of the b1 = 0 cases, where Ph annihilates every flow, and a minority of the b1 > 0 cases, where the non-gradient residual lies in im D1^T. No configuration with Ph B_const != 0 fails.",
+   "cited_in": [
+    "bridge sec 4, Theorem 1 (Bridge-invariance)"
+   ],
+   "value": {
+    "fail_b1_zero": 291,
+    "fail_b1_pos": 24,
+    "fail_with_nonzero_Ph_B": 0,
+    "total": 600,
+    "b1_pos": 309,
+    "b1_zero": 291
+   },
+   "tolerance": {
+    "kind": "exact_int"
+   },
+   "kind": "exact",
+   "test": null,
+   "note": "Counts, not a rate: the ensemble is a fixed grid of (n_int, m, keep, seed) with deterministic masks, so these regenerate exactly. The claim is the ZERO in fail_with_nonzero_Ph_B rather than the proportions around it. The complete glued graph is deliberately absent -- under `observed` it is always b1 = 0, so an ensemble that included it would report a failure rate rather than a condition."
   },
   "thrashing-does-not-wash-out": {
    "claim": "The bridge block alone decays as 1/R, but the combined flow converges to the systematic floor, not to the circle floor.",
